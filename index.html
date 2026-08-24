@@ -1645,9 +1645,16 @@ textarea.inp{resize:vertical;min-height:60px}
 // ── GAS Web App URL — endpoint หลักของระบบ ──────────────────
 const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P_EWCNuPUQepKClFj6L1nSfccYhLD6CUsYJwMcuxjS7Ab/exec';
 
-// ── สวิตช์เปิด/ปิดเมนูเช็คอิน-เช็คเอาต์ (ปิดชั่วคราวตามคำขอฝ่ายบุคคล) ──
-// เปลี่ยนเป็น true เพื่อเปิดกลับเมื่อพร้อม — โค้ดเดิมยังอยู่ครบ
-const CHECKIN_ENABLED = false;
+// ── สิทธิ์เช็คอิน-เช็คเอาต์ (GPS) ตาม "กะ" (SHIFT) ──
+// ว่าง [] = ปิดสำหรับทุกคน (เหมือน CHECKIN_ENABLED=false เดิม)
+// ['DRIVER'] = เปิดเฉพาะกะคนขับ · อนาคตเพิ่มได้ เช่น ['DRIVER','SALES']
+// ⚠️ นี่คุมแค่การแสดงผลฝั่ง client — backend (checkIn) ตรวจ shift ซ้ำจากชีตเสมอ กันเรียก API ตรง
+const CHECKIN_ALLOWED_SHIFTS = ['DRIVER'];
+
+// helper: กะปัจจุบันของผู้ใช้มีสิทธิ์เช็คอินไหม
+function checkinAllowedForShift(shift) {
+  return CHECKIN_ALLOWED_SHIFTS.indexOf(String(shift || '').trim().toUpperCase()) !== -1;
+}
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
 const APP_VERSION = '8.1.0';
@@ -1886,8 +1893,8 @@ function restoreSession() {
   const lbl = document.getElementById('ci-lbl');
   if (lbl) lbl.textContent = sess.name + ' · ' + sess.empId;
 
-  // ถ้าปิดเมนูเช็คอิน → ไปหน้าเช็คเวลาตรงๆ ไม่ต้องเช็คสถานะเช็คอิน
-  if (!CHECKIN_ENABLED) { go(defaultLandingPage()); return true; }
+  // ถ้ากะนี้ไม่มีสิทธิ์เช็คอิน → ไปหน้าเช็คเวลาตรงๆ ไม่ต้องเช็คสถานะเช็คอิน
+  if (!checkinAllowedForShift(sess.shift)) { go(defaultLandingPage()); return true; }
 
   // ทุก role (รวม HR) เช็คสถานะเช็คอินวันนี้จาก server ก่อนตัดสินหน้า
   gasRun('getTodayStatus', { employeeId: sess.empId })
@@ -2099,16 +2106,17 @@ function tab(id, el) { go(id); }
  */
 function applyRoleMenus(role) {
   const isHR = role === 'HR';
-  // เมนูพนักงาน — เช็คอิน/เอาต์ ขึ้นกับสวิตช์ CHECKIN_ENABLED, เช็คเวลา/เงินเดือน/ลางาน/โอที แสดงเสมอ
+  // เมนูพนักงาน — เช็คอิน/เอาต์ ขึ้นกับกะ (CHECKIN_ALLOWED_SHIFTS), เช็คเวลา/เงินเดือน/ลางาน/โอที แสดงเสมอ
   const alwaysTabs = ['tab-hist', 'tab-payslip', 'tab-leave', 'tab-ot'];
   alwaysTabs.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
-  // เช็คอิน/เช็คเอาต์ — ซ่อนถ้าปิดเมนู
+  // เช็คอิน/เช็คเอาต์ — แสดงเฉพาะกะที่มีสิทธิ์ (เช่น DRIVER); กะอื่นซ่อน
+  const canCheckin = checkinAllowedForShift(S.shift);
   ['tab-in', 'tab-out'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = CHECKIN_ENABLED ? '' : 'none';
+    if (el) el.style.display = canCheckin ? '' : 'none';
   });
 
   // แท็บ Dashboard เดิมของ HR — ไม่ใช้แล้ว (ย้ายไปปุ่ม "งานบุคคล") ซ่อนไว้
@@ -2133,9 +2141,9 @@ function applyRoleMenus(role) {
   }
 }
 
-// หน้าเริ่มต้นหลัง login — ถ้าปิดเช็คอิน ไปหน้าเช็คเวลาแทน
+// หน้าเริ่มต้นหลัง login — ถ้ากะไม่มีสิทธิ์เช็คอิน ไปหน้าเช็คเวลาแทน
 function defaultLandingPage() {
-  return CHECKIN_ENABLED ? 'checkin' : 'history';
+  return checkinAllowedForShift(S.shift) ? 'checkin' : 'history';
 }
 
 // ========== HR DASHBOARD ==========
@@ -3739,7 +3747,7 @@ function doLogin() {
       // navigate — ใช้ setTimeout เพื่อให้ browser mobile render ทัน
       // ถ้าปิดเมนูเช็คอิน → ไปหน้าเช็คเวลา (history) แทน
       setTimeout(() => {
-        if (CHECKIN_ENABLED && r.checkedIn && !r.checkedOut) {
+        if (checkinAllowedForShift(S.shift) && r.checkedIn && !r.checkedOut) {
           if (r.inTime) startWT(r.inTime, r.inDate);
           go('checkout');
         } else {
