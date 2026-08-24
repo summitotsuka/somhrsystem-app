@@ -2722,12 +2722,16 @@ function renderReport(r) {
 function hrRepDownloadCSV() {
   if (!hrRepData || !hrRepData.rows) { showToast('กรุณาสร้างรายงานก่อน'); return; }
   const statusTH = { present: 'ปกติ', late: 'มาสาย', no_checkout: 'ไม่มีออก', no_in: 'ไม่มีเข้า', absent: 'ไม่มาทำงาน' };
+  // ที่มาแบบดิบ (GPS/FINGER/FACE/MANUAL) — ไม่มีก็ "-"
+  const srcOr = v => (v && String(v).trim()) ? String(v).trim().toUpperCase() : '-';
   let csv = '\uFEFF';  // BOM ให้ Excel อ่านภาษาไทยถูก
-  csv += 'รหัส,ชื่อ,แผนก,กะ,วันที่,วัน,เวลาเข้า,เวลาออก,สถานะ,ชั่วโมง\r\n';
+  csv += 'รหัส,ชื่อ,แผนก,กะ,วันที่,วัน,เวลาเข้า,เวลาออก,สถานะ,ที่มา,พิกัด GPS\r\n';
   hrRepData.rows.forEach(r => {
     const [y,m,d] = r.date.split('-');
     const thDate = `${d}/${m}/${y}`;
-    csv += `${r.empId},"${r.name}","${r.department}",${r.shift},${thDate},${r.dow||''},${r.inTime||''},${r.outTime||''},${statusTH[r.status]||''},${r.workHours||0}\r\n`;
+    const src   = `${srcOr(r.inSrcRaw)}/${srcOr(r.outSrcRaw)}`;                  // เข้า/ออก เช่น GPS/FINGER
+    const coord = `${(r.inCoord||'-')}/${(r.outCoord||'-')}`;                    // เข้า/ออก (มีจุลภาค → ครอบ "")
+    csv += `${r.empId},"${r.name}","${r.department}",${r.shift},${thDate},${r.dow||''},${r.inTime||''},${r.outTime||''},${statusTH[r.status]||''},"${src}","${coord}"\r\n`;
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -2743,11 +2747,16 @@ function hrRepDownloadPDF() {
   const s = hrRepData.summary || {};
   const [fy,fm,fd] = hrRepData.dateFrom.split('-');
   const [ty,tm,td] = hrRepData.dateTo.split('-');
+  const srcOr = v => (v && String(v).trim()) ? String(v).trim().toUpperCase() : '-';
   let rowsHtml = '';
   hrRepData.rows.forEach(r => {
     const [y,m,d] = r.date.split('-');
     const dow = r.dow ? ` (${r.dow})` : '';
-    rowsHtml += `<tr><td>${r.empId}</td><td>${r.name}</td><td>${r.department}</td><td>${d}/${m}/${(+y)+543}${dow}</td><td>${r.inTime||'—'}</td><td>${r.outTime||'—'}</td><td>${statusTH[r.status]||''}</td><td style="text-align:right">${r.workHours?r.workHours.toFixed(1):'—'}</td></tr>`;
+    const src = `${srcOr(r.inSrcRaw)}/${srcOr(r.outSrcRaw)}`;
+    const coord = (r.inCoord || r.outCoord)
+      ? `<div class="coord">${r.inCoord||'-'}<br>${r.outCoord||'-'}</div>`
+      : '<span style="color:#aaa">—</span>';
+    rowsHtml += `<tr><td>${r.empId}</td><td>${r.name}</td><td>${r.department}</td><td>${d}/${m}/${(+y)+543}${dow}</td><td>${r.inTime||'—'}</td><td>${r.outTime||'—'}</td><td>${statusTH[r.status]||''}</td><td>${src}</td><td>${coord}</td></tr>`;
   });
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>รายงานการลงเวลา</title>
@@ -2760,6 +2769,7 @@ function hrRepDownloadPDF() {
       table{width:100%;border-collapse:collapse;font-size:11px}
       th{background:#f3f4f6;padding:6px;text-align:left;border:1px solid #ddd}
       td{padding:5px 6px;border:1px solid #eee}
+      .coord{font-size:8px;color:#555;font-family:monospace;line-height:1.3}
       @media print{body{padding:0}}
     </style></head><body>
     <h1>รายงานการลงเวลา</h1>
@@ -2771,7 +2781,7 @@ function hrRepDownloadPDF() {
       <div>ยังไม่ออก <b>${s.noCheckout||0}</b></div>
       <div>ไม่มาทำงาน <b>${s.absent||0}</b></div>
     </div>
-    <table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>วันที่</th><th>เข้า</th><th>ออก</th><th>สถานะ</th><th>ชม.</th></tr></thead>
+    <table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>วันที่</th><th>เข้า</th><th>ออก</th><th>สถานะ</th><th>ที่มา</th><th>พิกัด GPS<br><span style="font-weight:400;font-size:8px">เข้า/ออก</span></th></tr></thead>
     <tbody>${rowsHtml}</tbody></table>
     </body></html>`);
   win.document.close();
