@@ -2143,6 +2143,8 @@ function applyRoleMenus(role) {
 
 // หน้าเริ่มต้นหลัง login — ถ้ากะไม่มีสิทธิ์เช็คอิน ไปหน้าเช็คเวลาแทน
 function defaultLandingPage() {
+  // HR → ภาพรวมประจำวัน (hr-dashboard) เป็นหน้าแรก
+  if (S.role === 'HR') return 'hr-dashboard';
   return checkinAllowedForShift(S.shift) ? 'checkin' : 'history';
 }
 
