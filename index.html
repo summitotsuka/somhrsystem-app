@@ -4248,7 +4248,8 @@ applyLogo();
     if (!FINGER.fileText) { showToast('ไม่มีข้อมูล'); return; }
     var cf = document.getElementById('finger-confirm');
     if (cf) { cf.disabled = true; cf.textContent = 'กำลังบันทึก...'; }
-    gasRun('fingerUploadConfirm', { hrToken: S.hrToken, fileText: FINGER.fileText })
+    // ใช้ gasRunLong: ไม่ retry (กันเขียนซ้ำจาก write action) + timeout ยาว 90 วิ (ไฟล์ใหญ่เขียนนาน)
+    gasRunLong('fingerUploadConfirm', { hrToken: S.hrToken, fileText: FINGER.fileText })
       .withSuccessHandler(function(r) {
         if (!r || !r.success) { showToast((r && r.message) || 'บันทึกไม่สำเร็จ'); if (cf){ cf.disabled=false; cf.textContent='ยืนยันบันทึก'; } return; }
         var msg = 'บันทึกสำเร็จ ' + r.saved + ' รายการ';
