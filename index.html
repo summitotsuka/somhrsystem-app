@@ -2018,6 +2018,13 @@ function showEmpStrip(name, empId, shiftLabel) {
   document.querySelectorAll('.page').forEach(p => p.classList.add('with-strip'));
 }
 
+// ซ่อนแถบชื่อพนักงาน + ปุ่มออกจากระบบ (ใช้ตอนกลับหน้า login/welcome)
+function hideEmpStrip() {
+  const strip = document.getElementById('emp-strip');
+  if (strip) strip.style.display = 'none';
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('with-strip'));
+}
+
 function go(id) {
   // ปิดกล้องเมื่อออกจากหน้าที่ใช้กล้อง (เผื่อ navigate โดยไม่กดปุ่มออก)
   // หุ้ม try-catch กันกรณีเรียกตอนเริ่มแอป (ตัวแปร kiosk ยังไม่ init — temporal dead zone)
@@ -2031,6 +2038,9 @@ function go(id) {
   target.scrollTop = 0;
   void target.offsetHeight; // force reflow
   target.classList.add('active');
+
+  // หน้า welcome (login) ไม่มี session → ซ่อนแถบชื่อพนักงาน+ปุ่มออก (กันค้างตอน refresh/หมดอายุ)
+  if (id === 'welcome') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
   const navPages = ['checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
