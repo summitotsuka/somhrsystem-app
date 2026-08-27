@@ -1897,8 +1897,10 @@ function restoreSession() {
   if (!checkinAllowedForShift(sess.shift)) { go(defaultLandingPage()); return true; }
 
   // ทุก role (รวม HR) เช็คสถานะเช็คอินวันนี้จาก server ก่อนตัดสินหน้า
-  gasRun('getTodayStatus', { employeeId: sess.empId })
-    .withSuccessHandler(st => {
+  // ใช้ callAPI timeout ยาว 60 วิ + ไม่ retry (read อย่างเดียว) — กันค้างตอน refresh เมื่อ backend ช้า >15 วิ
+  // (เดิมใช้ gasRun 15 วิ + retry → backend ช้าบางครั้ง 17-22 วิ → timeout → retry loop → ค้างหมุน)
+  callAPI('getTodayStatus', { employeeId: sess.empId }, 1, true, 60000)
+    .then(st => {
       if (st && st.checkedIn && !st.checkedOut) {
         S.checkedIn = true; S.inTime = st.inTime; S.inDate = st.inDate;
         if (st.inTime) startWT(st.inTime, st.inDate);
@@ -1907,7 +1909,7 @@ function restoreSession() {
         go(defaultLandingPage());
       }
     })
-    .withFailureHandler(() => { go(defaultLandingPage()); });
+    .catch(() => { go(defaultLandingPage()); });
   return true;
 }
 
