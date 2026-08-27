@@ -2167,11 +2167,13 @@ function loadHrDashboard() {
   document.getElementById('hrdash-list').innerHTML = '';
   // วันปัจจุบันเสมอ (ไม่ต้องเลือกวัน)
   const today = new Date().toISOString().slice(0, 10);
-  gasRun('hrGetDashboard', { hrToken: S.hrToken, date: today })
-    .withSuccessHandler(renderHrDashboard)
-    .withFailureHandler(e => {
+  // ใช้ callAPI ตรง ๆ พร้อม timeout ยาว 60 วิ (dashboard บางครั้งใช้ >15 วิ ตามข้อมูลที่โต)
+  // ไม่ retry (คิวรี read อย่างเดียว ปลอดภัย) กันการค้างหมุนจาก timeout 15 วิ เดิม
+  callAPI('hrGetDashboard', { hrToken: S.hrToken, date: today }, 1, true, 60000)
+    .then(r => renderHrDashboard(r))
+    .catch(e => {
       document.getElementById('hrdash-loading').style.display = 'none';
-      showToast(e.message || 'โหลดข้อมูลไม่สำเร็จ');
+      showToast((e && e.message) || 'โหลดข้อมูลไม่สำเร็จ');
     });
 }
 
