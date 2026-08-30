@@ -1097,10 +1097,10 @@ textarea.inp{resize:vertical;min-height:60px}
     <div id="hr-autodel-status" style="font-size:13px;color:var(--tx3);margin-top:10px"></div>
   </div>
 
-  <!-- โซนอันตราย: ลบตามช่วงวันที่ (manual) -->
+  <!-- โซนอันตราย: ลบข้อมูลคีย์มือ (manual) -->
   <div class="card" style="padding:14px;margin-top:16px;border:1px solid rgba(220,38,38,.3)">
-    <div style="font-size:15px;font-weight:700;color:var(--er);margin-bottom:4px">⚠️ ลบข้อมูลตามช่วงวันที่</div>
-    <div style="font-size:13px;color:var(--tx3);margin-bottom:12px">ลบข้อมูลการลงเวลาตามช่วงวันที่ที่ระบุ — ลบแล้วกู้คืนไม่ได้ (ไม่ย้ายไป archive)</div>
+    <div style="font-size:15px;font-weight:700;color:var(--er);margin-bottom:4px">⚠️ ลบข้อมูลคีย์มือ</div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:12px">ลบได้เฉพาะข้อมูลที่คีย์มือ (MANUAL) เท่านั้น — ข้อมูลจากเครื่อง (GPS/สแกนนิ้ว/Kiosk) จะไม่ถูกแตะ · ข้อมูลที่ลบจะถูกเก็บใน Archive พร้อมเหตุผล</div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
       <div class="field" style="flex:1;min-width:130px;margin:0"><label>ตั้งแต่วันที่</label>
@@ -1108,7 +1108,36 @@ textarea.inp{resize:vertical;min-height:60px}
       <div class="field" style="flex:1;min-width:130px;margin:0"><label>ถึงวันที่</label>
         <input class="inp" id="hrdm-to" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10"></div>
     </div>
-    <button class="btn o sm" id="hrdm-delete" style="width:auto;padding:8px 16px;color:var(--er);border-color:var(--er)">ลบข้อมูลช่วงนี้</button>
+
+    <!-- เลือกพนักงาน (ว่าง = ทุกคน) -->
+    <div style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="font-size:12px;color:var(--tx2);font-weight:500">เลือกพนักงาน (ว่าง = ทุกคน)</label>
+        <div style="display:flex;gap:6px">
+          <button class="btn o sm" id="hrdm-emp-all">ทั้งหมด</button>
+          <button class="btn o sm" id="hrdm-emp-none">ล้าง</button>
+        </div>
+      </div>
+      <input class="inp" id="hrdm-emp-search" placeholder="ค้นหาชื่อ..." style="margin-bottom:8px;font-size:13px">
+      <div id="hrdm-emplist" style="max-height:160px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;padding:4px">
+        <div style="text-align:center;padding:16px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:6px" id="hrdm-emp-count">ยังไม่เลือก (ว่าง = ทุกคน)</div>
+    </div>
+
+    <!-- เหตุผล (บังคับ) -->
+    <div class="field" style="margin:0 0 12px">
+      <label>เหตุผลในการลบ <span style="color:var(--er)">*</span></label>
+      <input class="inp" id="hrdm-reason" placeholder="เช่น คีย์ผิดวัน / คีย์ซ้ำ / แก้ไขข้อมูล" maxlength="200">
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn o sm" id="hrdm-preview" style="padding:8px 16px">ดูรายการที่จะลบ</button>
+      <button class="btn o sm" id="hrdm-delete" style="padding:8px 16px;color:var(--er);border-color:var(--er)" disabled>ลบข้อมูลคีย์มือ</button>
+    </div>
+
+    <!-- พื้นที่แสดง preview -->
+    <div id="hrdm-preview-box" style="display:none;margin-top:12px"></div>
   </div>
 </div>
 
@@ -2148,7 +2177,7 @@ function go(id) {
     loadExportPage();
   }
   if (id === 'hr-datamgmt') {
-    if (typeof loadAutoDeleteConfig === 'function') loadAutoDeleteConfig();
+    if (typeof loadDataMgmtPage === 'function') loadDataMgmtPage();
   }
   if (id === 'hr-broadcast') {
     if (typeof loadBroadcast === 'function') loadBroadcast();
@@ -2924,29 +2953,140 @@ function bcSend() {
     .withFailureHandler(() => { if (btn) { btn.disabled = false; btn.textContent = '📢 ส่งข้อความ'; } if (status) status.textContent = '✗ เกิดข้อผิดพลาด'; });
 }
 
-function hrDmDelete() {
+// ── ลบข้อมูลคีย์มือ (manual) — เลือกคน+วัน, พรีวิว, เหตุผลบังคับ, เก็บ archive ──
+let hrDmEmployees = [];
+let hrDmSelected = {};
+let hrDmPreviewedCount = -1;   // -1 = ยังไม่ preview; ต้อง preview ก่อนลบ
+
+function loadDataMgmtPage() {
+  if (typeof loadAutoDeleteConfig === 'function') loadAutoDeleteConfig();
+  hrDmSelected = {};
+  hrDmPreviewedCount = -1;
+  const pv = document.getElementById('hrdm-preview-box'); if (pv) pv.style.display = 'none';
+  const delBtn = document.getElementById('hrdm-delete'); if (delBtn) delBtn.disabled = true;
+  const reason = document.getElementById('hrdm-reason'); if (reason) reason.value = '';
+  const list = document.getElementById('hrdm-emplist');
+  if (list) list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
+  gasRun('hrGetEmployeeList', { hrToken: S.hrToken })
+    .withSuccessHandler(r => {
+      if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); return; }
+      hrDmEmployees = r.employees || [];
+      renderDmList('');
+    })
+    .withFailureHandler(e => showToast(e.message));
+}
+
+function renderDmList(search) {
+  const list = document.getElementById('hrdm-emplist');
+  if (!list) return;
+  const q = (search || '').toLowerCase();
+  const filtered = hrDmEmployees.filter(e => !q || String(e.name).toLowerCase().includes(q) || String(e.empId).toLowerCase().includes(q));
+  if (filtered.length === 0) { list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--tx3);font-size:13px">ไม่พบพนักงาน</div>'; return; }
+  let html = '';
+  filtered.forEach(e => {
+    const sel = hrDmSelected[e.empId] ? 'sel' : '';
+    const check = hrDmSelected[e.empId] ? '✓' : '';
+    html += `<div class="exp-row ${sel}" data-id="${e.empId}">
+      <div class="exp-cb">${check}</div>
+      <div style="flex:1;min-width:0">
+        <div class="exp-nm">${e.name}</div>
+        <div class="exp-meta">${e.empId} · ${e.department}</div>
+      </div></div>`;
+  });
+  list.innerHTML = html;
+  list.querySelectorAll('.exp-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.id;
+      if (hrDmSelected[id]) delete hrDmSelected[id]; else hrDmSelected[id] = true;
+      renderDmList(document.getElementById('hrdm-emp-search').value);
+      updateDmCount();
+      resetDmPreview();
+    });
+  });
+}
+function updateDmCount() {
+  const n = Object.keys(hrDmSelected).length;
+  document.getElementById('hrdm-emp-count').textContent = n === 0 ? 'ยังไม่เลือก (ว่าง = ทุกคน)' : `เลือกแล้ว ${n} คน`;
+}
+function hrDmEmpAll() { hrDmEmployees.forEach(e => { hrDmSelected[e.empId] = true; }); renderDmList(document.getElementById('hrdm-emp-search').value); updateDmCount(); resetDmPreview(); }
+function hrDmEmpNone() { hrDmSelected = {}; renderDmList(document.getElementById('hrdm-emp-search').value); updateDmCount(); resetDmPreview(); }
+
+// เมื่อเงื่อนไขเปลี่ยน → ต้อง preview ใหม่ก่อนลบ (กันลบผิดจากเงื่อนไขเก่า)
+function resetDmPreview() {
+  hrDmPreviewedCount = -1;
+  const delBtn = document.getElementById('hrdm-delete'); if (delBtn) delBtn.disabled = true;
+  const pv = document.getElementById('hrdm-preview-box'); if (pv) pv.style.display = 'none';
+}
+
+function hrDmPreview() {
   const from = document.getElementById('hrdm-from').value.trim();
   const to   = document.getElementById('hrdm-to').value.trim();
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(from) || !/^\d{2}\/\d{2}\/\d{4}$/.test(to)) { showToast('กรุณากรอกช่วงวันที่ (วว/ดด/ปปปป)'); return; }
+  const ids = Object.keys(hrDmSelected);
+  const btn = document.getElementById('hrdm-preview');
+  btn.disabled = true; btn.textContent = 'กำลังดู...';
+  gasRun('hrPreviewDeleteAttendance', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids })
+    .withSuccessHandler(r => {
+      btn.disabled = false; btn.textContent = 'ดูรายการที่จะลบ';
+      if (!r || !r.success) { showToast((r && r.message) || 'ดูรายการไม่สำเร็จ'); return; }
+      renderDmPreview(r);
+    })
+    .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'ดูรายการที่จะลบ'; showToast(e.message); });
+}
 
-  // ขั้น 1: เตือนสำรองข้อมูล
-  const backedUp = confirm('⚠️ ต้องการลบข้อมูลการลงเวลา\nช่วง ' + from + ' ถึง ' + to + '\n\nคุณได้สำรอง (Export) ข้อมูลไว้แล้วหรือยัง?\n\nกด "ตกลง" ถ้าสำรองแล้ว / "ยกเลิก" เพื่อไปสำรองก่อน');
-  if (!backedUp) return;
+function renderDmPreview(r) {
+  const box = document.getElementById('hrdm-preview-box');
+  hrDmPreviewedCount = r.count;
+  const delBtn = document.getElementById('hrdm-delete');
+  if (r.count === 0) {
+    box.style.display = 'block';
+    box.innerHTML = '<div style="padding:12px;background:var(--sf2);border-radius:8px;font-size:13px;color:var(--tx3)">ไม่พบข้อมูลคีย์มือในเงื่อนไขที่เลือก</div>';
+    if (delBtn) delBtn.disabled = true;
+    return;
+  }
+  let html = `<div style="padding:10px 12px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);border-radius:8px;margin-bottom:8px;font-size:13px">
+    จะลบข้อมูลคีย์มือทั้งหมด <b style="color:var(--er)">${r.count}</b> รายการ (เก็บ Archive ก่อนลบ)</div>`;
+  html += '<div style="max-height:200px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html += '<thead><tr style="background:var(--sf2);position:sticky;top:0"><th style="padding:5px 8px;text-align:left">รหัส</th><th style="padding:5px 8px;text-align:left">ชื่อ</th><th style="padding:5px 8px;text-align:left">วันที่</th><th style="padding:5px 8px;text-align:left">เวลา</th><th style="padding:5px 8px;text-align:center">ประเภท</th></tr></thead><tbody>';
+  r.rows.forEach(row => {
+    const [y,m,d] = row.date.split('-');
+    html += `<tr style="border-top:1px solid var(--sf2)"><td style="padding:4px 8px">${row.empId}</td><td style="padding:4px 8px">${row.name}</td><td style="padding:4px 8px;white-space:nowrap">${d}/${m}/${y}</td><td style="padding:4px 8px;white-space:nowrap">${row.time}</td><td style="padding:4px 8px;text-align:center">${row.type}</td></tr>`;
+  });
+  html += '</tbody></table></div>';
+  box.style.display = 'block';
+  box.innerHTML = html;
+  if (delBtn) delBtn.disabled = false;   // preview แล้ว → เปิดปุ่มลบ
+}
 
-  // ขั้น 2: พิมพ์ YES ยืนยัน
-  const confirmText = prompt('ยืนยันการลบถาวร — พิมพ์ YES (ตัวใหญ่) เพื่อลบข้อมูลช่วงนี้:', '');
+function hrDmDelete() {
+  const from = document.getElementById('hrdm-from').value.trim();
+  const to   = document.getElementById('hrdm-to').value.trim();
+  const reason = document.getElementById('hrdm-reason').value.trim();
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(from) || !/^\d{2}\/\d{2}\/\d{4}$/.test(to)) { showToast('กรุณากรอกช่วงวันที่'); return; }
+  if (!reason) { showToast('กรุณาระบุเหตุผลในการลบ'); document.getElementById('hrdm-reason').focus(); return; }
+  if (hrDmPreviewedCount < 0) { showToast('กรุณากด "ดูรายการที่จะลบ" ก่อน'); return; }
+  if (hrDmPreviewedCount === 0) { showToast('ไม่มีข้อมูลให้ลบ'); return; }
+
+  // ขั้น 1: เตือน
+  if (!confirm(`⚠️ ต้องการลบข้อมูลคีย์มือ ${hrDmPreviewedCount} รายการ\nช่วง ${from} ถึง ${to}\nเหตุผล: ${reason}\n\nข้อมูลจะถูกเก็บใน Archive ก่อนลบ`)) return;
+  // ขั้น 2: พิมพ์ YES
+  const confirmText = prompt('ยืนยันการลบ — พิมพ์ YES (ตัวใหญ่):', '');
   if (confirmText === null) return;
   if (confirmText.trim() !== 'YES') { showToast('พิมพ์ YES ไม่ถูกต้อง ยกเลิกการลบ'); return; }
 
+  const ids = Object.keys(hrDmSelected);
   const btn = document.getElementById('hrdm-delete');
   if (btn) { btn.disabled = true; btn.textContent = 'กำลังลบ...'; }
-  gasRunNoRetry('hrDeleteAttendance', { hrToken: S.hrToken, dateFrom: from, dateTo: to, confirmText: confirmText.trim() })
+  gasRunNoRetry('hrDeleteAttendance', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids, reason: reason, confirmText: confirmText.trim() })
     .withSuccessHandler(r => {
-      if (btn) { btn.disabled = false; btn.textContent = 'ลบข้อมูลช่วงนี้'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'ลบข้อมูลคีย์มือ'; }
       if (!r || !r.success) { showToast((r && r.message) || 'ลบไม่สำเร็จ'); return; }
-      showToast('ลบข้อมูลแล้ว ' + r.deleted + ' รายการ', true);
+      showToast('ลบข้อมูลแล้ว ' + r.deleted + ' รายการ (เก็บ Archive แล้ว)', true);
+      resetDmPreview();
+      document.getElementById('hrdm-reason').value = '';
     })
-    .withFailureHandler(e => { if (btn) { btn.disabled = false; btn.textContent = 'ลบข้อมูลช่วงนี้'; } showToast(e.message); });
+    .withFailureHandler(e => { if (btn) { btn.disabled = false; btn.textContent = 'ลบข้อมูลคีย์มือ'; } showToast(e.message); });
 }
 
 function renderReport(r) {
@@ -4295,6 +4435,12 @@ applyLogo();
   on('hrrep-none', 'click', hrRepClearAll);
   on('hrrep-generate', 'click', hrRepGenerate);
   on('hrdm-delete', 'click', hrDmDelete);
+  on('hrdm-preview', 'click', hrDmPreview);
+  on('hrdm-emp-all', 'click', hrDmEmpAll);
+  on('hrdm-emp-none', 'click', hrDmEmpNone);
+  on('hrdm-emp-search', 'input', function() { renderDmList(this.value); });
+  on('hrdm-from', 'input', resetDmPreview);
+  on('hrdm-to', 'input', resetDmPreview);
   on('hr-autodel-save', 'click', hrAutoDelSave);
   on('hr-autodel-runnow', 'click', hrAutoDelRunNow);
   on('hrrep-csv', 'click', hrRepDownloadCSV);
