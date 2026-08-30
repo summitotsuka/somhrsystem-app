@@ -573,6 +573,15 @@ textarea.inp{resize:vertical;min-height:60px}
       <div class="hr-menu-arrow">›</div>
     </div>
 
+    <div class="hr-menu-card" id="hr-menu-rawlog" style="order:6">
+      <div class="hr-menu-icon" style="background:rgba(245,158,11,.15);color:var(--wn)">☰</div>
+      <div style="flex:1">
+        <div class="hr-menu-title">รายงานการบันทึกดิบ</div>
+        <div class="hr-menu-desc">ดูทุกการบันทึกแยกตาม SOURCE (ตรวจสอบ/audit)</div>
+      </div>
+      <div class="hr-menu-arrow">›</div>
+    </div>
+
     <div class="hr-menu-card" id="hr-menu-export" style="order:13">
       <div class="hr-menu-icon" style="background:rgba(168,85,247,.15);color:var(--ac2)">⤓</div>
       <div style="flex:1">
@@ -961,6 +970,55 @@ textarea.inp{resize:vertical;min-height:60px}
     <!-- ตาราง -->
     <div class="card" style="padding:0;overflow:hidden">
       <div id="hrrep-table" style="overflow-x:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ HR รายงานการบันทึกดิบ (raw log) ═══════════════ -->
+<div class="page" id="page-hr-rawlog">
+  <div style="margin-bottom:14px">
+    <div style="font-size:20px;font-weight:600">รายงานการบันทึกดิบ</div>
+    <div style="font-size:12px;color:var(--tx3);margin-top:2px">ทุกการบันทึกแยกตาม SOURCE — ✓ = ถูกเลือกไปจับคู่ในรายงานสรุป</div>
+  </div>
+
+  <!-- ช่วงวันที่ -->
+  <div class="card" style="padding:14px">
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">ช่วงวันที่</div>
+    <div style="display:flex;gap:8px">
+      <div class="field" style="flex:1;margin:0"><label>ตั้งแต่</label>
+        <input class="inp" id="hrraw-from" type="date"></div>
+      <div class="field" style="flex:1;margin:0"><label>ถึง</label>
+        <input class="inp" id="hrraw-to" type="date"></div>
+    </div>
+  </div>
+
+  <!-- เลือกพนักงาน -->
+  <div class="card" style="padding:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--tx2);font-weight:500">เลือกพนักงาน</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn o sm" id="hrraw-all">เลือกทั้งหมด</button>
+        <button class="btn o sm" id="hrraw-none">ล้าง</button>
+      </div>
+    </div>
+    <input class="inp" id="hrraw-search" placeholder="ค้นหาชื่อ..." style="margin-bottom:8px;font-size:13px">
+    <div id="hrraw-emplist" style="max-height:200px;overflow-y:auto">
+      <div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);margin-top:8px" id="hrraw-count">เลือกแล้ว 0 คน</div>
+  </div>
+
+  <button class="btn p" id="hrraw-generate" style="margin-bottom:10px">สร้างรายงาน</button>
+
+  <!-- ผลลัพธ์ -->
+  <div id="hrraw-result" style="display:none">
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="btn o sm" id="hrraw-csv">Export CSV</button>
+      <button class="btn o sm" id="hrraw-pdf">Export PDF</button>
+    </div>
+    <div style="font-size:12px;color:var(--tx3);margin-bottom:8px" id="hrraw-total"></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="hrraw-table" style="overflow-x:auto"></div>
     </div>
   </div>
 </div>
@@ -2066,13 +2124,13 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
+  const navPages = ['checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
   // sync tab highlight — หน้า HR ทั้งหมดให้แท็บ HR active
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active','co','ht'));
-  const m = { checkin:'tab-in', checkout:'tab-out', history:'tab-hist', 'leave-form':'tab-leave', 'leave-history':'tab-leave', 'leave-approve':'tab-leave-appr', 'hr-dash':'tab-hr-dash', 'hr-dashboard':'tab-hr-dash', 'hr-employees':'tab-hr-dash' };
+  const m = { checkin:'tab-in', checkout:'tab-out', history:'tab-hist', 'leave-form':'tab-leave', 'leave-history':'tab-leave', 'leave-approve':'tab-leave-appr', 'hr-dash':'tab-hr-dash', 'hr-dashboard':'tab-hr-dash', 'hr-employees':'tab-hr-dash', 'hr-rawlog':'tab-hr-dash' };
   if (m[id]) {
     const t = document.getElementById(m[id]);
     if (t) t.classList.add(id==='checkout'?'co': id==='history'?'ht':'active');
@@ -2097,6 +2155,9 @@ function go(id) {
   }
   if (id === 'hr-report') {
     loadReportPage();
+  }
+  if (id === 'hr-rawlog') {
+    loadRawlogPage();
   }
   if (id === 'hr-holiday') {
     loadHolidayPage();
@@ -2530,7 +2591,178 @@ function hrRepGenerate() {
     .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'สร้างรายงาน'; showToast(e.message); });
 }
 
-// ── ล้างข้อมูลการลงเวลาตามช่วงวันที่ (2 ขั้น: เตือนสำรอง → พิมพ์ YES) ──
+// ═══════════════ รายงานการบันทึกดิบ (raw log) ═══════════════
+let hrRawEmployees = [];
+let hrRawSelected = {};
+let hrRawData = null;
+
+function loadRawlogPage() {
+  hrRawSelected = {};
+  hrRawData = null;
+  document.getElementById('hrraw-result').style.display = 'none';
+  document.getElementById('hrraw-search').value = '';
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  document.getElementById('hrraw-from').value = fmtISO(first);
+  document.getElementById('hrraw-to').value   = fmtISO(now);
+  document.getElementById('hrraw-emplist').innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
+  gasRun('hrGetEmployeeList', { hrToken: S.hrToken })
+    .withSuccessHandler(r => {
+      if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+      hrRawEmployees = r.employees || [];
+      renderRawList('');
+    })
+    .withFailureHandler(e => showToast(e.message));
+}
+
+function renderRawList(search) {
+  const list = document.getElementById('hrraw-emplist');
+  const q = (search || '').toLowerCase();
+  const filtered = hrRawEmployees.filter(e => !q || String(e.name).toLowerCase().includes(q) || String(e.empId).toLowerCase().includes(q));
+  if (filtered.length === 0) { list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">ไม่พบพนักงาน</div>'; return; }
+  let html = '';
+  filtered.forEach(e => {
+    const sel = hrRawSelected[e.empId] ? 'sel' : '';
+    const check = hrRawSelected[e.empId] ? '✓' : '';
+    html += `<div class="exp-row ${sel}" data-id="${e.empId}">
+      <div class="exp-cb">${check}</div>
+      <div style="flex:1;min-width:0">
+        <div class="exp-nm">${e.name}</div>
+        <div class="exp-meta">${e.empId} · ${e.department} · กะ ${e.shift}</div>
+      </div></div>`;
+  });
+  list.innerHTML = html;
+  list.querySelectorAll('.exp-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.id;
+      if (hrRawSelected[id]) delete hrRawSelected[id]; else hrRawSelected[id] = true;
+      renderRawList(document.getElementById('hrraw-search').value);
+      updateRawCount();
+    });
+  });
+}
+
+function updateRawCount() {
+  const n = Object.keys(hrRawSelected).length;
+  document.getElementById('hrraw-count').textContent = n === 0 ? `ยังไม่เลือก (ว่าง = ทุกคน)` : `เลือกแล้ว ${n} คน`;
+}
+function hrRawSelectAll() { hrRawEmployees.forEach(e => { hrRawSelected[e.empId] = true; }); renderRawList(document.getElementById('hrraw-search').value); updateRawCount(); }
+function hrRawClearAll() { hrRawSelected = {}; renderRawList(document.getElementById('hrraw-search').value); updateRawCount(); }
+
+function hrRawGenerate() {
+  const fromISO = document.getElementById('hrraw-from').value.trim();
+  const toISO   = document.getElementById('hrraw-to').value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromISO) || !/^\d{4}-\d{2}-\d{2}$/.test(toISO)) { showToast('กรุณาเลือกวันที่ให้ครบ'); return; }
+  const from = isoToTH(fromISO);
+  const to   = isoToTH(toISO);
+  const ids = Object.keys(hrRawSelected);
+  const btn = document.getElementById('hrraw-generate');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง...';
+  gasRun('hrGetRawLog', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids })
+    .withSuccessHandler(r => {
+      btn.disabled = false; btn.textContent = 'สร้างรายงาน';
+      if (!r || !r.success) { showToast((r && r.message) || 'สร้างรายงานไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+      hrRawData = r;
+      renderRawlog(r);
+    })
+    .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'สร้างรายงาน'; showToast(e.message); });
+}
+
+function renderRawlog(r) {
+  document.getElementById('hrraw-result').style.display = 'block';
+  document.getElementById('hrraw-total').textContent = `ทั้งหมด ${r.total} รายการ`;
+  const box = document.getElementById('hrraw-table');
+  if (!r.rows || r.rows.length === 0) {
+    box.innerHTML = '<div style="text-align:center;padding:30px;color:var(--tx3);font-size:13px">ไม่มีข้อมูลในช่วงที่เลือก</div>';
+    return;
+  }
+  const matchBadge = (m) => {
+    if (m === 'IN')  return '<span style="color:#047857;font-weight:700;font-size:12px">✓IN</span>';
+    if (m === 'OUT') return '<span style="color:#b91c1c;font-weight:700;font-size:12px">✓OUT</span>';
+    return '<span style="color:#cbd5e1;font-size:12px">–</span>';
+  };
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+  html += '<thead><tr style="background:var(--sf2);position:sticky;top:0">' +
+    '<th style="padding:7px 8px;text-align:center">จับคู่</th>' +
+    '<th style="padding:7px 8px;text-align:left">รหัส</th>' +
+    '<th style="padding:7px 8px;text-align:left">ชื่อ</th>' +
+    '<th style="padding:7px 8px;text-align:left">วันที่</th>' +
+    '<th style="padding:7px 8px;text-align:left">เวลา</th>' +
+    '<th style="padding:7px 8px;text-align:center">ประเภท</th>' +
+    '<th style="padding:7px 8px;text-align:left">ที่มา</th>' +
+    '<th style="padding:7px 8px;text-align:left">พิกัด</th></tr></thead><tbody>';
+  let lastEmp = '';
+  r.rows.forEach(row => {
+    // เส้นคั่นเมื่อเปลี่ยนคน (อ่านง่าย)
+    const sep = (row.empId !== lastEmp) ? 'border-top:2px solid var(--bd)' : 'border-top:1px solid var(--sf2)';
+    lastEmp = row.empId;
+    const [y,mo,d] = row.date.split('-');
+    const srcHi = (row.source === 'คีย์มือ') ? 'color:#e8590c;font-weight:700' : 'color:var(--tx2)';
+    const typeCol = row.type === 'IN' ? '#047857' : '#b91c1c';
+    html += `<tr style="${sep}">
+      <td style="padding:6px 8px;text-align:center">${matchBadge(row.matched)}</td>
+      <td style="padding:6px 8px">${row.empId}</td>
+      <td style="padding:6px 8px">${row.name}</td>
+      <td style="padding:6px 8px;white-space:nowrap">${d}/${mo}/${y}</td>
+      <td style="padding:6px 8px;white-space:nowrap">${row.time}</td>
+      <td style="padding:6px 8px;text-align:center;color:${typeCol};font-weight:600">${row.type}</td>
+      <td style="padding:6px 8px;${srcHi}">${row.source}</td>
+      <td style="padding:6px 8px;font-family:monospace;font-size:11px;color:var(--tx3)">${row.coord || '–'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+function hrRawDownloadCSV() {
+  if (!hrRawData || !hrRawData.rows) { showToast('กรุณาสร้างรายงานก่อน'); return; }
+  const matchTxt = m => m === 'IN' ? 'จับคู่-เข้า' : m === 'OUT' ? 'จับคู่-ออก' : '';
+  const srcOr = v => (v && String(v).trim()) ? String(v).trim().toUpperCase() : '-';
+  let csv = '\uFEFF';
+  csv += 'จับคู่,รหัส,ชื่อ,แผนก,วันที่,เวลา,ประเภท,ที่มา,สถานะ,พิกัด GPS\r\n';
+  hrRawData.rows.forEach(r => {
+    const [y,m,d] = r.date.split('-');
+    csv += `${matchTxt(r.matched)},${r.empId},"${r.name}","${r.department}",${d}/${m}/${y},${r.time},${r.type},${srcOr(r.sourceRaw)},"${r.status}","${r.coord||'-'}"\r\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `rawlog_${hrRawData.dateFrom}_${hrRawData.dateTo}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function hrRawDownloadPDF() {
+  if (!hrRawData || !hrRawData.rows) { showToast('กรุณาสร้างรายงานก่อน'); return; }
+  const matchTxt = m => m === 'IN' ? '✓เข้า' : m === 'OUT' ? '✓ออก' : '–';
+  const srcOr = v => (v && String(v).trim()) ? String(v).trim().toUpperCase() : '-';
+  let rowsHtml = '';
+  hrRawData.rows.forEach(r => {
+    const [y,m,d] = r.date.split('-');
+    rowsHtml += `<tr><td style="text-align:center">${matchTxt(r.matched)}</td><td>${r.empId}</td><td>${r.name}</td><td>${d}/${m}/${(+y)+543}</td><td>${r.time}</td><td style="text-align:center">${r.type}</td><td>${srcOr(r.sourceRaw)}</td><td style="font-size:9px">${r.coord||'–'}</td></tr>`;
+  });
+  const [fy,fm,fd] = hrRawData.dateFrom.split('-');
+  const [ty,tm,td] = hrRawData.dateTo.split('-');
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>รายงานการบันทึกดิบ</title>
+    <style>
+      body{font-family:'Sarabun','Noto Sans Thai',sans-serif;padding:20px;color:#111}
+      h1{font-size:18px;margin:0 0 4px}
+      .sub{font-size:12px;color:#666;margin-bottom:14px}
+      table{width:100%;border-collapse:collapse;font-size:11px}
+      th{background:#f3f4f6;padding:6px;text-align:left;border:1px solid #ddd}
+      td{padding:5px 6px;border:1px solid #eee}
+      @media print{body{padding:0}}
+    </style></head><body>
+    <h1>รายงานการบันทึกดิบ (ทุก SOURCE)</h1>
+    <div class="sub">ช่วง ${fd}/${fm}/${(+fy)+543} – ${td}/${tm}/${(+ty)+543} · ${hrRawData.total} รายการ · ✓ = ถูกเลือกจับคู่ในรายงานสรุป</div>
+    <table><thead><tr><th>จับคู่</th><th>รหัส</th><th>ชื่อ</th><th>วันที่</th><th>เวลา</th><th>ประเภท</th><th>ที่มา</th><th>พิกัด GPS</th></tr></thead>
+    <tbody>${rowsHtml}</tbody></table>
+    </body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
+}
+
 // ── ลบอัตโนมัติ: โหลด/บันทึก/ทดสอบ ──
 function loadAutoDeleteConfig() {
   gasRun('hrGetAutoDeleteConfig', { hrToken: S.hrToken })
@@ -4054,6 +4286,7 @@ applyLogo();
   on('hr-menu-dashboard', 'click', function() { go('hr-dashboard'); });
   on('hr-menu-employees', 'click', function() { go('hr-employees'); });
   on('hr-menu-report',    'click', function() { go('hr-report'); });
+  on('hr-menu-rawlog',    'click', function() { go('hr-rawlog'); });
 
   // HR รายงาน
   on('hrrep-back', 'click', function() { go('hr-dash'); });
@@ -4066,6 +4299,14 @@ applyLogo();
   on('hr-autodel-runnow', 'click', hrAutoDelRunNow);
   on('hrrep-csv', 'click', hrRepDownloadCSV);
   on('hrrep-pdf', 'click', hrRepDownloadPDF);
+
+  // HR รายงานการบันทึกดิบ (raw log)
+  on('hrraw-search', 'input', function() { renderRawList(this.value); });
+  on('hrraw-all', 'click', hrRawSelectAll);
+  on('hrraw-none', 'click', hrRawClearAll);
+  on('hrraw-generate', 'click', hrRawGenerate);
+  on('hrraw-csv', 'click', hrRawDownloadCSV);
+  on('hrraw-pdf', 'click', hrRawDownloadPDF);
   document.querySelectorAll('.rep-stat').forEach(function(b) {
     b.addEventListener('click', function() {
       hrRepStatus = b.dataset.status;
