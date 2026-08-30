@@ -123,6 +123,8 @@ select.inp option{background:var(--sf2)}
 .dot.g{background:var(--ok);animation:none}
 .dot.r{background:var(--er);animation:none}
 @keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{animation:spin .7s linear infinite}
 
 .hist-table{width:100%;border-collapse:collapse;font-size:14px}
 .hist-table th{text-align:left;padding:9px 8px;font-size:12px;font-weight:600;letter-spacing:0;color:var(--tx2);border-bottom:1px solid var(--bd2)}
@@ -257,7 +259,18 @@ textarea.inp{resize:vertical;min-height:60px}
   <button id="btn-logout" style="background:none;border:1px solid var(--bd2);color:var(--tx2);font-size:12px;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--fn);flex-shrink:0">ออกจากระบบ</button>
 </div>
 
-<div class="page active" id="page-welcome">
+<div class="page active" id="page-splash">
+  <div style="text-align:center;padding:80px 0 20px">
+    <div data-logo-hero style="width:60px;height:60px;background:linear-gradient(135deg,var(--ac),var(--ac2));border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:18px">W</div>
+    <div style="font-size:22px;font-weight:600">SOM HR System</div>
+    <div style="font-size:14px;color:var(--tx2);margin-top:16px">
+      <span class="spinner" style="display:inline-block;width:18px;height:18px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;vertical-align:middle;margin-right:8px"></span>
+      กำลังโหลด...
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-welcome">
   <div style="text-align:center;padding:28px 0 20px">
     <div data-logo-hero style="width:60px;height:60px;background:linear-gradient(135deg,var(--ac),var(--ac2));border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:14px">W</div>
     <div style="font-size:24px;font-weight:600">Summit Otsuka Manufacturing Co., Ltd.</div>
@@ -1882,19 +1895,27 @@ function restoreSession() {
   // หมดอายุ → ล้างทิ้ง ให้ login ใหม่
   if (Date.now() > sess.expire) { localStorage.removeItem('ws6_session'); return false; }
 
-  // กู้ state แล้วเข้าหน้าที่เหมาะสม — แต่ต้อง refresh สถานะ session เช็คอินจาก server
+  // กู้ state — แต่ยังไม่แสดง strip/เมนู จนกว่าจะรู้หน้าจริง (กันแวบ strip บนหน้า splash)
   S.empId = sess.empId; S.name = sess.name; S.role = sess.role;
   S.isApprover = !!sess.isApprover;
   S.shift = sess.shift; S.skipGps = (sess.shift === 'DRIVER');
   S.hrToken = sess.hrToken;
 
-  showEmpStrip(sess.name, sess.empId, sess.shiftLabel);
-  applyRoleMenus(sess.role);
   const lbl = document.getElementById('ci-lbl');
   if (lbl) lbl.textContent = sess.name + ' · ' + sess.empId;
 
-  // ถ้ากะนี้ไม่มีสิทธิ์เช็คอิน → ไปหน้าเช็คเวลาตรงๆ ไม่ต้องเช็คสถานะเช็คอิน
-  if (!checkinAllowedForShift(sess.shift)) { go(defaultLandingPage()); return true; }
+  // แสดงหน้า "กำลังโหลด" ระหว่างรอ server (กันเห็นหน้า login แวบตอน refresh)
+  go('splash');
+
+  // helper: เข้าหน้าจริง — แสดง strip/เมนูตรงนี้ (หลังพ้น splash) แล้วค่อย go(หน้า)
+  const enter = (pageId) => {
+    showEmpStrip(sess.name, sess.empId, sess.shiftLabel);
+    applyRoleMenus(sess.role);
+    go(pageId);
+  };
+
+  // ถ้ากะนี้ไม่มีสิทธิ์เช็คอิน → ไปหน้าที่เหมาะสมตรงๆ ไม่ต้องเช็คสถานะเช็คอิน
+  if (!checkinAllowedForShift(sess.shift)) { enter(defaultLandingPage()); return true; }
 
   // ทุก role (รวม HR) เช็คสถานะเช็คอินวันนี้จาก server ก่อนตัดสินหน้า
   // ใช้ callAPI timeout ยาว 60 วิ + ไม่ retry (read อย่างเดียว) — กันค้างตอน refresh เมื่อ backend ช้า >15 วิ
@@ -1904,12 +1925,12 @@ function restoreSession() {
       if (st && st.checkedIn && !st.checkedOut) {
         S.checkedIn = true; S.inTime = st.inTime; S.inDate = st.inDate;
         if (st.inTime) startWT(st.inTime, st.inDate);
-        go('checkout');
+        enter('checkout');
       } else {
-        go(defaultLandingPage());
+        enter(defaultLandingPage());
       }
     })
-    .catch(() => { go(defaultLandingPage()); });
+    .catch(() => { enter(defaultLandingPage()); });
   return true;
 }
 
@@ -2041,8 +2062,8 @@ function go(id) {
   void target.offsetHeight; // force reflow
   target.classList.add('active');
 
-  // หน้า welcome (login) ไม่มี session → ซ่อนแถบชื่อพนักงาน+ปุ่มออก (กันค้างตอน refresh/หมดอายุ)
-  if (id === 'welcome') hideEmpStrip();
+  // หน้า welcome (login) + splash (โหลด) ไม่มี session พร้อมแสดง → ซ่อนแถบชื่อพนักงาน+ปุ่มออก
+  if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
   const navPages = ['checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
