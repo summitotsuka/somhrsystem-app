@@ -113,6 +113,12 @@ function otApplyTypeDefaults() {
   if (!otType) return;
   const shift = (otTargetShift() || 'A').toUpperCase();
   const isB = (shift === 'B');
+
+  // หา grid ของประเภทที่เลือก (จากข้อมูลที่ backend ส่งมา) แล้วตั้งค่า dropdown/time
+  const typeObj = OT.types.find(t => t.id === otType);
+  OT._grid = (typeObj && typeObj.grid) ? typeObj.grid : null;
+  otSetupTimeInputs(OT._grid);
+
   const df = document.getElementById('ot-date-from');
   const tf = document.getElementById('ot-time-from');
   const dt = document.getElementById('ot-date-to');
@@ -122,16 +128,85 @@ function otApplyTypeDefaults() {
   if (otType === 'HOLIDAY_WORK') {
     // ทำงานวันหยุด: A/CLEANING/DRIVER วันนี้ 08:30-18:00 / B วันนี้→พรุ่งนี้ 20:30-06:00
     if (isB) {
-      df.value = today; dt.value = otTomorrow(); tf.value = '20:30'; tt.value = '06:00';
+      df.value = today; dt.value = otTomorrow(); setTimeVal(tf, '20:30'); setTimeVal(tt, '06:00');
     } else {
-      df.value = today; dt.value = today; tf.value = '08:30'; tt.value = '18:00';
+      df.value = today; dt.value = today; setTimeVal(tf, '08:30'); setTimeVal(tt, '18:00');
     }
   } else {
-    // NORMAL / HOLIDAY_OT: วันนี้ทั้งคู่, เวลาเริ่ม B=06:10 อื่น=18:10, เวลาสิ้นสุดว่าง
+    // NORMAL / NORMAL_BEFORE / HOLIDAY_OT / HOLIDAY_OT_BEFORE
     df.value = today; dt.value = today;
-    tf.value = isB ? '06:10' : '18:10';
-    tt.value = '';
+    // เวลาเริ่ม: ถ้ามี grid ไม่ preset (ให้เลือกเอง), ถ้าไม่มี grid ใช้ default เดิม
+    if (!OT._grid) { setTimeVal(tf, isB ? '06:10' : '18:10'); }
+    else { setTimeVal(tf, ''); }
+    setTimeVal(tt, '');
   }
+  // ถ้าเป็น dropdown + มีค่าเริ่ม → กรองเวลาเลิกให้สอดคล้อง
+  if (tf.tagName === 'SELECT' && tf.value) otOnTimeFromChange();
+  otUpdatePreview();
+}
+
+// set ค่าเวลาให้ input/select (select ต้อง option ตรงถึงติด)
+function setTimeVal(el, val) {
+  if (!el) return;
+  el.value = val;
+}
+
+// แปลงช่องเวลาเป็น dropdown (ถ้าประเภทนี้มี grid) หรือคง type="time" (ถ้าไม่มี = คีย์เอง)
+// grid = array ['HH:mm',...] หรือ null
+function otSetupTimeInputs(grid) {
+  const tf = document.getElementById('ot-time-from');
+  const tt = document.getElementById('ot-time-to');
+  if (!tf || !tt) return;
+
+  if (!grid || !grid.length) {
+    // ไม่มี grid → คืนเป็น input type="time" (คีย์เอง) ถ้าตอนนี้เป็น select อยู่
+    if (tf.tagName === 'SELECT') otSwapToTime('ot-time-from');
+    if (tt.tagName === 'SELECT') otSwapToTime('ot-time-to');
+    return;
+  }
+  // มี grid → ทำเป็น dropdown
+  otSwapToSelect('ot-time-from', grid, 'เลือกเวลาเริ่ม');
+  // เวลาเลิก: ตอนแรกให้ทั้ง grid ไว้ก่อน (จะกรองตามเวลาเริ่มอีกที)
+  otSwapToSelect('ot-time-to', grid, 'เลือกเวลาเลิก');
+  OT._grid = grid;
+}
+
+// เปลี่ยน element เป็น <select> พร้อม options (คงค่า id/class เดิม)
+function otSwapToSelect(id, times, placeholder) {
+  const old = document.getElementById(id);
+  if (!old) return;
+  const sel = document.createElement('select');
+  sel.id = id; sel.className = old.className;
+  sel.innerHTML = `<option value="">${placeholder}</option>` +
+    times.map(t => `<option value="${t}">${t}</option>`).join('');
+  old.parentNode.replaceChild(sel, old);
+  // bind: เปลี่ยนเวลาเริ่ม → กรองเวลาเลิก + preview
+  if (id === 'ot-time-from') sel.addEventListener('change', otOnTimeFromChange);
+  else sel.addEventListener('change', otUpdatePreview);
+}
+
+// เปลี่ยนกลับเป็น input type="time"
+function otSwapToTime(id) {
+  const old = document.getElementById(id);
+  if (!old) return;
+  const inp = document.createElement('input');
+  inp.id = id; inp.className = old.className; inp.type = 'time';
+  old.parentNode.replaceChild(inp, old);
+  inp.addEventListener('input', otUpdatePreview);
+}
+
+// เมื่อเลือกเวลาเริ่ม → เวลาเลิกแสดงเฉพาะเวลา "หลัง" เวลาเริ่ม (ตามลำดับใน grid)
+function otOnTimeFromChange() {
+  const tf = document.getElementById('ot-time-from');
+  const tt = document.getElementById('ot-time-to');
+  if (!tf || !tt || tt.tagName !== 'SELECT' || !OT._grid) { otUpdatePreview(); return; }
+  const startIdx = OT._grid.indexOf(tf.value);
+  const cur = tt.value;
+  // เวลาเลิก = เฉพาะ grid ที่อยู่ "หลัง" เวลาเริ่ม
+  const opts = (startIdx >= 0) ? OT._grid.slice(startIdx + 1) : OT._grid;
+  tt.innerHTML = `<option value="">เลือกเวลาเลิก</option>` +
+    opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (opts.indexOf(cur) >= 0) tt.value = cur;   // คงค่าเดิมถ้ายังเลือกได้
   otUpdatePreview();
 }
 
@@ -153,11 +228,17 @@ function otFillEmpDropdown() {
 function otUpdatePreview() {
   const df = document.getElementById('ot-date-from').value;
   const tf = document.getElementById('ot-time-from').value;
-  const dt = document.getElementById('ot-date-to').value || df;
+  let dt = document.getElementById('ot-date-to').value || df;
   const tt = document.getElementById('ot-time-to').value;
   const prev = document.getElementById('ot-preview');
   if (!prev) return;
   if (!df || !tf || !tt) { prev.textContent = ''; return; }
+
+  const otCross = otIsOvernight(tf, tt);
+  if (otCross && df === dt) {
+    const dd = new Date(df + 'T00:00:00'); dd.setDate(dd.getDate() + 1);
+    dt = dd.toISOString().slice(0, 10);
+  }
 
   // คำนวณชั่วโมงคร่าวๆ ฝั่ง client (ตัดเศษ 30 นาที, ไม่รวมพักเที่ยง — server คำนวณจริงอีกที)
   const start = new Date(df + 'T' + tf + ':00');
@@ -165,8 +246,17 @@ function otUpdatePreview() {
   let diffMin = (end - start) / 60000;
   if (diffMin <= 0) { prev.innerHTML = '<span style="color:var(--er)">เวลาสิ้นสุดต้องหลังเวลาเริ่ม</span>'; return; }
   const hours = Math.floor(diffMin / 30) * 0.5;
-  const crossDay = df !== dt ? ' (ข้ามวัน)' : '';
+  const crossDay = (otCross || df !== dt) ? ' (ข้ามวัน)' : '';
   prev.innerHTML = `ประมาณ <b>${hours}</b> ชม.${crossDay} <span style="color:var(--tx3)">(ฝ่ายบุคคลจะหักพักเที่ยงให้ถ้าเป็นงานวันหยุด)</span>`;
+}
+
+// ตรวจว่าคู่เวลานี้ข้ามคืนไหม (ดูลำดับใน grid)
+function otIsOvernight(tf, tt) {
+  if (!OT._grid || OT._grid.length === 0) return tt < tf;
+  const iFrom = OT._grid.indexOf(tf);
+  const iTo = OT._grid.indexOf(tt);
+  if (iFrom < 0 || iTo < 0) return tt < tf;
+  return (iTo > iFrom) && (tt <= tf);
 }
 
 // ส่งคำขอ OT
@@ -175,13 +265,19 @@ function submitOT() {
   const empId = (document.getElementById('ot-emp') || {}).value || '';
   const dateFrom = document.getElementById('ot-date-from').value;
   const timeFrom = document.getElementById('ot-time-from').value;
-  const dateTo = document.getElementById('ot-date-to').value || dateFrom;
+  let dateTo = document.getElementById('ot-date-to').value || dateFrom;
   const timeTo = document.getElementById('ot-time-to').value;
   const detail = document.getElementById('ot-detail').value.trim();
 
   if (!otType) { showToast('เลือกประเภท OT'); return; }
   if (!dateFrom || !timeFrom || !timeTo) { showToast('กรอกวันและเวลาให้ครบ'); return; }
   if (!detail) { showToast('กรุณากรอกรายละเอียดงานที่ทำ'); return; }
+
+  // ข้ามคืนอัตโนมัติ: เวลาเลิกวนกลับ + วันเริ่ม=วันจบ → ตั้งวันจบเป็นวันถัดไป
+  if (otIsOvernight(timeFrom, timeTo) && dateFrom === dateTo) {
+    const dd = new Date(dateFrom + 'T00:00:00'); dd.setDate(dd.getDate() + 1);
+    dateTo = dd.toISOString().slice(0, 10);
+  }
 
   const btn = document.getElementById('ot-submit');
   if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง...'; }
