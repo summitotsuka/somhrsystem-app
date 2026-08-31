@@ -459,11 +459,11 @@ function lvRenderApprovals(list) {
               <div style="font-size:13px;color:var(--ac);margin-top:2px">${lvEsc(lvTypeName(r.leaveType))}</div>
             </div>
           </div>
-          <div style="font-size:13px;color:var(--tx2);margin-top:6px">${lvEsc(dr)} · ${lvEsc(LV_MODE[r.mode] || r.mode)} · ${lvEsc(r.hoursText)}</div>
+          <div style="font-size:16px;font-weight:600;color:var(--tx1);margin-top:8px;padding:8px 10px;background:var(--sf2);border-radius:6px">⏱ ${lvEsc(dr)} · ${lvEsc(LV_MODE[r.mode] || r.mode)} · <span style="color:var(--ac)">${lvEsc(r.hoursText)}</span></div>
           <div style="font-size:13px;margin-top:6px;padding:8px;background:var(--sf2);border-radius:6px">${lvEsc(r.reason)}</div>
           ${r.fileUrl ? `<a href="${lvEsc(r.fileUrl)}" target="_blank" style="font-size:12px;color:var(--ac)">📎 ไฟล์แนบ</a>` : ''}
-          <div style="font-size:12px;margin-top:6px;color:${(r.attIn || r.attOut) ? '#c47d0a' : 'var(--tx3)'}">
-            เวลาเข้า/ออก (${(r.attIn || r.attOut) ? lvEsc((r.attIn || '—') + ' - ' + (r.attOut || '—')) : 'ไม่มี'})${(r.attIn || r.attOut) ? ' ⚠️' : ''}
+          <div style="font-size:14px;margin-top:8px;padding:7px 10px;border-radius:6px;background:${(r.attIn || r.attOut) ? 'rgba(196,125,10,.1)' : 'var(--sf2)'};color:${(r.attIn || r.attOut) ? '#c47d0a' : 'var(--tx3)'};font-weight:${(r.attIn || r.attOut) ? '600' : '400'}">
+            เวลาเข้า/ออกจริง: ${(r.attIn || r.attOut) ? lvEsc((r.attIn || '—') + ' - ' + (r.attOut || '—')) + ' ⚠️' : 'ไม่มี'}
           </div>
           <div style="display:flex;gap:8px;margin-top:10px">
             <button class="btn sm lv-approve-btn" data-id="${lvEsc(r.requestId)}" style="width:auto;padding:5px 16px;font-size:13px;background:var(--ok)">อนุมัติ</button>

@@ -451,8 +451,8 @@ function renderOTApprovals() {
 
   box.innerHTML = OT.pending.map(r => {
     const hasAtt = r.attIn || r.attOut;
-    const attLine = `<div style="font-size:12px;margin-top:6px;color:${hasAtt ? '#c47d0a' : 'var(--tx3)'}">
-      เวลาเข้า/ออก (${hasAtt ? otEsc((r.attIn || '—') + ' - ' + (r.attOut || '—')) : 'ไม่มี'})${hasAtt ? ' ⚠️' : ''}
+    const attLine = `<div style="font-size:14px;margin-top:8px;padding:7px 10px;border-radius:6px;background:${hasAtt ? 'rgba(196,125,10,.1)' : 'var(--sf2)'};color:${hasAtt ? '#c47d0a' : 'var(--tx3)'};font-weight:${hasAtt ? '600' : '400'}">
+      เวลาเข้า/ออกจริง: ${hasAtt ? otEsc((r.attIn || '—') + ' - ' + (r.attOut || '—')) + ' ⚠️' : 'ไม่มี'}
     </div>`;
     return `<div class="lv-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
@@ -461,7 +461,9 @@ function renderOTApprovals() {
           <div style="font-size:13px;color:var(--ac);margin-top:2px">${otEsc(r.otTypeName)}</div>
         </div>
       </div>
-      <div style="font-size:13px;color:var(--tx2);margin-top:6px">${otEsc(otFormatRange(r))} · <b>${otEsc(otHoursText(r.hours))}</b></div>
+      <div style="font-size:16px;font-weight:600;color:var(--tx1);margin-top:8px;padding:8px 10px;background:var(--sf2);border-radius:6px">
+        ⏱ ${otEsc(otFormatRange(r))} · <span style="color:var(--ac)">${otEsc(otHoursText(r.hours))}</span>
+      </div>
       ${r.detail ? `<div style="font-size:13px;margin-top:6px;padding:8px;background:var(--sf2);border-radius:6px">${otEsc(r.detail)}</div>` : ''}
       ${r.fileUrl ? `<a href="${otEsc(r.fileUrl)}" target="_blank" style="font-size:12px;color:var(--ac)">📎 ไฟล์แนบ</a>` : ''}
       ${attLine}
