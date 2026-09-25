@@ -2490,17 +2490,15 @@ function loadExportPage() {
 
   // โหลดรายชื่อ
   document.getElementById('hrexp-emplist').innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
-  gasRun('hrGetEmployeeList', { hrToken: S.hrToken })
-    .withSuccessHandler(r => {
-      if (!r || !r.success) {
-        showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ');
-        if (r && r.authError) setTimeout(() => logout(), 1500);
-        return;
-      }
-      hrExpEmployees = r.employees || [];
-      renderExpList('');
-    })
-    .withFailureHandler(e => showToast(e.message));
+  fetchEmployeeList(r => {
+    if (!r || !r.success) {
+      showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ');
+      if (r && r.authError) setTimeout(() => logout(), 1500);
+      return;
+    }
+    hrExpEmployees = r.employees || [];
+    renderExpList('');
+  }, e => showToast(e.message));
 }
 
 function fmtDateTH(d) {
@@ -2639,13 +2637,11 @@ function loadReportPage() {
   document.querySelectorAll('.rep-stat').forEach(b => b.classList.toggle('active', b.dataset.status === 'all'));
 
   document.getElementById('hrrep-emplist').innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
-  gasRun('hrGetEmployeeList', { hrToken: S.hrToken })
-    .withSuccessHandler(r => {
-      if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
-      hrRepEmployees = r.employees || [];
-      renderRepList('');
-    })
-    .withFailureHandler(e => showToast(e.message));
+  fetchEmployeeList(r => {
+    if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+    hrRepEmployees = r.employees || [];
+    renderRepList('');
+  }, e => showToast(e.message));
 }
 
 function renderRepList(search) {
@@ -2717,13 +2713,11 @@ function loadRawlogPage() {
   document.getElementById('hrraw-from').value = fmtISO(first);
   document.getElementById('hrraw-to').value   = fmtISO(now);
   document.getElementById('hrraw-emplist').innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
-  gasRun('hrGetEmployeeList', { hrToken: S.hrToken })
-    .withSuccessHandler(r => {
-      if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
-      hrRawEmployees = r.employees || [];
-      renderRawList('');
-    })
-    .withFailureHandler(e => showToast(e.message));
+  fetchEmployeeList(r => {
+    if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+    hrRawEmployees = r.employees || [];
+    renderRawList('');
+  }, e => showToast(e.message));
 }
 
 function renderRawList(search) {
@@ -3045,13 +3039,11 @@ function loadDataMgmtPage() {
   const pv = document.getElementById('hrdm-preview-box'); if (pv) pv.style.display = 'none';
   const list = document.getElementById('hrdm-emplist');
   if (list) list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
-  gasRun('hrGetEmployeeList', { hrToken: S.hrToken })
-    .withSuccessHandler(r => {
-      if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); return; }
-      hrDmEmployees = r.employees || [];
-      renderDmList('');
-    })
-    .withFailureHandler(e => showToast(e.message));
+  fetchEmployeeList(r => {
+    if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); return; }
+    hrDmEmployees = r.employees || [];
+    renderDmList('');
+  }, e => showToast(e.message));
 }
 
 function renderDmList(search) {
@@ -3915,7 +3907,7 @@ function hrSaveEmployee() {
       .withSuccessHandler(r => {
         btn.disabled = false; btn.textContent = 'บันทึกข้อมูล';
         showToast(r.message, r.success);
-        if (r.success) { document.getElementById('hremp-result').style.display = 'none'; document.getElementById('hremp-search').value = ''; }
+        if (r.success) { clearEmpListCache(); document.getElementById('hremp-result').style.display = 'none'; document.getElementById('hremp-search').value = ''; }
         if (r.authError) setTimeout(() => logout(), 1500);
       })
       .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'บันทึกข้อมูล'; showToast(e.message); });
@@ -3925,6 +3917,7 @@ function hrSaveEmployee() {
       .withSuccessHandler(r => {
         btn.disabled = false; btn.textContent = 'บันทึกข้อมูล';
         showToast(r.message, r.success);
+        if (r.success) clearEmpListCache();
         if (r.authError) setTimeout(() => logout(), 1500);
       })
       .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'บันทึกข้อมูล'; showToast(e.message); });
@@ -3938,7 +3931,7 @@ function hrEmpAction(action, confirmMsg) {
   gasRun('hrUpdateEmployee', { hrToken: S.hrToken, employeeId: empId, fields: fields })
     .withSuccessHandler(r => {
       showToast(r.message, r.success);
-      if (r.success) hrSearchEmployeeById(empId);  // reload
+      if (r.success) { clearEmpListCache(); hrSearchEmployeeById(empId); }  // reload
       if (r.authError) setTimeout(() => logout(), 1500);
     })
     .withFailureHandler(e => showToast(e.message));
@@ -3961,7 +3954,7 @@ function hrToggleStatus() {
   gasRun('hrUpdateEmployee', { hrToken: S.hrToken, employeeId: empId, fields: { status: newStatus } })
     .withSuccessHandler(r => {
       showToast(r.success ? (newStatus === 'INACTIVE' ? 'ปิดบัญชีเรียบร้อย' : 'เปิดบัญชีเรียบร้อย') : r.message, r.success);
-      if (r.success) hrSearchEmployeeById(empId);
+      if (r.success) { clearEmpListCache(); hrSearchEmployeeById(empId); }
       if (r.authError) setTimeout(() => logout(), 1500);
     })
     .withFailureHandler(e => showToast(e.message));
@@ -4223,6 +4216,37 @@ function doActivate() {
 }
 
 // ========== LOGIN ==========
+// ── แคชรายชื่อพนักงานฝั่งเว็บ ──
+// 4 หน้าของ HR (Export / รายงาน / รายงานดิบ / จัดการข้อมูล) เคยยิง hrGetEmployeeList
+// ใหม่ทุกครั้งที่เปิดหน้า ทั้งที่รายชื่อแทบไม่เปลี่ยน → ยิงซ้ำโดยไม่จำเป็น
+// เก็บไว้ 5 นาที และรวมคำขอที่เกิดพร้อมกันให้เหลือครั้งเดียว
+var _empListCache = null, _empListAt = 0, _empListPending = null;
+var EMP_LIST_TTL_MS = 5 * 60 * 1000;
+
+function clearEmpListCache() { _empListCache = null; _empListAt = 0; }
+
+function fetchEmployeeList(onOk, onErr) {
+  // ยังไม่หมดอายุ → ใช้ของเดิมทันที ไม่ต้องรอ server
+  if (_empListCache && (Date.now() - _empListAt) < EMP_LIST_TTL_MS) {
+    onOk({ success: true, employees: _empListCache });
+    return;
+  }
+  // มีคำขอกำลังวิ่งอยู่ → ต่อคิวกับคำขอเดิม ไม่ยิงซ้ำ
+  if (_empListPending) { _empListPending.push({ ok: onOk, err: onErr }); return; }
+
+  _empListPending = [{ ok: onOk, err: onErr }];
+  gasRun('hrGetEmployeeList', { hrToken: S.hrToken })
+    .withSuccessHandler(function(r) {
+      const waiting = _empListPending; _empListPending = null;
+      if (r && r.success) { _empListCache = r.employees || []; _empListAt = Date.now(); }
+      waiting.forEach(function(w) { w.ok(r); });
+    })
+    .withFailureHandler(function(e) {
+      const waiting = _empListPending; _empListPending = null;
+      waiting.forEach(function(w) { if (w.err) w.err(e); });
+    });
+}
+
 function doLogin() {
   const id = document.getElementById('login-id').value.trim().toUpperCase();
   const pw = document.getElementById('login-pw').value;
