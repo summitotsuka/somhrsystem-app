@@ -574,171 +574,98 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ HR DASHBOARD (placeholder ขั้นที่ 2) ═══════════════ -->
 <div class="page" id="page-hr-dash">
-  <div style="margin-bottom:16px">
-    <div style="font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px">
-      <span style="display:inline-flex;width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#7c3aed,#a855f7);align-items:center;justify-content:center;font-size:13px">★</span>
-      ระบบฝ่ายบุคคล
-    </div>
-    <div style="font-size:12px;color:var(--tx3);margin-top:3px" id="hr-welcome">—</div>
+  <div class="home-hero" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 4px 14px rgba(124,58,237,.22)">
+    <div class="home-hero-hi">ระบบฝ่ายบุคคล</div>
+    <div class="home-hero-name">งานบุคคล</div>
+    <div class="home-hero-sub" id="hr-welcome">—</div>
   </div>
 
-  <!-- เมนู HR แบบการ์ด (เรียงด้วย CSS order) -->
-  <div style="display:flex;flex-direction:column;gap:10px">
-    <div class="hr-menu-card" id="hr-menu-dashboard" style="order:1">
-      <div class="hr-menu-icon" style="background:rgba(59,130,246,.15);color:var(--ac)">▦</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">ภาพรวมรายวัน</div>
-        <div class="hr-menu-desc">ใครมาแล้ว ใครยังไม่มา ใครมาสาย</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-employees" style="order:11">
-      <div class="hr-menu-icon" style="background:rgba(16,185,129,.15);color:var(--ok)">☷</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">จัดการพนักงาน</div>
-        <div class="hr-menu-desc">เพิ่ม/แก้ไข/เปลี่ยนกะ/คีย์เวลาย้อนหลัง</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-report" style="order:5">
-      <div class="hr-menu-icon" style="background:rgba(245,158,11,.15);color:var(--wn)">▤</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">รายงานการบันทึกเวลา</div>
-        <div class="hr-menu-desc">ดูประวัติการลงเวลาของพนักงานแต่ละคน</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-rawlog" style="order:6">
-      <div class="hr-menu-icon" style="background:rgba(245,158,11,.15);color:var(--wn)">☰</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">รายงานการบันทึกดิบ</div>
-        <div class="hr-menu-desc">ดูทุกการบันทึกแยกตาม SOURCE (ตรวจสอบ/audit)</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-export" style="order:13">
-      <div class="hr-menu-icon" style="background:rgba(168,85,247,.15);color:var(--ac2)">⤓</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">Export ข้อมูลเวลา</div>
-        <div class="hr-menu-desc">ดาวน์โหลดข้อมูลชั่วโมงทำงานตามช่วงเวลา</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-datamgmt" style="order:12">
-      <div class="hr-menu-icon" style="background:rgba(100,116,139,.15);color:var(--tx2)">🗄</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">จัดการข้อมูลเวลา</div>
-        <div class="hr-menu-desc">ลบข้อมูลเก่า/ตั้งลบอัตโนมัติ + สำรองไป archive</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-broadcast" style="order:10">
-      <div class="hr-menu-icon" style="background:rgba(37,99,235,.15);color:var(--ac)">📢</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">ส่งข้อความ Telegram</div>
-        <div class="hr-menu-desc">ประกาศ/แจ้งข่าวถึงพนักงานผ่าน Telegram</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-holiday" style="order:14">
-      <div class="hr-menu-icon" style="background:rgba(236,72,153,.15);color:var(--er)">◷</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">จัดการวันหยุด</div>
-        <div class="hr-menu-desc">บันทึกวันหยุดนักขัตฤกษ์/วันหยุดพิเศษ</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-face" style="order:16">
-      <div class="hr-menu-icon" style="background:rgba(37,99,235,.15);color:var(--ac)">☺</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">ลงทะเบียนใบหน้า</div>
-        <div class="hr-menu-desc">สำหรับพนักงานที่ไม่มีสมาร์ทโฟน</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-kiosk" style="order:15">
-      <div class="hr-menu-icon" style="background:rgba(5,150,105,.15);color:var(--ok)">⊙</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">เปิดโหมด Kiosk</div>
-        <div class="hr-menu-desc">เครื่องสแกนหน้าเช็คอิน/เอาต์</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-leave-approve" style="order:3">
-      <div class="hr-menu-icon" style="background:rgba(234,159,39,.15);color:#c47d0a">✔</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">อนุมัติการลา</div>
-        <div class="hr-menu-desc">คำขอลาที่รอฝ่ายบุคคลอนุมัติ</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-leave-report" style="order:6">
-      <div class="hr-menu-icon" style="background:rgba(55,138,221,.15);color:var(--ac)">📊</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">รายงานการลา</div>
-        <div class="hr-menu-desc">ดู/ส่งออก + ยกเลิกใบลา</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-finger" style="order:2">
-      <div class="hr-menu-icon" style="background:rgba(34,197,94,.15);color:#16a34a">🕐</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">อัปโหลดเวลา</div>
-        <div class="hr-menu-desc">นำเข้าไฟล์เวลาจากเครื่องสแกนนิ้ว</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-ot-approve" style="order:4">
-      <div class="hr-menu-icon" style="background:rgba(245,158,11,.15);color:var(--wn)">⏱️</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">อนุมัติ OT</div>
-        <div class="hr-menu-desc">อนุมัติคำขอทำงานล่วงเวลา</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-ot-report" style="order:7">
-      <div class="hr-menu-icon" style="background:rgba(55,138,221,.15);color:var(--ac)">📈</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">รายงาน OT</div>
-        <div class="hr-menu-desc">ดู/ส่งออก + ยกเลิกใบ OT</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-
-    <div class="hr-menu-card" id="hr-menu-payroll" style="order:8">
-      <div class="hr-menu-icon" style="background:rgba(16,185,129,.12);color:var(--ok)">💰</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">สลิปเงินเดือน</div>
-        <div class="hr-menu-desc">จัดการงวด นำเข้าข้อมูล ตรวจสอบ</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
-    <div class="hr-menu-card" id="hr-menu-payreport" style="order:9">
-      <div class="hr-menu-icon" style="background:rgba(59,130,246,.12);color:var(--ac)">📊</div>
-      <div style="flex:1">
-        <div class="hr-menu-title">รายงานเงินเดือน</div>
-        <div class="hr-menu-desc">เลือกคน/งวด/คอลัมน์ · ดูตาราง · Export Excel</div>
-      </div>
-      <div class="hr-menu-arrow">›</div>
-    </div>
+  <div class="home-sec">ลงเวลา &amp; รายงาน</div>
+  <div class="home-grid">
+      <button class="home-item" id="hr-menu-dashboard" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(59,130,246,.15);color:#2563eb">▦</div></div>
+        <div class="home-lb">ภาพรวมรายวัน</div>
+      </button>
+      <button class="home-item" id="hr-menu-finger" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(34,197,94,.15);color:#16a34a">⇪</div></div>
+        <div class="home-lb">อัปโหลดเวลา</div>
+      </button>
+      <button class="home-item" id="hr-menu-report" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(245,158,11,.15);color:#d97706">▤</div></div>
+        <div class="home-lb">รายงานลงเวลา</div>
+      </button>
+      <button class="home-item" id="hr-menu-rawlog" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(245,158,11,.15);color:#d97706">☰</div></div>
+        <div class="home-lb">รายงานบันทึกดิบ</div>
+      </button>
+      <button class="home-item" id="hr-menu-export" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(168,85,247,.15);color:#a855f7">⤓</div></div>
+        <div class="home-lb">Export เวลา</div>
+      </button>
+      <button class="home-item" id="hr-menu-datamgmt" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(100,116,139,.15);color:#475569">⌫</div></div>
+        <div class="home-lb">จัดการข้อมูลเวลา</div>
+      </button>
   </div>
+
+  <div class="home-sec">อนุมัติ · ลา · โอที</div>
+  <div class="home-grid">
+      <button class="home-item" id="hr-menu-leave-approve" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(234,159,39,.15);color:#c47d0a">✔</div></div>
+        <div class="home-lb">อนุมัติการลา</div>
+      </button>
+      <button class="home-item" id="hr-menu-ot-approve" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(245,158,11,.15);color:#d97706">⏱</div></div>
+        <div class="home-lb">อนุมัติ OT</div>
+      </button>
+      <button class="home-item" id="hr-menu-leave-report" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(55,138,221,.15);color:#2563eb">▥</div></div>
+        <div class="home-lb">รายงานการลา</div>
+      </button>
+      <button class="home-item" id="hr-menu-ot-report" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(55,138,221,.15);color:#2563eb">▧</div></div>
+        <div class="home-lb">รายงาน OT</div>
+      </button>
+  </div>
+
+  <div class="home-sec">เงินเดือน</div>
+  <div class="home-grid">
+      <button class="home-item" id="hr-menu-payroll" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(16,185,129,.14);color:#059669">฿</div></div>
+        <div class="home-lb">สลิปเงินเดือน</div>
+      </button>
+      <button class="home-item" id="hr-menu-payreport" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(59,130,246,.14);color:#2563eb">▨</div></div>
+        <div class="home-lb">รายงานเงินเดือน</div>
+      </button>
+  </div>
+
+  <div class="home-sec">ตั้งค่าและอื่น ๆ</div>
+  <div class="home-grid">
+      <button class="home-item" id="hr-menu-employees" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(16,185,129,.15);color:#059669">☷</div></div>
+        <div class="home-lb">จัดการพนักงาน</div>
+      </button>
+      <button class="home-item" id="hr-menu-holiday" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(236,72,153,.15);color:#db2777">◷</div></div>
+        <div class="home-lb">จัดการวันหยุด</div>
+      </button>
+      <button class="home-item" id="hr-menu-broadcast" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(37,99,235,.15);color:#2563eb">✉</div></div>
+        <div class="home-lb">ส่ง Telegram</div>
+      </button>
+      <button class="home-item" id="hr-menu-face" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(37,99,235,.15);color:#2563eb">☺</div></div>
+        <div class="home-lb">ลงทะเบียนใบหน้า</div>
+      </button>
+      <button class="home-item" id="hr-menu-kiosk" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(5,150,105,.15);color:#059669">⊙</div></div>
+        <div class="home-lb">โหมด Kiosk</div>
+      </button>
+  </div>
+
 </div>
 
-<!-- ═══════════════ HR DASHBOARD — ภาพรวมรายวัน ═══════════════ -->
 <div class="page" id="page-hr-dashboard">
   <button id="hrdash-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
 
@@ -1844,14 +1771,17 @@ function applyLogo() {
 function callAPI(action, payload, attempt, noRetry, timeoutMs) {
   attempt = attempt || 1;
   const MAX_ATTEMPTS = noRetry ? 1 : 3;   // action ที่มี side-effect (ส่ง/ตั้งเวลา) ห้าม retry กันทำซ้ำ
-  // backend ตอบจริงใน 3-6 วิ (จาก Executions log) — ถ้าเกิน 15 วิ = เครือข่าย/proxy สะดุด
-  // ตั้ง timeout สั้นลงเป็น 15 วิ เพื่อรีบ retry แทนการรอ 30 วิต่อรอบ (ลดเวลารวมเมื่อเครือข่ายช้า)
-  // แต่ action ที่ทำงานหนัก (สร้าง PDF) ส่ง timeoutMs ยาวมาเอง
-  const TIMEOUT_MS = timeoutMs || 15000;
+  // ── timeout 45 วิ ──
+  // เดิมตั้ง 15 วิ โดยคิดว่า backend ตอบใน 3-6 วิ แต่เมื่อข้อมูลโตขึ้น backend
+  // ใช้เวลาจริง 17-25 วิ เป็นปกติ → ฝั่งเว็บตัดทิ้งทั้งที่ server กำลังทำงานอยู่
+  // แล้วยิงใหม่ซ้ำ ทำให้ server ต้องทำงานพร้อมกันหลายชุด ยิ่งช้าลงไปอีก (retry storm)
+  // 45 วิ = ปล่อยให้คำขอที่ "ช้าแต่สำเร็จ" ทำงานจนจบ
+  const TIMEOUT_MS = timeoutMs || 45000;
 
   // timeout กัน fetch ค้างนานเกิน
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, TIMEOUT_MS);
 
   return fetch(API_URL, {
     method: 'POST',
@@ -1876,10 +1806,20 @@ function callAPI(action, payload, attempt, noRetry, timeoutMs) {
     })
     .catch(err => {
       clearTimeout(timer);
-      // retry เมื่อยังไม่ครบจำนวน (timeout, network, หรือ response ไม่ใช่ JSON)
-      // แต่ถ้า noRetry (action มี side-effect) จะไม่ retry เด็ดขาด
+
+      // ── ห้าม retry เมื่อ "หมดเวลา" ──
+      // timeout แปลว่า server ยังทำงานค้างอยู่ การยิงซ้ำคือการสั่งงานหนักเพิ่มอีกชุด
+      // ทำให้ Google Sheets แย่งกันทำงาน ช้าลงเรื่อยๆ จนล้มทั้งหมด
+      // retry ได้เฉพาะกรณีเน็ตหลุดจริง (fail ทันที) หรือ server ตอบมาไม่ใช่ JSON
+      if (timedOut) {
+        const e2 = new Error('TIMEOUT');
+        e2.isTimeout = true;
+        e2.seconds = Math.round(TIMEOUT_MS / 1000);
+        throw e2;
+      }
+
       if (!noRetry && attempt < MAX_ATTEMPTS) {
-        // หน่วงสั้นๆ ก่อนลองใหม่ (400ms, 800ms) — retry เร็วเพราะ backend เองเร็ว
+        // หน่วงสั้นๆ ก่อนลองใหม่ (400ms, 800ms)
         const delay = 400 * attempt;
         return new Promise(resolve => setTimeout(resolve, delay))
           .then(() => callAPI(action, payload, attempt + 1, noRetry, timeoutMs));
@@ -1889,16 +1829,30 @@ function callAPI(action, payload, attempt, noRetry, timeoutMs) {
 }
 
 /**
+ * แปลง error เป็นข้อความที่บอกได้ว่า "ระบบช้า" หรือ "เน็ตมีปัญหา"
+ * เพื่อให้แยกต้นเหตุได้ตอนใช้งานจริง
+ */
+function apiErrMsg(err) {
+  if (err && err.isTimeout) {
+    return 'เซิร์ฟเวอร์ตอบช้าเกิน ' + (err.seconds || 45) + ' วินาที — ข้อมูลอาจมากเกินไป (ไม่ใช่ปัญหาอินเทอร์เน็ต)';
+  }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return 'อุปกรณ์ไม่ได้เชื่อมต่ออินเทอร์เน็ต';
+  }
+  return 'เชื่อมต่อ Server ไม่ได้ — ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่';
+}
+
+/**
  * Shim ให้ใช้ syntax คล้าย google.script.run เดิม
  * ใช้แบบ: gasRun('login', payload).withSuccessHandler(fn).withFailureHandler(fn2)
  */
-function gasRun(action, payload) {
+function gasRun(action, payload, timeoutMs) {
   let successFn = null, failureFn = null;
-  callAPI(action, payload)
+  callAPI(action, payload, 1, false, timeoutMs)
     .then(result => { if (successFn) successFn(result); })
     .catch(err => {
       console.error('API error:', err);
-      if (failureFn) failureFn({ message: 'เชื่อมต่อ Server ไม่ได้ — ตรวจสอบอินเทอร์เน็ต' });
+      if (failureFn) failureFn({ message: apiErrMsg(err) });
     });
   return {
     withSuccessHandler(fn) { successFn = fn; return this; },
@@ -1913,7 +1867,7 @@ function gasRunNoRetry(action, payload) {
     .then(result => { if (successFn) successFn(result); })
     .catch(err => {
       console.error('API error:', err);
-      if (failureFn) failureFn({ message: 'เชื่อมต่อ Server ไม่ได้ — ตรวจสอบอินเทอร์เน็ต' });
+      if (failureFn) failureFn({ message: apiErrMsg(err) });
     });
   return {
     withSuccessHandler(fn) { successFn = fn; return this; },
@@ -1928,7 +1882,7 @@ function gasRunLong(action, payload) {
     .then(result => { if (successFn) successFn(result); })
     .catch(err => {
       console.error('API error:', err);
-      if (failureFn) failureFn({ message: 'เชื่อมต่อ Server ไม่ได้ — ตรวจสอบอินเทอร์เน็ต' });
+      if (failureFn) failureFn({ message: apiErrMsg(err) });
     });
   return {
     withSuccessHandler(fn) { successFn = fn; return this; },
@@ -2631,7 +2585,7 @@ function hrExpGenerate() {
   const ids = Object.keys(hrExpSelected);  // ว่าง = ทุกคน
   const btn = document.getElementById('hrexp-generate');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง...';
-  gasRun('hrExportPayroll', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids })
+  gasRun('hrExportPayroll', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids }, 90000)
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'สร้างไฟล์ Export';
       if (!r || !r.success) {
@@ -2738,7 +2692,7 @@ function hrRepGenerate() {
   const ids = Object.keys(hrRepSelected);
   const btn = document.getElementById('hrrep-generate');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง...';
-  gasRun('hrGetReport', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids, statusFilter: hrRepStatus })
+  gasRun('hrGetReport', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids, statusFilter: hrRepStatus }, 90000)
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'สร้างรายงาน';
       if (!r || !r.success) { showToast((r && r.message) || 'สร้างรายงานไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
@@ -2815,7 +2769,7 @@ function hrRawGenerate() {
   const ids = Object.keys(hrRawSelected);
   const btn = document.getElementById('hrraw-generate');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง...';
-  gasRun('hrGetRawLog', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids })
+  gasRun('hrGetRawLog', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids }, 90000)
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'สร้างรายงาน';
       if (!r || !r.success) { showToast((r && r.message) || 'สร้างรายงานไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
@@ -3147,7 +3101,7 @@ function hrDmPreview() {
   const ids = Object.keys(hrDmSelected);
   const btn = document.getElementById('hrdm-preview');
   btn.disabled = true; btn.textContent = 'กำลังดู...';
-  gasRun('hrPreviewDeleteAttendance', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids })
+  gasRun('hrPreviewDeleteAttendance', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids }, 90000)
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'ดูรายการคีย์มือ';
       if (!r || !r.success) { showToast((r && r.message) || 'ดูรายการไม่สำเร็จ'); return; }
@@ -4275,7 +4229,7 @@ function doLogin() {
   const btn = document.getElementById('btn-login');
   if (!id || !pw) { showToast('กรุณากรอกรหัสพนักงานและรหัสผ่าน'); return; }
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
-  gasRun('login', { employeeId: id, password: pw, deviceFingerprint: S.fp })
+  gasRun('login', { employeeId: id, password: pw, deviceFingerprint: S.fp }, 60000)
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ';
       if (!r || !r.success) { showToast((r && r.message) || 'เข้าสู่ระบบไม่สำเร็จ'); return; }
@@ -4360,7 +4314,7 @@ function loadHistory(months) {
 
   document.getElementById('hist-loading').style.display = 'block';
   document.getElementById('hist-card').style.display = 'none';
-  gasRun('getMyAttendance', { employeeId: S.empId, days: 60 })
+  gasRun('getMyAttendance', { employeeId: S.empId, days: 60 }, 60000)
     .withSuccessHandler(renderHistory)
     .withFailureHandler(e => { document.getElementById('hist-loading').style.display = 'none'; showToast(e.message); });
 }
