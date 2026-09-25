@@ -42,6 +42,20 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;background:rgba(
 .hr-menu-title{font-size:17px;font-weight:600;color:var(--tx)}
 .hr-menu-desc{font-size:13px;color:var(--tx3);margin-top:3px}
 .hr-menu-arrow{font-size:22px;color:var(--tx3);flex-shrink:0}
+/* ── หน้าเมนูหลัก (Home) — ปุ่มไอคอนวงกลม ── */
+.home-hero{background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:18px;padding:18px 18px 20px;color:#fff;margin-bottom:18px;box-shadow:0 4px 14px rgba(37,99,235,.22)}
+.home-hero-hi{font-size:13px;opacity:.85}
+.home-hero-name{font-size:20px;font-weight:700;margin-top:2px;line-height:1.3}
+.home-hero-sub{font-size:12px;opacity:.85;margin-top:5px}
+.home-hero-date{display:inline-block;margin-top:11px;font-size:12px;font-weight:600;background:rgba(255,255,255,.18);border-radius:8px;padding:5px 11px}
+.home-sec{font-size:13px;font-weight:600;color:var(--tx3);margin:0 2px 10px}
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 4px;margin-bottom:20px}
+.home-item{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 4px;border:none;background:none;cursor:pointer;border-radius:14px;transition:all .15s;font-family:var(--fn)}
+.home-item:active{transform:scale(.94);background:var(--sf2)}
+.home-ic{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;box-shadow:0 2px 6px rgba(15,23,42,.08)}
+.home-lb{font-size:12px;font-weight:500;color:var(--tx);text-align:center;line-height:1.35}
+.home-badge{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--er);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.home-ic-wrap{position:relative}
 .hd-row{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;margin-bottom:6px}
 .hd-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;flex-shrink:0}
 .hd-b-absent{background:rgba(120,120,130,.15);color:var(--tx2)}
@@ -232,6 +246,7 @@ textarea.inp{resize:vertical;min-height:60px}
   <div class="nav-mid">
     <div class="nav-tabs" id="nav-tabs" style="display:none">
       <!-- เมนูพนักงาน -->
+      <button class="nav-tab" id="tab-home">🏠 หน้าแรก</button>
       <button class="nav-tab active" id="tab-in">เช็คอิน</button>
       <button class="nav-tab"        id="tab-out">เช็คเอาต์</button>
       <button class="nav-tab ht"    id="tab-hist">เช็คเวลา</button>
@@ -410,6 +425,29 @@ textarea.inp{resize:vertical;min-height:60px}
       <div class="empid-note">บันทึกรหัสนี้ไว้ — ใช้ Login ทุกครั้ง</div>
     </div>
     <button class="btn p">Login เพื่อเช็คอินได้เลย →</button>
+  </div>
+</div>
+
+<!-- ══ หน้าเมนูหลัก (Home) — หน้าแรกหลังล็อกอิน ══ -->
+<div class="page" id="page-home">
+  <div class="home-hero">
+    <div class="home-hero-hi" id="home-hi">สวัสดี</div>
+    <div class="home-hero-name" id="home-name">—</div>
+    <div class="home-hero-sub" id="home-sub">—</div>
+    <div class="home-hero-date" id="home-date">—</div>
+  </div>
+
+  <div class="home-sec">เมนูของฉัน</div>
+  <div class="home-grid" id="home-grid-me"></div>
+
+  <div id="home-sec-appr" style="display:none">
+    <div class="home-sec">งานอนุมัติ</div>
+    <div class="home-grid" id="home-grid-appr"></div>
+  </div>
+
+  <div id="home-sec-hr" style="display:none">
+    <div class="home-sec">งานฝ่ายบุคคล</div>
+    <div class="home-grid" id="home-grid-hr"></div>
   </div>
 </div>
 
@@ -2146,13 +2184,13 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
+  const navPages = ['home','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
   // sync tab highlight — หน้า HR ทั้งหมดให้แท็บ HR active
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active','co','ht'));
-  const m = { checkin:'tab-in', checkout:'tab-out', history:'tab-hist', 'leave-form':'tab-leave', 'leave-history':'tab-leave', 'leave-approve':'tab-leave-appr', 'hr-dash':'tab-hr-dash', 'hr-dashboard':'tab-hr-dash', 'hr-employees':'tab-hr-dash', 'hr-rawlog':'tab-hr-dash' };
+  const m = { home:'tab-home', checkin:'tab-in', checkout:'tab-out', history:'tab-hist', 'leave-form':'tab-leave', 'leave-history':'tab-leave', 'leave-approve':'tab-leave-appr', 'hr-dash':'tab-hr-dash', 'hr-dashboard':'tab-hr-dash', 'hr-employees':'tab-hr-dash', 'hr-rawlog':'tab-hr-dash' };
   if (m[id]) {
     const t = document.getElementById(m[id]);
     if (t) t.classList.add(id==='checkout'?'co': id==='history'?'ht':'active');
@@ -2161,6 +2199,7 @@ function go(id) {
   if (id === 'checkout' && S.inTime) {
     const ref = document.getElementById('co-inref'); if(ref) ref.textContent = S.inTime;
   }
+  if (id === 'home') renderHomeMenu();
   if (id === 'history') loadHistory();
   if (id === 'hr-dashboard') {
     hrDashFilter = 'present';  // เริ่มที่การ์ดมาแล้วเสมอ
@@ -2223,7 +2262,7 @@ function tab(id, el) { go(id); }
 function applyRoleMenus(role) {
   const isHR = role === 'HR';
   // เมนูพนักงาน — เช็คอิน/เอาต์ ขึ้นกับกะ (CHECKIN_ALLOWED_SHIFTS), เช็คเวลา/เงินเดือน/ลางาน/โอที แสดงเสมอ
-  const alwaysTabs = ['tab-hist', 'tab-payslip', 'tab-leave', 'tab-ot'];
+  const alwaysTabs = ['tab-home', 'tab-hist', 'tab-payslip', 'tab-leave', 'tab-ot'];
   alwaysTabs.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
@@ -2257,11 +2296,107 @@ function applyRoleMenus(role) {
   }
 }
 
-// หน้าเริ่มต้นหลัง login — ถ้ากะไม่มีสิทธิ์เช็คอิน ไปหน้าเช็คเวลาแทน
+// หน้าเริ่มต้นหลัง login — เข้าหน้าเมนูหลัก (เบา ไม่ยิง API) ทุก role
+// ผู้ใช้กดเลือกเมนูเองแล้วค่อยโหลดข้อมูล → ไม่รู้สึกว่าระบบช้าตอนเข้าใช้งาน
 function defaultLandingPage() {
-  // HR → ภาพรวมประจำวัน (hr-dashboard) เป็นหน้าแรก
-  if (S.role === 'HR') return 'hr-dashboard';
-  return checkinAllowedForShift(S.shift) ? 'checkin' : 'history';
+  return 'home';
+}
+
+// ========== หน้าเมนูหลัก (HOME) ==========
+// สร้างปุ่มเมนูตามสิทธิ์ — ไม่ยิง API ใด ๆ แสดงผลทันที
+function renderHomeMenu() {
+  const isHR = S.role === 'HR';
+  const canCheckin = checkinAllowedForShift(S.shift);
+
+  // หัวข้อต้อนรับ
+  const el = id => document.getElementById(id);
+  const hi = el('home-hi');
+  if (hi) {
+    const h = new Date().getHours();
+    hi.textContent = h < 12 ? 'สวัสดีตอนเช้า' : (h < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น');
+  }
+  if (el('home-name')) el('home-name').textContent = S.name || '—';
+  if (el('home-sub')) {
+    const bits = [];
+    if (S.empId) bits.push('รหัส ' + S.empId);
+    if (S.shift) bits.push('กะ ' + S.shift);
+    if (isHR) bits.push('ฝ่ายบุคคล');
+    el('home-sub').textContent = bits.join(' · ');
+  }
+  if (el('home-date')) {
+    const d = new Date();
+    const thM = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const thD = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+    el('home-date').textContent = 'วัน' + thD[d.getDay()] + 'ที่ ' + d.getDate() + ' ' +
+      thM[d.getMonth()] + ' ' + (d.getFullYear() + 543);
+  }
+
+  // ── เมนูของฉัน ──
+  const me = [];
+  if (canCheckin) {
+    me.push({ p: 'checkin',  t: 'เช็คอิน',   ic: '⏱', bg: 'rgba(37,99,235,.14)',   fg: '#2563eb' });
+    me.push({ p: 'checkout', t: 'เช็คเอาต์', ic: '⏻', bg: 'rgba(220,38,38,.12)',   fg: '#dc2626' });
+  }
+  me.push({ p: 'history',    t: 'เช็คเวลา',  ic: '▤', bg: 'rgba(100,116,139,.14)', fg: '#475569' });
+  me.push({ p: 'leave-form', t: 'ขอลางาน',   ic: '✈', bg: 'rgba(16,185,129,.14)',  fg: '#059669' });
+  me.push({ p: 'ot-form',    t: 'ขอโอที',    ic: '＋', bg: 'rgba(245,158,11,.16)',  fg: '#d97706' });
+  me.push({ p: 'my-payslip', t: 'สลิปเงินเดือน', ic: '฿', bg: 'rgba(168,85,247,.14)', fg: '#a855f7' });
+  me.push({ p: 'leave-history', t: 'ประวัติการลา', ic: '☰', bg: 'rgba(16,185,129,.10)', fg: '#059669' });
+  me.push({ p: 'ot-history', t: 'ประวัติโอที', ic: '☰', bg: 'rgba(245,158,11,.10)', fg: '#d97706' });
+  homeFillGrid('home-grid-me', me);
+
+  // ── งานอนุมัติ (หัวหน้า/ผู้จัดการที่ไม่ใช่ HR) ──
+  const apprSec = el('home-sec-appr');
+  if (!isHR && S.isApprover) {
+    homeFillGrid('home-grid-appr', [
+      { p: 'leave-approve', t: 'อนุมัติลา',   ic: '✓', bg: 'rgba(16,185,129,.14)', fg: '#059669' },
+      { p: 'ot-approve',    t: 'อนุมัติโอที', ic: '✓', bg: 'rgba(245,158,11,.16)', fg: '#d97706' },
+    ]);
+    if (apprSec) apprSec.style.display = '';
+  } else if (apprSec) {
+    apprSec.style.display = 'none';
+  }
+
+  // ── งานฝ่ายบุคคล ──
+  const hrSec = el('home-sec-hr');
+  if (isHR) {
+    homeFillGrid('home-grid-hr', [
+      { p: 'hr-dashboard', t: 'ภาพรวมประจำวัน', ic: '▦', bg: 'rgba(59,130,246,.15)',  fg: '#2563eb' },
+      { p: 'hr-report',    t: 'รายงานลงเวลา',   ic: '▤', bg: 'rgba(245,158,11,.15)',  fg: '#d97706' },
+      { p: 'hr-employees', t: 'จัดการพนักงาน',  ic: '☷', bg: 'rgba(16,185,129,.15)',  fg: '#059669' },
+      { p: 'hr-dash',      t: 'เมนูงานบุคคล',   ic: '★', bg: 'rgba(124,58,237,.15)',  fg: '#7c3aed' },
+    ]);
+    if (hrSec) hrSec.style.display = '';
+  } else if (hrSec) {
+    hrSec.style.display = 'none';
+  }
+}
+
+// สร้างปุ่มไอคอนลงในกริด
+function homeFillGrid(gridId, items) {
+  const g = document.getElementById(gridId);
+  if (!g) return;
+  g.innerHTML = '';
+  items.forEach(function(it) {
+    const b = document.createElement('button');
+    b.className = 'home-item';
+    b.type = 'button';
+    const wrap = document.createElement('div');
+    wrap.className = 'home-ic-wrap';
+    const ic = document.createElement('div');
+    ic.className = 'home-ic';
+    ic.style.background = it.bg;
+    ic.style.color = it.fg;
+    ic.textContent = it.ic;
+    wrap.appendChild(ic);
+    const lb = document.createElement('div');
+    lb.className = 'home-lb';
+    lb.textContent = it.t;
+    b.appendChild(wrap);
+    b.appendChild(lb);
+    b.addEventListener('click', function() { go(it.p); });
+    g.appendChild(b);
+  });
 }
 
 // ========== HR DASHBOARD ==========
@@ -4418,6 +4553,7 @@ applyLogo();
   }
 
   // NAV TABS
+  on('tab-home', 'click', function() { tab('home',     document.getElementById('tab-home')); });
   on('tab-in',   'click', function() { tab('checkin',  document.getElementById('tab-in')); });
   on('tab-out',  'click', function() { tab('checkout', document.getElementById('tab-out')); });
   on('tab-hist', 'click', function() { tab('history',  document.getElementById('tab-hist')); });
