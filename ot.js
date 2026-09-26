@@ -791,7 +791,7 @@ function initOTBindings() {
   on('ot-date-to', 'change', otUpdatePreview);
   on('ot-time-to', 'change', otUpdatePreview);
   on('ot-submit', 'click', submitOT);
-  on('ot-form-back', 'click', () => go('ot-history'));
+  on('ot-form-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
   on('ot-file', 'change', function(e) {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
@@ -803,13 +803,13 @@ function initOTBindings() {
     reader.readAsDataURL(f);
   });
   // ประวัติ
-  on('ot-history-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'history'));
+  on('ot-history-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
   // อนุมัติ
-  on('ot-approve-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'ot-history'));
+  on('ot-approve-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
   on('ot-approve-refresh', 'click', loadOTApprovals);
   // รายงาน
   on('otr-search', 'click', runOTReport);
-  on('otr-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'history'));
+  on('otr-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
   // เมนู HR
   on('hr-menu-ot-approve', 'click', () => go('ot-approve'));
   on('hr-menu-ot-report', 'click', () => go('ot-report'));

@@ -261,7 +261,7 @@ textarea.inp{resize:vertical;min-height:60px}
   <div class="nav-mid">
     <div class="nav-tabs" id="nav-tabs" style="display:none">
       <!-- เมนูพนักงาน -->
-      <button class="nav-tab" id="tab-home">🏠 หน้าแรก</button>
+      <button class="nav-tab" id="tab-home">🏠 หน้าหลัก</button>
       <button class="nav-tab active" id="tab-in">เช็คอิน</button>
       <button class="nav-tab"        id="tab-out">เช็คเอาต์</button>
       <button class="nav-tab ht"    id="tab-hist">เช็คเวลา</button>
@@ -477,7 +477,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ══ ปฏิทินวันหยุด (พนักงาน — ดูอย่างเดียว) ══ -->
 <div class="page" id="page-holiday">
-  <button id="hol-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับหน้าแรก</button>
+  <button class="btn o sm" id="hol-back" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ หน้าหลัก</button>
 
   <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:14px">
     <div>
@@ -492,6 +492,7 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <div class="page" id="page-checkin">
+  <button class="btn o sm" id="ci-back" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ หน้าหลัก</button>
   <div class="banner b"><div class="bdot b"></div>เช็คอินเข้างาน — ยืนยัน 3 ขั้นตอน</div>
 
   <div class="card">
@@ -534,6 +535,7 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <div class="page" id="page-checkout">
+  <button class="btn o sm" id="co-back" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ หน้าหลัก</button>
   <div class="banner r"><div class="bdot r"></div>เช็คเอาต์ออกงาน</div>
 
   <div class="timer-card">
@@ -577,6 +579,7 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <div class="page" id="page-history">
+  <button class="btn o sm" id="hist-back" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ หน้าหลัก</button>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <div>
       <div style="font-size:18px;font-weight:600" id="hist-title">ประวัติการลงเวลา</div>
@@ -614,6 +617,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ HR DASHBOARD (placeholder ขั้นที่ 2) ═══════════════ -->
 <div class="page" id="page-hr-dash">
+  <button class="btn o sm" id="hrdash-home" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ หน้าหลัก</button>
   <div class="home-hero" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 4px 14px rgba(124,58,237,.22)">
     <div class="home-hero-hi">ระบบฝ่ายบุคคล</div>
     <div class="home-hero-name">งานบุคคล</div>
@@ -707,7 +711,7 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <div class="page" id="page-hr-dashboard">
-  <button id="hrdash-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
+  <button id="hrdash-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="margin-bottom:14px">
     <div style="font-size:17px;font-weight:600">ภาพรวมประจำวัน</div>
@@ -746,7 +750,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ HR — จัดการพนักงาน ═══════════════ -->
 <div class="page" id="page-hr-employees">
-  <button id="hremp-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
+  <button id="hremp-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="font-size:17px;font-weight:600;margin-bottom:12px">จัดการพนักงาน</div>
 
@@ -849,7 +853,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ HR EXPORT เงินเดือน ═══════════════ -->
 <div class="page" id="page-hr-export">
-  <button id="hrexp-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
+  <button id="hrexp-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="margin-bottom:14px">
     <div style="font-size:17px;font-weight:600">Export ข้อมูลเวลา</div>
@@ -895,7 +899,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ HR รายงาน ═══════════════ -->
 <div class="page" id="page-hr-report">
-  <button id="hrrep-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
+  <button id="hrrep-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="margin-bottom:14px">
     <div style="font-size:17px;font-weight:600">รายงานการลงเวลา</div>
@@ -981,6 +985,8 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ HR รายงานการบันทึกดิบ (raw log) ═══════════════ -->
 <div class="page" id="page-hr-rawlog">
+  <button id="hrraw-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนูงานบุคคล</button>
+
   <div style="margin-bottom:14px">
     <div style="font-size:20px;font-weight:600">รายงานการบันทึกดิบ</div>
     <div style="font-size:12px;color:var(--tx3);margin-top:2px">ทุกการบันทึกแยกตาม SOURCE — ✓ = ถูกเลือกไปจับคู่ในรายงานสรุป</div>
@@ -1030,7 +1036,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ HR จัดการวันหยุด ═══════════════ -->
 <div class="page" id="page-hr-broadcast">
-  <button id="hrbc-back" onclick="go('hr-dash')" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
+  <button id="hrbc-back" onclick="go('hr-dash')" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="margin-bottom:14px">
     <div style="font-size:20px;font-weight:700">ส่งข้อความ Telegram</div>
@@ -1071,7 +1077,7 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <div class="page" id="page-hr-datamgmt">
-  <button id="hrdm-back" onclick="go('hr-dash')" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
+  <button id="hrdm-back" onclick="go('hr-dash')" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="margin-bottom:14px">
     <div style="font-size:20px;font-weight:700">จัดการข้อมูลเวลา</div>
@@ -1140,7 +1146,7 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <div class="page" id="page-hr-holiday">
-  <button id="hrhol-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
+  <button id="hrhol-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="margin-bottom:14px">
     <div style="font-size:20px;font-weight:700">จัดการวันหยุด</div>
@@ -1168,7 +1174,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ HR ลงทะเบียนใบหน้า ═══════════════ -->
 <div class="page" id="page-hr-face">
-  <button id="hrface-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนู HR</button>
+  <button id="hrface-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="margin-bottom:14px">
     <div style="font-size:17px;font-weight:600">ลงทะเบียนใบหน้า</div>
@@ -1248,7 +1254,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ ระบบลา: หน้าขอลา ═══════════════ -->
 <div class="page" id="page-leave-form">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="lv-form-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="lv-form-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
     <h2 style="margin:0;font-size:18px">ขอลางาน</h2>
   </div>
 
@@ -1318,7 +1324,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ ระบบลา: หน้าประวัติการลา ═══════════════ -->
 <div class="page" id="page-leave-history">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="lv-history-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="lv-history-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
     <h2 style="margin:0;font-size:18px">ประวัติการลา</h2>
   </div>
   <div id="lv-history-summary" style="margin-bottom:16px"></div>
@@ -1332,7 +1338,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ ระบบลา: หน้ารออนุมัติ (ผู้อนุมัติ) ═══════════════ -->
 <div class="page" id="page-leave-approve">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="lv-approve-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="lv-approve-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
     <h2 style="margin:0;font-size:18px;flex:1">คำขอลารออนุมัติ</h2>
     <button class="btn o sm" id="lv-approve-refresh" style="width:auto;padding:6px 12px">↻ รีเฟรช</button>
   </div>
@@ -1354,7 +1360,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ OT: ฟอร์มขอ OT ═══════════════ -->
 <div class="page" id="page-ot-form">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="ot-form-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="ot-form-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
     <h2 style="margin:0;font-size:18px">ขอทำงานล่วงเวลา (OT)</h2>
   </div>
 
@@ -1390,7 +1396,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ OT: ประวัติ ═══════════════ -->
 <div class="page" id="page-ot-history">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="ot-history-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="ot-history-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
     <h2 style="margin:0;font-size:18px">ประวัติ OT</h2>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:14px">
@@ -1403,7 +1409,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ OT: อนุมัติ ═══════════════ -->
 <div class="page" id="page-ot-approve">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="ot-approve-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="ot-approve-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
     <h2 style="margin:0;font-size:18px;flex:1">อนุมัติ OT</h2>
     <button class="btn o sm" id="ot-approve-refresh" style="width:auto;padding:6px 12px">↻ รีเฟรช</button>
   </div>
@@ -1413,7 +1419,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ OT: รายงาน ═══════════════ -->
 <div class="page" id="page-ot-report">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="otr-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="otr-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
     <h2 style="margin:0;font-size:18px">รายงาน OT</h2>
   </div>
   <div class="card" style="margin-bottom:14px">
@@ -1448,7 +1454,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ สลิปเงินเดือน: จัดการงวด ═══════════════ -->
 <div class="page" id="page-pay-periods">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="pay-periods-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="pay-periods-back" style="width:auto;padding:6px 12px">‹ เมนูงานบุคคล</button>
     <h2 style="margin:0;font-size:18px;flex:1">สลิปเงินเดือน — จัดการงวด</h2>
     <button class="btn o sm" id="pay-periods-refresh" style="width:auto;padding:6px 12px">↻</button>
   </div>
@@ -1531,7 +1537,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ รายงานเงินเดือน ═══════════════ -->
 <div class="page" id="page-pay-report">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="payrep-back" onclick="go('hr-dash')" style="width:auto;padding:7px 14px">← กลับ</button>
+    <button class="btn o sm" id="payrep-back" onclick="go('hr-dash')" style="width:auto;padding:7px 14px">‹ เมนูงานบุคคล</button>
     <h2 style="margin:0;font-size:18px">รายงานเงินเดือน</h2>
   </div>
 
@@ -1632,6 +1638,7 @@ textarea.inp{resize:vertical;min-height:60px}
 
 <!-- ═══════════════ สลิปเงินเดือนพนักงาน (การ์ด) ═══════════════ -->
 <div class="page" id="page-my-payslip">
+  <button class="btn o sm" id="mypay-back" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ หน้าหลัก</button>
   <h2 style="margin:0 0 16px;font-size:18px">สลิปเงินเดือน</h2>
   <div id="my-payslip-list"></div>
 </div>
@@ -1639,7 +1646,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ อัปโหลดเวลาจากเครื่องสแกนนิ้ว ═══════════════ -->
 <div class="page" id="page-finger">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="finger-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="finger-back" style="width:auto;padding:6px 12px">‹ เมนูงานบุคคล</button>
     <h2 style="margin:0;font-size:18px">อัปโหลดเวลาทำงาน</h2>
   </div>
 
@@ -1657,7 +1664,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <!-- ═══════════════ ระบบลา: หน้ารายงานการลา ═══════════════ -->
 <div class="page" id="page-leave-report">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn o sm" id="lvr-back" style="width:auto;padding:6px 12px">‹ กลับ</button>
+    <button class="btn o sm" id="lvr-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
     <h2 style="margin:0;font-size:20px">รายงานการลา</h2>
   </div>
 
@@ -2256,33 +2263,28 @@ function tab(id, el) { go(id); }
  */
 function applyRoleMenus(role) {
   const isHR = role === 'HR';
-  // เมนูพนักงาน — เช็คอิน/เอาต์ ขึ้นกับกะ (CHECKIN_ALLOWED_SHIFTS), เช็คเวลา/เงินเดือน/ลางาน/โอที แสดงเสมอ
-  const alwaysTabs = ['tab-home', 'tab-hist', 'tab-payslip', 'tab-leave', 'tab-ot'];
-  alwaysTabs.forEach(id => {
+
+  // ── แถบเมนูบน: เหลือปุ่มเดียวคือ "หน้าหลัก" ──
+  // ตั้งแต่มีหน้าเมนูหลัก การมีทางเดินสองทาง (แถบบน + เมนูหลัก) ทำให้ผู้ใช้สับสน
+  // จึงยุบเหลือทางเดียว: เลือกงานจากหน้าหลัก แล้วกด "หน้าหลัก" เพื่อกลับ
+  // ปุ่มนี้ตรึงอยู่บนสุดตลอด จึงเป็นทางออกที่กดได้เสมอไม่ว่าอยู่หน้าไหน
+  ['tab-in', 'tab-out', 'tab-hist', 'tab-payslip', 'tab-leave', 'tab-ot',
+   'tab-leave-appr', 'tab-ot-appr', 'tab-hr-dash', 'nav-hr-work'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = '';
+    if (el) el.style.display = 'none';
   });
-  // เช็คอิน/เช็คเอาต์ — แสดงเฉพาะกะที่มีสิทธิ์ (เช่น DRIVER); กะอื่นซ่อน
-  const canCheckin = checkinAllowedForShift(S.shift);
-  ['tab-in', 'tab-out'].forEach(id => {
+  const homeTab = document.getElementById('tab-home');
+  if (homeTab) homeTab.style.display = '';
+
+  // ── ป้ายปุ่มกลับในหน้าลา/โอที ──
+  // ปุ่มพวกนี้พาไปคนละที่ตาม role (HR → เมนูงานบุคคล, พนักงาน → หน้าหลัก)
+  // เขียนป้ายให้ตรงกับที่มันไปจริง ผู้ใช้จะได้รู้ก่อนกดว่าจะไปไหน
+  const backLabel = isHR ? '‹ เมนูงานบุคคล' : '‹ หน้าหลัก';
+  ['lv-form-back', 'lv-history-back', 'lv-approve-back', 'lvr-back',
+   'ot-form-back', 'ot-history-back', 'ot-approve-back', 'otr-back'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = canCheckin ? '' : 'none';
+    if (el) el.textContent = backLabel;
   });
-
-  // แท็บ Dashboard เดิมของ HR — ไม่ใช้แล้ว (ย้ายไปปุ่ม "งานบุคคล") ซ่อนไว้
-  const hrDashTab = document.getElementById('tab-hr-dash');
-  if (hrDashTab) hrDashTab.style.display = 'none';
-
-  // ปุ่ม "งานบุคคล" บน nav — แสดงเฉพาะ HR
-  const hrWorkBtn = document.getElementById('nav-hr-work');
-  if (hrWorkBtn) hrWorkBtn.style.display = isHR ? '' : 'none';
-
-  // แท็บ "อนุมัติลา" + "อนุมัติโอที" — แสดงให้ผู้อนุมัติที่เป็น EMPLOYEE (หัวหน้า/ผู้จัดการ)
-  // HR อนุมัติผ่านหน้างานบุคคล ไม่ต้องมีแท็บนี้
-  const apprTab = document.getElementById('tab-leave-appr');
-  if (apprTab) apprTab.style.display = (!isHR && S.isApprover) ? '' : 'none';
-  const otApprTab = document.getElementById('tab-ot-appr');
-  if (otApprTab) otApprTab.style.display = (!isHR && S.isApprover) ? '' : 'none';
 
   // ข้อความต้อนรับในหน้า HR
   if (isHR) {
@@ -4733,6 +4735,12 @@ applyLogo();
   // NAV TABS
   on('tab-home', 'click', function() { tab('home',     document.getElementById('tab-home')); });
   on('hol-back', 'click', function() { go('home'); });
+  on('mypay-back', 'click', function() { go('home'); });
+  on('ci-back',   'click', function() { go('home'); });
+  on('co-back',   'click', function() { go('home'); });
+  on('hist-back', 'click', function() { go('home'); });
+  on('hrdash-home', 'click', function() { go('home'); });
+  on('hrraw-back', 'click', function() { go('hr-dash'); });
   on('home-hol-more', 'click', function() { go('holiday'); });
   on('tab-in',   'click', function() { tab('checkin',  document.getElementById('tab-in')); });
   on('tab-out',  'click', function() { tab('checkout', document.getElementById('tab-out')); });

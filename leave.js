@@ -816,13 +816,13 @@ function initLeaveBindings() {
   on('lvr-void-cancel', 'click', closeVoidDialog);
   on('lvr-void-confirm', 'click', confirmVoid);
   on('lv-to-report', 'click', () => go('leave-report'));
-  on('lvr-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'history'));
+  on('lvr-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
   on('hr-menu-leave-report', 'click', () => go('leave-report'));
   on('tab-leave-report', 'click', () => go('leave-report'));
 
   // back buttons
-  on('lv-form-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'history'));
-  on('lv-history-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'history'));
-  on('lv-approve-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'history'));
+  on('lv-form-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
+  on('lv-history-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
+  on('lv-approve-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
   on('lv-approve-refresh', 'click', () => { if (typeof loadLeaveApprovals === 'function') loadLeaveApprovals(); });
 }
