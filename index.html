@@ -56,6 +56,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;background:rgba(
 .home-lb{font-size:12px;font-weight:500;color:var(--tx);text-align:center;line-height:1.35}
 .home-badge{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:9px;background:var(--er);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
 .home-ic-wrap{position:relative}
+/* ── การ์ดวันหยุด ── */
+.hol-card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:20px}
+.hol-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.hol-title{font-size:14px;font-weight:700;color:var(--tx)}
+.hol-more{font-size:12px;color:var(--ac);cursor:pointer;background:none;border:none;font-family:var(--fn);padding:2px 0}
+.hol-row{display:flex;align-items:center;gap:11px;padding:8px 0;border-top:1px solid var(--bd)}
+.hol-row:first-of-type{border-top:none}
+.hol-d{width:42px;flex-shrink:0;text-align:center;border-radius:9px;padding:4px 0;background:rgba(236,72,153,.10)}
+.hol-dnum{font-size:16px;font-weight:700;color:#db2777;line-height:1.1}
+.hol-ddow{font-size:10px;color:#db2777;opacity:.85}
+.hol-n{font-size:14px;color:var(--tx);font-weight:500;flex:1;min-width:0}
+.hol-sub{font-size:11px;color:var(--tx3);margin-top:1px}
+.hol-row.past{opacity:.45}
+.hol-empty{font-size:13px;color:var(--tx3);padding:6px 0}
+.hol-mon{font-size:13px;font-weight:700;color:var(--tx2);margin:16px 2px 8px}
 .hd-row{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;margin-bottom:6px}
 .hd-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;flex-shrink:0}
 .hd-b-absent{background:rgba(120,120,130,.15);color:var(--tx2)}
@@ -449,6 +464,31 @@ textarea.inp{resize:vertical;min-height:60px}
     <div class="home-sec">งานฝ่ายบุคคล</div>
     <div class="home-grid" id="home-grid-hr"></div>
   </div>
+
+  <!-- วันหยุดเดือนนี้ — แสดงจากข้อมูลที่จำไว้ในเครื่องทันที ไม่ต้องรอ server -->
+  <div class="hol-card" id="home-hol-card">
+    <div class="hol-head">
+      <div class="hol-title" id="home-hol-title">วันหยุดเดือนนี้</div>
+      <button class="hol-more" id="home-hol-more">ดูปฏิทินทั้งหมด ›</button>
+    </div>
+    <div id="home-hol-body"><div class="hol-empty">กำลังโหลด…</div></div>
+  </div>
+</div>
+
+<!-- ══ ปฏิทินวันหยุด (พนักงาน — ดูอย่างเดียว) ══ -->
+<div class="page" id="page-holiday">
+  <button id="hol-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับหน้าแรก</button>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:14px">
+    <div>
+      <div style="font-size:20px;font-weight:700">ปฏิทินวันหยุด</div>
+      <div style="font-size:13px;color:var(--tx3);margin-top:2px">วันหยุดบริษัท · วันอาทิตย์หยุดประจำสัปดาห์</div>
+    </div>
+    <select id="hol-year" style="flex-shrink:0;padding:7px 12px;border:1px solid var(--bd2);border-radius:9px;font-family:var(--fn);font-size:14px;background:var(--sf)"></select>
+  </div>
+
+  <div id="hol-loading" style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+  <div id="hol-list"></div>
 </div>
 
 <div class="page" id="page-checkin">
@@ -2138,7 +2178,7 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['home','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
+  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
@@ -2154,6 +2194,7 @@ function go(id) {
     const ref = document.getElementById('co-inref'); if(ref) ref.textContent = S.inTime;
   }
   if (id === 'home') renderHomeMenu();
+  if (id === 'holiday') loadHolidayViewPage();
   if (id === 'history') loadHistory();
   if (id === 'hr-dashboard') {
     hrDashFilter = 'present';  // เริ่มที่การ์ดมาแล้วเสมอ
@@ -2285,6 +2326,9 @@ function renderHomeMenu() {
       thM[d.getMonth()] + ' ' + (d.getFullYear() + 543);
   }
 
+  // วันหยุดเดือนนี้ — วาดจากที่จำไว้ทันที (ถ้ามี) แล้วเช็คของใหม่เบื้องหลัง
+  holLoad(renderHomeHolidays);
+
   // ── เมนูของฉัน ──
   const me = [];
   if (canCheckin) {
@@ -2295,6 +2339,7 @@ function renderHomeMenu() {
   me.push({ p: 'leave-form', t: 'ขอลางาน',   ic: '✈', bg: 'rgba(16,185,129,.14)',  fg: '#059669' });
   me.push({ p: 'ot-form',    t: 'ขอโอที',    ic: '＋', bg: 'rgba(245,158,11,.16)',  fg: '#d97706' });
   me.push({ p: 'my-payslip', t: 'สลิปเงินเดือน', ic: '฿', bg: 'rgba(168,85,247,.14)', fg: '#a855f7' });
+  me.push({ p: 'holiday',    t: 'ปฏิทินวันหยุด', ic: '◷', bg: 'rgba(236,72,153,.14)', fg: '#db2777' });
   me.push({ p: 'leave-history', t: 'ประวัติการลา', ic: '☰', bg: 'rgba(16,185,129,.10)', fg: '#059669' });
   me.push({ p: 'ot-history', t: 'ประวัติโอที', ic: '☰', bg: 'rgba(245,158,11,.10)', fg: '#d97706' });
   homeFillGrid('home-grid-me', me);
@@ -2324,6 +2369,161 @@ function renderHomeMenu() {
   } else if (hrSec) {
     hrSec.style.display = 'none';
   }
+}
+
+// ========== วันหยุด (ใช้ร่วมกันระหว่างหน้าแรกกับหน้าปฏิทิน) ==========
+// หลักการ: วันหยุดเปลี่ยนปีละไม่กี่ครั้ง → จำไว้ในเครื่อง แล้ววาดทันที
+// หน้าแรกจึงยังเปิดได้ "ทันที" ไม่ต้องรอ server เหมือนเดิม
+// เบื้องหลังค่อยเช็คของใหม่วันละ 2 ครั้ง ถ้ามีอะไรเปลี่ยนค่อยวาดทับ
+var HOL_STORE_KEY = 'ws6_holidays';
+var HOL_TTL_MS = 6 * 60 * 60 * 1000;   // 6 ชั่วโมง
+var HOL_DATA = null;
+var _holFetching = false;
+
+var TH_MON = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+              'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+var TH_MON_S = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+var TH_DOW_S = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+
+/** กันข้อความจากชีตทำให้หน้าเว็บเพี้ยน (เช่น ชื่อวันหยุดมีเครื่องหมาย < >) */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** อ่านที่จำไว้ในเครื่อง — คืน null ถ้าไม่มี (พังก็ไม่เป็นไร ถือว่าไม่มี) */
+function holReadStore() {
+  try {
+    const raw = localStorage.getItem(HOL_STORE_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (!o || !Array.isArray(o.holidays)) return null;
+    return o;
+  } catch(e) { return null; }
+}
+function holWriteStore(holidays) {
+  try {
+    localStorage.setItem(HOL_STORE_KEY, JSON.stringify({ at: Date.now(), holidays: holidays }));
+  } catch(e) {}
+}
+
+/**
+ * ขอข้อมูลวันหยุด
+ * onData จะถูกเรียก "ทันที" ถ้ามีของเก่าอยู่ และเรียกอีกครั้งถ้าโหลดของใหม่มาแล้วต่างจากเดิม
+ */
+function holLoad(onData) {
+  const st = holReadStore();
+  if (st) { HOL_DATA = st.holidays; if (onData) onData(HOL_DATA, true); }
+
+  const fresh = st && (Date.now() - st.at) < HOL_TTL_MS;
+  if (fresh || _holFetching) return;          // ยังใหม่อยู่ / กำลังโหลดอยู่ → ไม่ยิงซ้ำ
+
+  _holFetching = true;
+  gasRun('getHolidays', { hrToken: S.hrToken }, 30000)
+    .withSuccessHandler(function(r) {
+      _holFetching = false;
+      if (!r || !r.success) return;           // โหลดไม่ได้ก็ใช้ของเก่าต่อไป ไม่ต้องรบกวนผู้ใช้
+      const list = r.holidays || [];
+      const changed = JSON.stringify(list) !== JSON.stringify(HOL_DATA || []);
+      HOL_DATA = list;
+      holWriteStore(list);
+      if (changed && onData) onData(HOL_DATA, false);
+    })
+    .withFailureHandler(function() { _holFetching = false; });
+}
+
+/** วาดการ์ด "วันหยุดเดือนนี้" บนหน้าแรก */
+function renderHomeHolidays(list) {
+  const body = document.getElementById('home-hol-body');
+  const title = document.getElementById('home-hol-title');
+  if (!body) return;
+
+  const now = new Date();
+  const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const todayStr = ym + '-' + String(now.getDate()).padStart(2, '0');
+
+  if (title) title.textContent = 'วันหยุดเดือน' + TH_MON[now.getMonth()];
+
+  const mine = (list || []).filter(function(h) { return String(h.date).slice(0, 7) === ym; });
+
+  if (!mine.length) {
+    body.innerHTML = '<div class="hol-empty">เดือนนี้ไม่มีวันหยุดบริษัท</div>';
+    return;
+  }
+
+  body.innerHTML = mine.map(function(h) {
+    const d = new Date(h.date + 'T00:00:00');
+    const past = h.date < todayStr;
+    return '<div class="hol-row' + (past ? ' past' : '') + '">'
+      + '<div class="hol-d"><div class="hol-dnum">' + d.getDate() + '</div>'
+      + '<div class="hol-ddow">' + TH_DOW_S[d.getDay()] + '</div></div>'
+      + '<div class="hol-n">' + esc(h.name || 'วันหยุด')
+      + (h.date === todayStr ? '<div class="hol-sub">วันนี้</div>' : '') + '</div></div>';
+  }).join('');
+}
+
+/** หน้าปฏิทินวันหยุดเต็ม — แยกตามเดือน เลือกปีได้ */
+function loadHolidayViewPage() {
+  const ld = document.getElementById('hol-loading');
+  holLoad(function(list) {
+    if (ld) ld.style.display = 'none';
+    holFillYearSelect(list);
+    renderHolidayView(list);
+  });
+  // ยังไม่เคยมีข้อมูลเลย → ค้างที่ "กำลังโหลด..." จนกว่าจะได้ (ปกติครั้งแรกครั้งเดียว)
+  if (HOL_DATA && ld) ld.style.display = 'none';
+}
+
+function holFillYearSelect(list) {
+  const sel = document.getElementById('hol-year');
+  if (!sel) return;
+  const years = Array.from(new Set((list || []).map(function(h) { return String(h.date).slice(0, 4); }))).sort().reverse();
+  const cur = sel.value;
+  const thisYear = String(new Date().getFullYear());
+  sel.innerHTML = years.map(function(y) { return '<option value="' + y + '">' + (Number(y) + 543) + '</option>'; }).join('');
+  if (cur && years.indexOf(cur) !== -1) sel.value = cur;
+  else if (years.indexOf(thisYear) !== -1) sel.value = thisYear;
+  sel.onchange = function() { renderHolidayView(HOL_DATA || []); };
+}
+
+function renderHolidayView(list) {
+  const box = document.getElementById('hol-list');
+  const sel = document.getElementById('hol-year');
+  if (!box) return;
+  const year = sel ? sel.value : String(new Date().getFullYear());
+
+  const now = new Date();
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
+    + '-' + String(now.getDate()).padStart(2, '0');
+
+  const shown = (list || []).filter(function(h) { return String(h.date).slice(0, 4) === year; });
+  if (!shown.length) {
+    box.innerHTML = '<div class="hol-empty" style="text-align:center;padding:24px">ยังไม่มีวันหยุดในปีนี้</div>';
+    return;
+  }
+
+  // จัดกลุ่มตามเดือน
+  const byMon = {};
+  shown.forEach(function(h) {
+    const m = String(h.date).slice(5, 7);
+    (byMon[m] = byMon[m] || []).push(h);
+  });
+
+  box.innerHTML = Object.keys(byMon).sort().map(function(m) {
+    const rows = byMon[m].map(function(h) {
+      const d = new Date(h.date + 'T00:00:00');
+      const past = h.date < todayStr;
+      return '<div class="hol-row' + (past ? ' past' : '') + '">'
+        + '<div class="hol-d"><div class="hol-dnum">' + d.getDate() + '</div>'
+        + '<div class="hol-ddow">' + TH_DOW_S[d.getDay()] + '</div></div>'
+        + '<div class="hol-n">' + esc(h.name || 'วันหยุด')
+        + '<div class="hol-sub">' + d.getDate() + ' ' + TH_MON_S[d.getMonth()] + ' '
+        + (d.getFullYear() + 543) + (h.date === todayStr ? ' · วันนี้' : '') + '</div></div></div>';
+    }).join('');
+    return '<div class="hol-mon">' + TH_MON[Number(m) - 1] + ' (' + byMon[m].length + ' วัน)</div>'
+      + '<div class="hol-card" style="margin-bottom:6px">' + rows + '</div>';
+  }).join('');
 }
 
 // สร้างปุ่มไอคอนลงในกริด
@@ -4532,6 +4732,8 @@ applyLogo();
 
   // NAV TABS
   on('tab-home', 'click', function() { tab('home',     document.getElementById('tab-home')); });
+  on('hol-back', 'click', function() { go('home'); });
+  on('home-hol-more', 'click', function() { go('holiday'); });
   on('tab-in',   'click', function() { tab('checkin',  document.getElementById('tab-in')); });
   on('tab-out',  'click', function() { tab('checkout', document.getElementById('tab-out')); });
   on('tab-hist', 'click', function() { tab('history',  document.getElementById('tab-hist')); });
