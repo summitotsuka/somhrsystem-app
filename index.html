@@ -1762,7 +1762,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.1.0';
+const APP_VERSION = '8.2.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -5024,16 +5024,43 @@ applyLogo();
   if (fingerBack) fingerBack.addEventListener('click', function(){ go('hr-dash'); });
 })();
 </script>
-<script src="leave.js"></script>
-<script src="ot.js"></script>
-<script src="payroll.js"></script>
+<!-- ══ สำคัญ: ?v=... คือตัวกันไฟล์เก่าค้างในเครื่องผู้ใช้ ══
+     GitHub Pages สั่งให้เบราว์เซอร์เก็บไฟล์ .js ไว้ใช้ซ้ำ พออัปโหลดไฟล์ใหม่
+     เบราว์เซอร์จะยังใช้ของเก่า → ได้ index.html ใหม่ + leave.js เก่า = ปุ่มทำงานผิด
+     เลขหลัง ?v= เปลี่ยนเมื่อไร เบราว์เซอร์ถือว่าเป็นคนละไฟล์ แล้วโหลดใหม่ทันที
+
+     ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
+        และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
+-->
+<script src="leave.js?v=8.2.0"></script>
+<script src="ot.js?v=8.2.0"></script>
+<script src="payroll.js?v=8.2.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
   if (typeof initOTBindings === 'function') initOTBindings();
   if (typeof initPayrollBindings === 'function') initPayrollBindings();
-  // แสดงเวอร์ชันบน UI
-  (function(){ const v = document.getElementById('app-version'); if (v) v.textContent = 'v' + APP_VERSION; })();
+  // แสดงเวอร์ชันบน UI + เตือนถ้าไฟล์ .js ที่โหลดมาไม่ตรงรุ่นกับ index.html
+  // (เกิดเมื่ออัปโหลดไม่ครบ หรือเบราว์เซอร์ยังใช้ไฟล์เก่าค้างอยู่)
+  (function(){
+    const v = document.getElementById('app-version');
+    if (v) v.textContent = 'v' + APP_VERSION;
+
+    // ไฟล์ย่อยแต่ละตัวประกาศรุ่นของตัวเองไว้ — ถ้าไม่ตรง แปลว่าได้ของเก่ามา
+    const mods = { 'leave.js': window.LEAVE_JS_VERSION,
+                   'ot.js': window.OT_JS_VERSION,
+                   'payroll.js': window.PAYROLL_JS_VERSION };
+    const stale = Object.keys(mods).filter(f => mods[f] && mods[f] !== APP_VERSION);
+    if (stale.length) {
+      console.warn('[VERSION] ไฟล์ไม่ตรงรุ่น: ' + stale.join(', ') +
+                   ' — index.html = ' + APP_VERSION + ' · ได้รับ ' + stale.map(f => mods[f]).join(', '));
+      if (v) {
+        v.textContent = 'v' + APP_VERSION + ' \u26A0';
+        v.style.color = 'var(--er)';
+        v.title = 'ไฟล์ ' + stale.join(', ') + ' เป็นรุ่นเก่า — กด Ctrl+Shift+R เพื่อโหลดใหม่';
+      }
+    }
+  })();
 </script>
 </body>
 </html>

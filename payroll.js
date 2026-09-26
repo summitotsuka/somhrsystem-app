@@ -1,3 +1,6 @@
+// รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
+window.PAYROLL_JS_VERSION = '8.2.0';
+
 /* ═══════════════════════════════════════════════════════════════
  *  payroll.js — Frontend สลิปเงินเดือน (SOM HR System)
  *  ยึดโครงจาก ot.js — ใช้ gasRun, S, go, showToast จาก index.html
