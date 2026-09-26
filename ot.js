@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.2.0';
+window.OT_JS_VERSION = '8.2.1';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -17,7 +17,44 @@ const OT = {
   isApprover: false,
   isHR: false,
   currentReject: null,
+  teamAt: 0,        // เวลาที่โหลดรายชื่อทีมล่าสุด (ms)
 };
+
+// ── โหลดรายชื่อทีม (แคชไว้ใช้ซ้ำ) ──────────────────────────────
+// เดิม 3 หน้าต่างหาก (ฟอร์มขอ OT / ประวัติ OT / รายงาน OT) ยิง otGetMyTeam
+// ใหม่ทุกครั้งที่เปิดหน้า ทั้งที่รายชื่อลูกทีมแทบไม่เปลี่ยน → ผู้ใช้ต้องรอทุกครั้ง
+// เก็บไว้ 10 นาที และถ้ามีคำขอซ้อนกัน ให้ต่อคิวกับคำขอเดิม ไม่ยิงซ้ำ
+const OT_TEAM_TTL_MS = 10 * 60 * 1000;
+let _otTeamPending = null;
+
+function otClearTeamCache() { OT.teamAt = 0; }
+
+function otFetchTeam(onOk, onErr) {
+  // ยังไม่หมดอายุ → ตอบทันที ไม่ต้องรอ server
+  if (OT.teamAt && (Date.now() - OT.teamAt) < OT_TEAM_TTL_MS) {
+    onOk({ success: true, team: OT.team, isApprover: OT.isApprover, isHR: OT.isHR, myShift: OT.myShift });
+    return;
+  }
+  if (_otTeamPending) { _otTeamPending.push({ ok: onOk, err: onErr }); return; }
+
+  _otTeamPending = [{ ok: onOk, err: onErr }];
+  gasRun('otGetMyTeam', { hrToken: S.hrToken }, 30000)
+    .withSuccessHandler(function(r) {
+      const waiting = _otTeamPending; _otTeamPending = null;
+      if (r && r.success) {
+        OT.team = r.team || [];
+        OT.isApprover = !!r.isApprover;
+        OT.isHR = !!r.isHR;
+        OT.myShift = r.myShift || OT.myShift || 'A';
+        OT.teamAt = Date.now();
+      }
+      waiting.forEach(function(w) { w.ok(r); });
+    })
+    .withFailureHandler(function(e) {
+      const waiting = _otTeamPending; _otTeamPending = null;
+      waiting.forEach(function(w) { if (w.err) w.err(e); });
+    });
+}
 
 const OT_STATUS = {
   PENDING_L1: { text: 'รออนุมัติ (หัวหน้า)', cls: 'pending' },
@@ -74,17 +111,14 @@ function loadOTForm() {
   else gasRun('otGetTypes', { hrToken: S.hrToken })
     .withSuccessHandler(r => { if (r && r.success) { OT.types = r.types || []; OT.myShift = r.myShift || 'A'; fillTypes(); } });
 
-  // โหลดทีม (เผื่อหัวหน้าคีย์ให้ลูกทีม)
-  gasRun('otGetMyTeam', { hrToken: S.hrToken })
-    .withSuccessHandler(r => {
-      if (r && r.success) {
-        OT.team = r.team || [];
-        OT.myShift = r.myShift || OT.myShift || 'A';
-        OT.isApprover = !!r.isApprover;
-        OT.isHR = !!r.isHR;
-        otFillEmpDropdown();
-      }
-    });
+  // โหลดทีม (เผื่อหัวหน้าคีย์ให้ลูกทีม) — ใช้แคช เปิดซ้ำจะขึ้นทันที
+  const empSelEl = document.getElementById('ot-emp');
+  const cached = OT.teamAt && (Date.now() - OT.teamAt) < OT_TEAM_TTL_MS;
+  if (!cached && empSelEl) empSelEl.innerHTML = '<option value="">กำลังโหลดรายชื่อ…</option>';
+  otFetchTeam(
+    r => { if (r && r.success) otFillEmpDropdown(); },
+    () => { if (empSelEl) empSelEl.innerHTML = '<option value="">ตัวเอง</option>'; }
+  );
 
   // reset ฟอร์ม
   ['ot-date-from','ot-time-from','ot-date-to','ot-time-to','ot-detail'].forEach(id => {
@@ -315,12 +349,11 @@ function loadOTHistory() {
   const box = document.getElementById('ot-history-list');
   if (box) box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด...</div>';
   // เช็คว่าเป็นผู้อนุมัติไหม → แสดงปุ่มอนุมัติ
-  gasRun('otGetMyTeam', { hrToken: S.hrToken })
-    .withSuccessHandler(r => {
-      const btn = document.getElementById('ot-goto-approve');
-      if (btn && r && r.success && (r.isApprover || r.isHR)) btn.style.display = '';
-      else if (btn) btn.style.display = 'none';
-    });
+  otFetchTeam(r => {
+    const btn = document.getElementById('ot-goto-approve');
+    if (btn && r && r.success && (r.isApprover || r.isHR)) btn.style.display = '';
+    else if (btn) btn.style.display = 'none';
+  });
   // โหลดประเภทก่อน (ถ้ายังไม่มี) เพื่อแสดงชื่อ
   const load = () => gasRun('otGetMyRequests', { hrToken: S.hrToken })
     .withSuccessHandler(r => {
@@ -572,12 +605,13 @@ function loadOTReport() {
   // ดึงทีมเติม dropdown (เบา)
   const sel = document.getElementById('otr-f-emp');
   if (sel) sel.innerHTML = '<option value="">กำลังโหลด...</option>';
-  gasRun('otGetMyTeam', { hrToken: S.hrToken })
-    .withSuccessHandler(r => {
+  otFetchTeam(
+    r => {
       if (r && r.success) { OT.reportCanVoid = !!r.isHR; otFillReportDropdown(r.team || []); }
       else if (sel) sel.innerHTML = '<option value="">เลือกชื่อพนักงาน</option>';
-    })
-    .withFailureHandler(() => { if (sel) sel.innerHTML = '<option value="">เลือกชื่อพนักงาน</option>'; });
+    },
+    () => { if (sel) sel.innerHTML = '<option value="">เลือกชื่อพนักงาน</option>'; }
+  );
 
   const box = document.getElementById('otr-result');
   if (box) box.innerHTML = '<div style="text-align:center;padding:30px;color:var(--tx3)">เลือกเงื่อนไขแล้วกด “ค้นหา”</div>';
