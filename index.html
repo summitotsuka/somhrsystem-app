@@ -1775,8 +1775,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 // ════════════════════════════════════════════════════════════════
 const SB = {
   ON:  true,
-  URL: 'https://tauhfcanclelufuvtoud.supabase.co/functions/v1/rapid-task',   // ← ใส่ URL Edge Function
-  KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
+  URL: 'https://xxxxxxxxxxxx.supabase.co/functions/v1/api',   // ← ใส่ URL Edge Function
+  KEY: 'sb_publishable_xxxxxxxxxxxxxxxxxxxx',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
   ACTIONS:  { login: 1, getMyAttendance: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
@@ -1848,25 +1848,34 @@ function sbCall(action, payload, timeoutMs) {
  */
 function sbLogin(payload, timeoutMs) {
   return sbCall('login', payload, timeoutMs).then(r => {
-    if (r && r.success) { sbClearPwPending(); return sbLoginFixStatus(r); }
+    if (r && r.success) { sbClearPwPending(); sbFixStatusLater(r); return r; }
     return sbLoginFallback(r, payload);
   });
 }
 
-// เติมสถานะเช็คอินจากของเดิม (เฉพาะกะที่เช็คอินผ่านมือถือได้)
-function sbLoginFixStatus(r) {
-  if (!checkinAllowedForShift(r.shift)) return r;
-  return gasCallAPI('getTodayStatus', { employeeId: r.employeeId }, 1, true, 60000)
+/**
+ * ตรวจสถานะเช็คอินจากของเดิม — ทำ "หลัง" ล็อกอินเสร็จ ไม่ใช่ระหว่างรอ
+ *
+ * เดิมรอผลจาก GAS ก่อนปล่อยให้เข้าระบบ ผลคือกะที่เช็คอินผ่านมือถือได้
+ * ต้องรอ GAS ทุกครั้ง — ล็อกอิน 15 วินาที ทั้งที่ Supabase ตอบใน 0.8 วินาที
+ * เท่ากับยกความเร็วที่เพิ่งได้มาทิ้งไปเพราะคนกลุ่มเล็ก ๆ กลุ่มเดียว
+ *
+ * ตอนนี้เข้าระบบทันทีเสมอ แล้วถามของเดิมเบื้องหลัง
+ * ถ้าพบว่าเช็คอินค้างอยู่จริงค่อยพาไปหน้าเช็คเอาต์ให้
+ * — แต่พาเฉพาะตอนที่ยังอยู่หน้าหลัก ไม่แย่งหน้าจอถ้าเขาไปทำอย่างอื่นแล้ว
+ */
+function sbFixStatusLater(r) {
+  if (!checkinAllowedForShift(r.shift)) return;
+  gasCallAPI('getTodayStatus', { employeeId: r.employeeId }, 1, true, 60000)
     .then(st => {
-      if (st && st.success !== false) {
-        r.checkedIn  = !!st.checkedIn;
-        r.checkedOut = !!st.checkedOut;
-        r.inTime     = st.inTime || null;
-        r.inDate     = st.inDate || null;
-      }
-      return r;
+      if (!st || st.success === false) return;
+      if (!(st.checkedIn && !st.checkedOut)) return;
+      S.checkedIn = true; S.inTime = st.inTime || null; S.inDate = st.inDate || null;
+      if (st.inTime) { try { startWT(st.inTime, st.inDate); } catch (e) {} }
+      const cur = document.querySelector('.page.active');
+      if (cur && cur.id === 'page-home') go('checkout');
     })
-    .catch(() => r);   // ถามของเดิมไม่ได้ ก็ใช้ค่าจาก Supabase ไปก่อน ดีกว่าล็อกอินไม่ได้
+    .catch(() => { /* ถามไม่ได้ก็ไม่เป็นไร ผู้ใช้เข้าระบบไปแล้ว */ });
 }
 
 /**
@@ -1941,7 +1950,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.3.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.3.1';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -5308,9 +5317,9 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.3.0"></script>
-<script src="ot.js?v=8.3.0"></script>
-<script src="payroll.js?v=8.3.0"></script>
+<script src="leave.js?v=8.3.1"></script>
+<script src="ot.js?v=8.3.1"></script>
+<script src="payroll.js?v=8.3.1"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
