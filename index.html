@@ -1776,10 +1776,20 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 const SB = {
   ON:  true,
   URL: 'https://tauhfcanclelufuvtoud.supabase.co/functions/v1/rapid-task',   // ← ใส่ URL Edge Function
-  KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                     // ← ใส่ publishable key (ห้ามใช้ secret key)
+  KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
   ACTIONS:  { login: 1, getMyAttendance: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
+
+  // ── คำสั่งที่ "เขียนลงชีต" — ทำเสร็จแล้วต้องบอกให้คัดลอกสำเนาใหม่ ──
+  // เดิมใช้วิธีตั้งเวลาไปอ่านชีตทุก 10 นาที ซึ่งวัดแล้วพบว่าไปแย่งคิว
+  // กับระบบเดิมจนช้าลงหนัก จึงเปลี่ยนเป็น "บอกเมื่อมีของใหม่" แทน
+  DIRTY: {
+    fingerUploadConfirm: 1, hrManualEntry: 1, hrDeleteOneManual: 1,
+    kioskCheckInOut: 1, checkIn: 1, checkOut: 1, hrRunAutoDeleteNow: 1,
+    activateAccount: 1, resetPassword: 1, hrAddEmployee: 1, hrUpdateEmployee: 1,
+    hrAddHoliday: 1, hrDeleteHoliday: 1,
+  },
 };
 
 // ตั้งค่าครบหรือยัง — ถ้ายังไม่ได้แก้ URL/KEY ระบบจะใช้ GAS ตามเดิมโดยไม่พัง
@@ -1838,20 +1848,85 @@ function sbCall(action, payload, timeoutMs) {
  */
 function sbLogin(payload, timeoutMs) {
   return sbCall('login', payload, timeoutMs).then(r => {
-    if (!r || !r.success) return r;
-    if (!checkinAllowedForShift(r.shift)) return r;
-    return gasCallAPI('getTodayStatus', { employeeId: r.employeeId }, 1, true, 60000)
-      .then(st => {
-        if (st && st.success !== false) {
-          r.checkedIn  = !!st.checkedIn;
-          r.checkedOut = !!st.checkedOut;
-          r.inTime     = st.inTime || null;
-          r.inDate     = st.inDate || null;
-        }
-        return r;
-      })
-      .catch(() => r);   // ถามของเดิมไม่ได้ ก็ใช้ค่าจาก Supabase ไปก่อน ดีกว่าล็อกอินไม่ได้
+    if (r && r.success) { sbClearPwPending(); return sbLoginFixStatus(r); }
+    return sbLoginFallback(r, payload);
   });
+}
+
+// เติมสถานะเช็คอินจากของเดิม (เฉพาะกะที่เช็คอินผ่านมือถือได้)
+function sbLoginFixStatus(r) {
+  if (!checkinAllowedForShift(r.shift)) return r;
+  return gasCallAPI('getTodayStatus', { employeeId: r.employeeId }, 1, true, 60000)
+    .then(st => {
+      if (st && st.success !== false) {
+        r.checkedIn  = !!st.checkedIn;
+        r.checkedOut = !!st.checkedOut;
+        r.inTime     = st.inTime || null;
+        r.inDate     = st.inDate || null;
+      }
+      return r;
+    })
+    .catch(() => r);   // ถามของเดิมไม่ได้ ก็ใช้ค่าจาก Supabase ไปก่อน ดีกว่าล็อกอินไม่ได้
+}
+
+/**
+ * Supabase ปฏิเสธการล็อกอิน — ควรถามของเดิมต่อไหม
+ *
+ * ชีตคือต้นฉบับ สำเนาใน Supabase ตามหลังได้ไม่กี่นาที
+ * คนที่เพิ่งลงทะเบียนหรือเพิ่งรีเซ็ตรหัสผ่านจะเจอช่องว่างตรงนี้พอดี
+ * — รหัสถูกต้องตามชีต แต่สำเนายังเป็นของเก่า
+ *
+ * แต่จะถามของเดิมทุกครั้งที่ล็อกอินพลาดก็ไม่ได้ เพราะคนพิมพ์รหัสผิด
+ * (ซึ่งเกิดบ่อยที่สุด) จะต้องรอ GAS อีกรอบโดยไม่จำเป็น
+ *
+ * จึงถามต่อเฉพาะ 2 กรณีที่ "น่าจะเป็นเพราะสำเนาเก่า" เท่านั้น
+ */
+function sbLoginFallback(r, payload) {
+  const msg = (r && r.message) || '';
+  const notFound = /ไม่พบรหัสพนักงาน|ยังไม่ได้ตั้งรหัสผ่าน/.test(msg);
+  const justChanged = sbPwPendingFor(payload && payload.employeeId);
+  if (!notFound && !justChanged) return r;   // น่าจะพิมพ์รหัสผิดจริง — ตอบเลย ไม่ต้องรอ
+
+  return gasCallAPI('login', payload, 1, false, 60000)
+    .then(g => {
+      if (!g || !g.success) return r;        // ของเดิมก็ปฏิเสธ → ใช้ข้อความของ Supabase
+      // ของเดิมผ่าน แปลว่าสำเนาเก่าจริง — ให้เข้าได้เลย แล้วสั่งคัดลอกใหม่
+      // ตั๋วจาก GAS ใช้กับ Supabase ได้ด้วย เพราะลายเซ็นเดียวกัน
+      console.warn('[SB] สำเนาทะเบียนพนักงานยังไม่อัปเดต — ใช้ของเดิมไปก่อนและสั่งคัดลอกใหม่');
+      sbFlagDirty('login-stale-employee');
+      sbClearPwPending();
+      return g;
+    })
+    .catch(() => r);
+}
+
+// จำว่าเครื่องนี้เพิ่งลงทะเบียน/รีเซ็ตรหัสผ่านให้ใคร (หมดอายุใน 1 ชม.)
+function sbMarkPwPending(empId) {
+  try {
+    localStorage.setItem('ws6_pw_pending',
+      JSON.stringify({ id: String(empId || '').toUpperCase(), until: Date.now() + 3600000 }));
+  } catch (e) {}
+}
+function sbPwPendingFor(empId) {
+  try {
+    const v = JSON.parse(localStorage.getItem('ws6_pw_pending') || 'null');
+    if (!v || Date.now() > v.until) return false;
+    return !empId || v.id === String(empId).toUpperCase();
+  } catch (e) { return false; }
+}
+function sbClearPwPending() { try { localStorage.removeItem('ws6_pw_pending'); } catch (e) {} }
+
+/**
+ * ยกธงบอก Supabase ว่า "มีของใหม่ในชีตแล้ว รบกวนมาคัดลอก"
+ * ยิงแล้วไม่รอผล — ผู้ใช้ไม่ควรต้องรอเรื่องนี้
+ */
+let SB_FLAG_AT = 0;
+function sbFlagDirty(reason) {
+  if (!sbReady()) return;
+  if (Date.now() - SB_FLAG_AT < 3000) return;   // กันยิงรัวตอนกดหลายปุ่มติดกัน
+  SB_FLAG_AT = Date.now();
+  sbCall('requestSync', { reason: String(reason || '') }, 8000)
+    .catch(() => { /* ยกธงไม่สำเร็จก็ไม่เป็นไร รอบบังคับทุก 2 ชม. จะเก็บตกให้ */ });
 }
 
 // ── สิทธิ์เช็คอิน-เช็คเอาต์ (GPS) ตาม "กะ" (SHIFT) ──
@@ -1938,7 +2013,24 @@ function callAPI(action, payload, attempt, noRetry, timeoutMs) {
       return gasCallAPI(action, payload, 1, noRetry, timeoutMs);
     });
   }
-  return gasCallAPI(action, payload, attempt, noRetry, timeoutMs);
+
+  const p = gasCallAPI(action, payload, attempt, noRetry, timeoutMs);
+
+  // คำสั่งที่เขียนลงชีต — ทำสำเร็จแล้วยกธงบอกให้คัดลอกสำเนาใหม่
+  if (sbReady() && SB.DIRTY[action]) {
+    return p.then(r => {
+      if (r && r.success !== false) {
+        sbFlagDirty(action);
+        // ลงทะเบียน/รีเซ็ตรหัสผ่าน: จำไว้ว่าเครื่องนี้เพิ่งเปลี่ยนรหัสของใคร
+        // เผื่อเขาล็อกอินทันทีก่อนสำเนาจะตามทัน
+        if (action === 'activateAccount' || action === 'resetPassword') {
+          sbMarkPwPending((payload && payload.employeeId) || '');
+        }
+      }
+      return r;
+    });
+  }
+  return p;
 }
 
 // จำว่าเพิ่งถอยไป GAS เมื่อไร — ใช้บอกผู้ใช้ว่าทำไมรอบนี้ช้ากว่าปกติ
@@ -1965,11 +2057,13 @@ function sbCheckFresh() {
     .then(r => {
       if (!r || !r.success) return;
       if (!r.stale) { box.style.display = 'none'; return; }
-      const mins = r.ageMin;
+      // เตือนเมื่อ "สะพานหยุดเดิน" เท่านั้น ไม่ใช่เมื่อ "ไม่มีอะไรให้คัดลอก"
+      // ช่วงที่ไม่มีใครสแกนนิ้ว การไม่คัดลอกคือพฤติกรรมที่ถูกต้อง ไม่ต้องเตือน
+      const mins = (r.pollAgeMin === null || r.pollAgeMin === undefined) ? null : r.pollAgeMin;
       box.innerHTML = '⚠ <b>ข้อมูลอาจไม่เป็นปัจจุบัน</b><br>' +
         (mins === null
-          ? 'ยังไม่เคยคัดลอกข้อมูลจากระบบเดิมเลย'
-          : 'คัดลอกจากระบบเดิมครั้งล่าสุดเมื่อ ' + mins + ' นาทีที่แล้ว') +
+          ? 'ตัวเชื่อมข้อมูลกับระบบเดิมยังไม่เริ่มทำงาน'
+          : 'ตัวเชื่อมข้อมูลกับระบบเดิมเงียบไป ' + mins + ' นาทีแล้ว') +
         ' — รายการที่เพิ่งบันทึกอาจยังไม่ขึ้น กรุณาแจ้งฝ่ายบุคคล';
       box.style.display = 'block';
     })
@@ -2007,12 +2101,23 @@ function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       // อ่านเป็น text ก่อน — กันกรณี GAS คืน HTML (redirect/หน้า error) แทน JSON
       return res.text().then(txt => {
+        let data;
         try {
-          return JSON.parse(txt);
+          data = JSON.parse(txt);
         } catch (e) {
           // ไม่ใช่ JSON (มักเป็นหน้า login/redirect ของ Google ตอน GAS สะดุด) → ให้ retry
           throw new Error('BAD_RESPONSE');
         }
+
+        // ── คำขอ POST ถูกแปลงเป็น GET เปล่า ──
+        // GAS ตอบ POST ด้วยการ redirect ไปหน้าผลลัพธ์ ปกติเบราว์เซอร์จะตามไปแล้วได้คำตอบ
+        // แต่ถ้า GAS ทำงานไม่ทัน/ติดคิว การ redirect จะย้อนกลับมาที่ /exec เป็น GET เปล่า ๆ
+        // → ไปโผล่ที่ doGet ซึ่งไม่มี action มาด้วย จึงตอบ "ไม่พบ action ที่ระบุ"
+        // นี่คือ "ระบบเดิมสะดุด" ไม่ใช่คำสั่งผิด — ยิงซ้ำได้ (เฉพาะคำสั่งอ่านเท่านั้น)
+        if (data && data.success === false && data.message === 'ไม่พบ action ที่ระบุ') {
+          throw new Error('POST_LOST');
+        }
+        return data;
       });
     })
     .catch(err => {
@@ -2030,8 +2135,9 @@ function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
       }
 
       if (!noRetry && attempt < MAX_ATTEMPTS) {
-        // หน่วงสั้นๆ ก่อนลองใหม่ (400ms, 800ms)
-        const delay = 400 * attempt;
+        // หน่วงก่อนลองใหม่ — ถ้าเป็นกรณี "คำขอหาย" แปลว่า GAS กำลังติดคิว
+        // ต้องรอนานกว่าปกติ ไม่งั้นยิงซ้ำไปเจอคิวเดิมอีก (2 วิ, 4 วิ)
+        const delay = (err && err.message === 'POST_LOST') ? 2000 * attempt : 400 * attempt;
         return new Promise(resolve => setTimeout(resolve, delay))
           .then(() => gasCallAPI(action, payload, attempt + 1, noRetry, timeoutMs));
       }
@@ -2046,6 +2152,9 @@ function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
 function apiErrMsg(err) {
   if (err && err.isTimeout) {
     return 'เซิร์ฟเวอร์ตอบช้าเกิน ' + (err.seconds || 45) + ' วินาที — ข้อมูลอาจมากเกินไป (ไม่ใช่ปัญหาอินเทอร์เน็ต)';
+  }
+  if (err && err.message === 'POST_LOST') {
+    return 'เซิร์ฟเวอร์กำลังมีงานค้าง คำขอเลยหายระหว่างทาง — รอสักครู่แล้วลองใหม่ (ไม่ใช่ปัญหาอินเทอร์เน็ต)';
   }
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return 'อุปกรณ์ไม่ได้เชื่อมต่ออินเทอร์เน็ต';
