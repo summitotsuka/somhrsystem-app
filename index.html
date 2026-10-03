@@ -452,6 +452,12 @@ textarea.inp{resize:vertical;min-height:60px}
     <div class="home-hero-date" id="home-date">—</div>
   </div>
 
+  <!-- เตือนเมื่อสะพานคัดลอกข้อมูลหยุดเดิน — ซ่อนไว้ ขึ้นเฉพาะตอนมีปัญหาจริง
+       สำคัญ: ถ้าไม่มีอันนี้ ระบบจะยังตอบเร็วเหมือนเดิมแต่ข้อมูลหยุดนิ่ง โดยไม่มีใครรู้ -->
+  <div id="sync-warn" style="display:none;margin:0 0 14px;padding:10px 14px;border-radius:12px;
+       background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);
+       color:#b45309;font-size:13px;line-height:1.5"></div>
+
   <div class="home-sec">เมนูของฉัน</div>
   <div class="home-grid" id="home-grid-me"></div>
 
@@ -1750,6 +1756,104 @@ textarea.inp{resize:vertical;min-height:60px}
 // ── GAS Web App URL — endpoint หลักของระบบ ──────────────────
 const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P_EWCNuPUQepKClFj6L1nSfccYhLD6CUsYJwMcuxjS7Ab/exec';
 
+// ════════════════════════════════════════════════════════════════
+//  เฟส 3 — สวิตช์ย้ายงานบางส่วนไป Supabase
+//
+//  ปิดกลับได้ทันที: ตั้ง ON: false แล้วอัปโหลดไฟล์ → กลับไปใช้ GAS 100%
+//  โค้ดเดิมไม่ได้ถูกลบ แค่ไม่ถูกเรียก
+//
+//  ── ย้ายอะไรบ้าง ──────────────────────────────────────────
+//  ย้าย: login · getMyAttendance   ← สองตัวนี้คือต้นเหตุที่พนักงานบ่นว่าช้า
+//  ไม่ย้าย: ที่เหลือทั้งหมด (ลา · โอที · เงินเดือน · HR · เช็คอิน · สแกนนิ้ว)
+//
+//  ── ทำไมไม่ย้าย "เช็คอิน" ทั้งที่ Supabase ทำได้แล้ว ─────────
+//  เพราะการ "เขียน" ข้อมูลลงเวลาตัวจริงยังอยู่ที่ GAS ทั้งหมด
+//  (HR อัปโหลดไฟล์สแกนนิ้ว · คีย์มือ · ตู้คีออส)
+//  ถ้าแยกให้บางส่วนเขียนลง Supabase บางส่วนเขียนลงชีต จะมีข้อมูลสองที่ไม่ตรงกัน
+//  → เฟสนี้ใช้กติกา "เขียนที่เดียวคือชีต · อ่านจาก Supabase"
+//    แล้วมีสะพาน (ไฟล์ที่ 17) คัดลอกชีต → Supabase ทุก 10 นาที
+// ════════════════════════════════════════════════════════════════
+const SB = {
+  ON:  true,
+  URL: 'https://tauhfcanclelufuvtoud.supabase.co/functions/v1/rapid-task',   // ← ใส่ URL Edge Function
+  KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                     // ← ใส่ publishable key (ห้ามใช้ secret key)
+  ACTIONS:  { login: 1, getMyAttendance: 1 },
+  FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
+  TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
+};
+
+// ตั้งค่าครบหรือยัง — ถ้ายังไม่ได้แก้ URL/KEY ระบบจะใช้ GAS ตามเดิมโดยไม่พัง
+function sbReady() {
+  return SB.ON
+    && SB.URL.indexOf('xxxxxxxxxxxx') < 0
+    && SB.KEY.indexOf('xxxxxxxxxxxx') < 0;
+}
+
+/** เรียก Supabase Edge Function — รูปแบบคำขอ/คำตอบเหมือน GAS ทุกอย่าง */
+function sbCall(action, payload, timeoutMs) {
+  const ms = Math.min(timeoutMs || SB.TIMEOUT, SB.TIMEOUT);
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, ms);
+
+  const body = Object.assign({}, payload || {});
+  // แนบตั๋วให้เสมอถ้ามี — ฝั่ง Supabase ใช้บางคำสั่งแล้ว และจะใช้มากขึ้นในเฟสถัดไป
+  if (!body.hrToken && typeof S !== 'undefined' && S.hrToken) body.hrToken = S.hrToken;
+
+  return fetch(SB.URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SB.KEY,
+      'Authorization': 'Bearer ' + SB.KEY,
+    },
+    body: JSON.stringify({ action: action, payload: body }),
+    cache: 'no-store',
+    signal: controller.signal,
+  })
+    .then(res => {
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .catch(err => {
+      clearTimeout(timer);
+      if (timedOut) {
+        const e = new Error('TIMEOUT');
+        e.isTimeout = true; e.seconds = Math.round(ms / 1000);
+        throw e;
+      }
+      throw err;
+    });
+}
+
+/**
+ * ล็อกอินผ่าน Supabase แล้วแก้สถานะเช็คอินด้วยของเดิม (เฉพาะกะที่เช็คอินผ่านมือถือได้)
+ *
+ * ทำไมต้องถามซ้ำ: คนขับเช็คอินผ่านมือถือ ซึ่งยังเขียนลงชีต
+ * สำเนาใน Supabase ตามหลังได้ถึง 10 นาที ถ้าเชื่อสำเนา
+ * คนขับที่เช็คอินไปแล้วจะถูกพาไปหน้าเช็คอินซ้ำอีกรอบ
+ *
+ * พนักงานที่เหลือซึ่งไม่ได้เช็คอินผ่านมือถือ จบที่ Supabase อย่างเดียว — เร็วสุด
+ */
+function sbLogin(payload, timeoutMs) {
+  return sbCall('login', payload, timeoutMs).then(r => {
+    if (!r || !r.success) return r;
+    if (!checkinAllowedForShift(r.shift)) return r;
+    return gasCallAPI('getTodayStatus', { employeeId: r.employeeId }, 1, true, 60000)
+      .then(st => {
+        if (st && st.success !== false) {
+          r.checkedIn  = !!st.checkedIn;
+          r.checkedOut = !!st.checkedOut;
+          r.inTime     = st.inTime || null;
+          r.inDate     = st.inDate || null;
+        }
+        return r;
+      })
+      .catch(() => r);   // ถามของเดิมไม่ได้ ก็ใช้ค่าจาก Supabase ไปก่อน ดีกว่าล็อกอินไม่ได้
+  });
+}
+
 // ── สิทธิ์เช็คอิน-เช็คเอาต์ (GPS) ตาม "กะ" (SHIFT) ──
 // ว่าง [] = ปิดสำหรับทุกคน (เหมือน CHECKIN_ENABLED=false เดิม)
 // ['DRIVER'] = เปิดเฉพาะกะคนขับ · อนาคตเพิ่มได้ เช่น ['DRIVER','SALES']
@@ -1762,7 +1866,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.2.1';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.3.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -1812,10 +1916,70 @@ function applyLogo() {
   });
 }
 
+/**
+ * ประตูทางเข้าเดียวของทุกคำสั่ง — ตัดสินว่าจะส่งไป Supabase หรือ GAS
+ *
+ * วางตรงนี้เพราะทุกที่ในระบบเรียกผ่าน callAPI อยู่แล้ว (gasRun ก็เรียกต่อมาที่นี่)
+ * จึงย้ายระบบหลังบ้านได้โดย **ไม่ต้องแก้โค้ดหน้าจอแม้แต่บรรทัดเดียว**
+ */
+function callAPI(action, payload, attempt, noRetry, timeoutMs) {
+  if (sbReady() && SB.ACTIONS[action]) {
+    const p = (action === 'login')
+      ? sbLogin(payload, timeoutMs)
+      : sbCall(action, payload, timeoutMs);
+
+    return p.catch(err => {
+      // ── ถอยไปใช้ GAS เมื่อ Supabase ติดต่อไม่ได้ ──
+      // ทำงานเฉพาะตอน "ติดต่อไม่ได้จริง" (เน็ตหลุด · HTTP error · หมดเวลา)
+      // ถ้า Supabase ตอบมาว่า "รหัสผ่านไม่ถูกต้อง" นั่นคือคำตอบที่ถูกต้องแล้ว ไม่ถอย
+      if (!SB.FALLBACK) throw err;
+      console.warn('[SB] ' + action + ' ไม่สำเร็จ (' + (err && err.message) + ') → ใช้ GAS แทน');
+      sbMarkDown();
+      return gasCallAPI(action, payload, 1, noRetry, timeoutMs);
+    });
+  }
+  return gasCallAPI(action, payload, attempt, noRetry, timeoutMs);
+}
+
+// จำว่าเพิ่งถอยไป GAS เมื่อไร — ใช้บอกผู้ใช้ว่าทำไมรอบนี้ช้ากว่าปกติ
+let SB_DOWN_AT = 0;
+function sbMarkDown() { SB_DOWN_AT = Date.now(); }
+
+/**
+ * ตรวจว่าสำเนาข้อมูลใน Supabase ยังถูกคัดลอกมาอยู่หรือเปล่า
+ *
+ * ทำไมต้องมี: ถ้าตัวตั้งเวลาฝั่ง GAS ตายไปเงียบ ๆ (Google ปิดเองเมื่อพลาดติดกันหลายรอบ)
+ * ระบบจะยังตอบเร็วเหมือนเดิมทุกอย่าง แต่ข้อมูลหยุดนิ่งอยู่ที่เมื่อวาน
+ * — ความผิดพลาดชนิดที่ไม่มีใครสังเกตเห็นจนกว่าจะสายเกินไป จึงต้องมีที่เตือน
+ */
+let SB_FRESH_CHECKED = 0;
+function sbCheckFresh() {
+  const box = document.getElementById('sync-warn');
+  if (!box) return;
+  if (!sbReady()) { box.style.display = 'none'; return; }
+  // เช็คไม่เกินทุก 5 นาที พอแล้ว ไม่ต้องยิงทุกครั้งที่กลับหน้าหลัก
+  if (Date.now() - SB_FRESH_CHECKED < 5 * 60 * 1000) return;
+  SB_FRESH_CHECKED = Date.now();
+
+  sbCall('getSyncStatus', {}, 8000)
+    .then(r => {
+      if (!r || !r.success) return;
+      if (!r.stale) { box.style.display = 'none'; return; }
+      const mins = r.ageMin;
+      box.innerHTML = '⚠ <b>ข้อมูลอาจไม่เป็นปัจจุบัน</b><br>' +
+        (mins === null
+          ? 'ยังไม่เคยคัดลอกข้อมูลจากระบบเดิมเลย'
+          : 'คัดลอกจากระบบเดิมครั้งล่าสุดเมื่อ ' + mins + ' นาทีที่แล้ว') +
+        ' — รายการที่เพิ่งบันทึกอาจยังไม่ขึ้น กรุณาแจ้งฝ่ายบุคคล';
+      box.style.display = 'block';
+    })
+    .catch(() => { /* ถามไม่ได้ก็ไม่ต้องเตือน อย่าให้หน้าหลักพังเพราะเรื่องนี้ */ });
+}
+
 /** เรียก GAS function ผ่าน HTTP POST — คืนค่าเป็น Promise
  *  มี retry อัตโนมัติเมื่อพลาด (GAS บางครั้งช้า/สะดุด) + timeout กันค้าง
  */
-function callAPI(action, payload, attempt, noRetry, timeoutMs) {
+function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
   attempt = attempt || 1;
   const MAX_ATTEMPTS = noRetry ? 1 : 3;   // action ที่มี side-effect (ส่ง/ตั้งเวลา) ห้าม retry กันทำซ้ำ
   // ── timeout 45 วิ ──
@@ -1869,7 +2033,7 @@ function callAPI(action, payload, attempt, noRetry, timeoutMs) {
         // หน่วงสั้นๆ ก่อนลองใหม่ (400ms, 800ms)
         const delay = 400 * attempt;
         return new Promise(resolve => setTimeout(resolve, delay))
-          .then(() => callAPI(action, payload, attempt + 1, noRetry, timeoutMs));
+          .then(() => gasCallAPI(action, payload, attempt + 1, noRetry, timeoutMs));
       }
       throw err;
     });
@@ -2330,6 +2494,9 @@ function renderHomeMenu() {
 
   // วันหยุดเดือนนี้ — วาดจากที่จำไว้ทันที (ถ้ามี) แล้วเช็คของใหม่เบื้องหลัง
   holLoad(renderHomeHolidays);
+
+  // ตรวจว่าสำเนาข้อมูลยังสดอยู่ไหม — ไม่หน่วงหน้าจอ ทำเบื้องหลัง
+  sbCheckFresh();
 
   // ── เมนูของฉัน ──
   const me = [];
@@ -5032,9 +5199,9 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.2.1"></script>
-<script src="ot.js?v=8.2.1"></script>
-<script src="payroll.js?v=8.2.1"></script>
+<script src="leave.js?v=8.3.0"></script>
+<script src="ot.js?v=8.3.0"></script>
+<script src="payroll.js?v=8.3.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
