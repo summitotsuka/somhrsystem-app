@@ -1950,7 +1950,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.3.2';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.3.3';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -2007,6 +2007,53 @@ function applyLogo() {
  * จึงย้ายระบบหลังบ้านได้โดย **ไม่ต้องแก้โค้ดหน้าจอแม้แต่บรรทัดเดียว**
  */
 function callAPI(action, payload, attempt, noRetry, timeoutMs) {
+  const _t0 = Date.now();
+  return _callAPI(action, payload, attempt, noRetry, timeoutMs)
+    .then(r => { perfNote(action, Date.now() - _t0, r); return r; })
+    .catch(e => { perfNote(action, Date.now() - _t0, null, e); throw e; });
+}
+
+/**
+ * ── แถบวัดเวลา (เปิดด้วย ?debug=1 ท้าย URL) ──────────────────
+ *
+ * ทำไมต้องวัดที่หน้าเว็บ ไม่วัดที่เซิร์ฟเวอร์อย่างเดียว:
+ * Apps Script จับเวลาได้แค่ตอนที่โค้ด "เริ่มรันแล้ว" — ช่วงที่คำขอนั่งรอคิว
+ * อยู่ก่อนหน้านั้นไม่ปรากฏในล็อกเลย ซึ่งที่ผ่านมามันคือส่วนที่ใหญ่ที่สุด
+ * มีแค่หน้าเว็บที่จับได้ตั้งแต่ "กดปุ่ม" ถึง "ได้คำตอบ" จึงลบกันแล้วเห็นเวลารอคิว
+ */
+const PERF_ON = /[?&]debug=1/.test(location.search);
+function perfNote(action, totalMs, r, err) {
+  if (!PERF_ON) return;
+  const srv = (r && r._srvMs) || 0;
+  const sbN = (r && r._sbN) || 0;
+  const sbMs = (r && r._sbMs) || 0;
+  const s = ms => (ms / 1000).toFixed(1) + ' วิ';
+
+  let txt = action + ' · รวม ' + s(totalMs);
+  if (err) {
+    txt += ' · ❌ ' + (err.message || err);
+  } else if (srv) {
+    txt += ' · เซิร์ฟเวอร์ ' + s(srv) + ' · รอคิว+เน็ต ' + s(Math.max(0, totalMs - srv));
+    if (sbN) txt += ' · GAS คุยกับ Supabase ' + sbN + ' ครั้ง ' + s(sbMs);
+  } else if (r && r.ms) {
+    // ตอบจาก Supabase ตรง ไม่ผ่าน GAS จึงไม่มีคิวให้รอ
+    txt += ' · Supabase ตอบใน ' + s(r.ms) + ' · เน็ต ' + s(Math.max(0, totalMs - r.ms));
+  }
+
+  let box = document.getElementById('perf-bar');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'perf-bar';
+    box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;' +
+      'background:#111;color:#8f8;font:12px/1.5 monospace;padding:6px 10px;' +
+      'max-height:30vh;overflow:auto;white-space:pre-wrap';
+    document.body.appendChild(box);
+  }
+  box.textContent = txt + '\n' + box.textContent;
+  console.log('[PERF] ' + txt);
+}
+
+function _callAPI(action, payload, attempt, noRetry, timeoutMs) {
   if (sbReady() && SB.ACTIONS[action]) {
     const p = (action === 'login')
       ? sbLogin(payload, timeoutMs)
@@ -5326,9 +5373,9 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.3.2"></script>
-<script src="ot.js?v=8.3.2"></script>
-<script src="payroll.js?v=8.3.2"></script>
+<script src="leave.js?v=8.3.3"></script>
+<script src="ot.js?v=8.3.3"></script>
+<script src="payroll.js?v=8.3.3"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
