@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.PAYROLL_JS_VERSION = '8.3.3';
+window.PAYROLL_JS_VERSION = '8.4.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  payroll.js — Frontend สลิปเงินเดือน (SOM HR System)
@@ -668,7 +668,7 @@ function renderMyPayslips(slips) {
         <span style="font-weight:700;color:var(--ac);font-variant-numeric:tabular-nums">${payMoney(s.net)} บาท</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-        ${s.bankAcct ? `<span style="font-size:12px;color:var(--tx3)">เลขบัญชี ${payEsc(s.bankAcct)}</span>` : '<span></span>'}
+        ${s.bankLast4 ? `<span style="font-size:12px;color:var(--tx3)">เลขบัญชีลงท้าย ${payEsc(s.bankLast4)}</span>` : '<span></span>'}
         <a href="${payEsc(s.url)}" target="_blank" style="font-size:13px;color:var(--ac);text-decoration:none;font-weight:600">ดูสลิป PDF →</a>
       </div>
     </div>`).join('');

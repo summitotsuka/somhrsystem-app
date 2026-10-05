@@ -1763,8 +1763,11 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 //  โค้ดเดิมไม่ได้ถูกลบ แค่ไม่ถูกเรียก
 //
 //  ── ย้ายอะไรบ้าง ──────────────────────────────────────────
-//  ย้าย: login · getMyAttendance   ← สองตัวนี้คือต้นเหตุที่พนักงานบ่นว่าช้า
-//  ไม่ย้าย: ที่เหลือทั้งหมด (ลา · โอที · เงินเดือน · HR · เช็คอิน · สแกนนิ้ว)
+//  ย้าย: login · getMyAttendance · payGetMySlips (การ์ดสลิปเงินเดือน)
+//  ไม่ย้าย: ที่เหลือทั้งหมด (ลา · โอที · หน้าจอเงินเดือนของ HR · เช็คอิน · สแกนนิ้ว)
+//
+//  คำสั่งที่ย้ายมาแล้วจะไม่วิ่งผ่าน GAS เลย จึงไม่ต้องรอคิว —
+//  นี่คือเหตุผลที่เมนูเช็คเวลาเร็ว 1-2 วินาที ขณะที่เมนูอื่นยัง 10-20 วินาที
 //
 //  ── ทำไมไม่ย้าย "เช็คอิน" ทั้งที่ Supabase ทำได้แล้ว ─────────
 //  เพราะการ "เขียน" ข้อมูลลงเวลาตัวจริงยังอยู่ที่ GAS ทั้งหมด
@@ -1777,7 +1780,7 @@ const SB = {
   ON:  true,
   URL: 'https://tauhfcanclelufuvtoud.supabase.co/functions/v1/rapid-task',   // ← ใส่ URL Edge Function
   KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
-  ACTIONS:  { login: 1, getMyAttendance: 1 },
+  ACTIONS:  { login: 1, getMyAttendance: 1, payGetMySlips: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -1950,7 +1953,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.3.3';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.4.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -2021,7 +2024,27 @@ function callAPI(action, payload, attempt, noRetry, timeoutMs) {
  * อยู่ก่อนหน้านั้นไม่ปรากฏในล็อกเลย ซึ่งที่ผ่านมามันคือส่วนที่ใหญ่ที่สุด
  * มีแค่หน้าเว็บที่จับได้ตั้งแต่ "กดปุ่ม" ถึง "ได้คำตอบ" จึงลบกันแล้วเห็นเวลารอคิว
  */
-const PERF_ON = /[?&]debug=1/.test(location.search);
+// ── เปิด/ปิดได้ 2 ทาง ──
+//  1) แตะที่เลขเวอร์ชันมุมล่าง 5 ครั้ง (ง่ายสุด ใช้ได้บนมือถือ)
+//  2) ต่อ ?debug=1 ท้าย URL ของหน้าเว็บ (ไม่ใช่ URL ของ Apps Script)
+// เมื่อเปิดแล้วจะจำไว้จนกว่าจะแตะปิด — ไม่ต้องแก้ URL ทุกครั้ง
+let PERF_ON = false;
+try {
+  if (/[?&]debug=1/.test(location.search)) localStorage.setItem('somhr_perf', '1');
+  PERF_ON = localStorage.getItem('somhr_perf') === '1';
+} catch (e) { /* บางเบราว์เซอร์ปิด storage ไว้ — ไม่เป็นไร ใช้ ?debug=1 แทนได้ */ }
+
+/** สลับเปิด/ปิดแถบวัดเวลา — ผูกกับการแตะเลขเวอร์ชัน 5 ครั้ง */
+function perfToggle() {
+  PERF_ON = !PERF_ON;
+  try { localStorage.setItem('somhr_perf', PERF_ON ? '1' : '0'); } catch (e) {}
+  const box = document.getElementById('perf-bar');
+  if (!PERF_ON && box) box.remove();
+  if (typeof showToast === 'function') {
+    showToast(PERF_ON ? 'เปิดแถบวัดเวลาแล้ว — ลองใช้เมนูสักอย่าง' : 'ปิดแถบวัดเวลาแล้ว');
+  }
+}
+
 function perfNote(action, totalMs, r, err) {
   if (!PERF_ON) return;
   const srv = (r && r._srvMs) || 0;
@@ -5373,9 +5396,9 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.3.3"></script>
-<script src="ot.js?v=8.3.3"></script>
-<script src="payroll.js?v=8.3.3"></script>
+<script src="leave.js?v=8.4.0"></script>
+<script src="ot.js?v=8.4.0"></script>
+<script src="payroll.js?v=8.4.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
@@ -5386,6 +5409,19 @@ applyLogo();
   (function(){
     const v = document.getElementById('app-version');
     if (v) v.textContent = 'v' + APP_VERSION;
+
+    // แตะเลขเวอร์ชัน 5 ครั้งรวดเร็ว = เปิด/ปิดแถบวัดเวลา
+    // ซ่อนไว้แบบนี้เพื่อให้ฝ่ายบุคคลเปิดเองได้ตอนอยากวัด โดยพนักงานทั่วไปไม่เจอโดยบังเอิญ
+    if (v) {
+      let taps = 0, last = 0;
+      v.style.cursor = 'pointer';
+      v.addEventListener('click', function() {
+        const now = Date.now();
+        taps = (now - last < 1200) ? taps + 1 : 1;
+        last = now;
+        if (taps >= 5) { taps = 0; perfToggle(); }
+      });
+    }
 
     // ไฟล์ย่อยแต่ละตัวประกาศรุ่นของตัวเองไว้ — ถ้าไม่ตรง แปลว่าได้ของเก่ามา
     const mods = { 'leave.js': window.LEAVE_JS_VERSION,
