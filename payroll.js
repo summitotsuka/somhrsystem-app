@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.PAYROLL_JS_VERSION = '8.3.1';
+window.PAYROLL_JS_VERSION = '8.3.2';
 
 /* ═══════════════════════════════════════════════════════════════
  *  payroll.js — Frontend สลิปเงินเดือน (SOM HR System)

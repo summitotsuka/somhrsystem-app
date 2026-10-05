@@ -1950,7 +1950,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.3.1';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.3.2';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -2114,7 +2114,9 @@ function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
         try {
           data = JSON.parse(txt);
         } catch (e) {
-          // ไม่ใช่ JSON (มักเป็นหน้า login/redirect ของ Google ตอน GAS สะดุด) → ให้ retry
+          // ── ได้หน้าเว็บ HTML แทนข้อมูล ──
+          // เกิดตอน GAS แน่นจน Google ปฏิเสธคำขอ แล้วส่งหน้า error กลับมาแทน
+          // ยิงซ้ำได้ แต่ต้องรอนาน ๆ — ดูเหตุผลที่ส่วนหน่วงเวลาด้านล่าง
           throw new Error('BAD_RESPONSE');
         }
 
@@ -2144,9 +2146,16 @@ function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
       }
 
       if (!noRetry && attempt < MAX_ATTEMPTS) {
-        // หน่วงก่อนลองใหม่ — ถ้าเป็นกรณี "คำขอหาย" แปลว่า GAS กำลังติดคิว
-        // ต้องรอนานกว่าปกติ ไม่งั้นยิงซ้ำไปเจอคิวเดิมอีก (2 วิ, 4 วิ)
-        const delay = (err && err.message === 'POST_LOST') ? 2000 * attempt : 400 * attempt;
+        // ── หน่วงก่อนลองใหม่ ──
+        // "คำขอหาย" (POST_LOST) และ "ได้หน้าเว็บแทนข้อมูล" (BAD_RESPONSE)
+        // ทั้งคู่แปลว่า GAS กำลังแน่น ไม่ใช่เน็ตสะดุด
+        //
+        // วัดจากเหตุการณ์จริง 5 ต.ค. 11:50: GAS แน่นจนตอบเป็นหน้า error อยู่ 6 นาที
+        // ถ้ายิงซ้ำเร็ว ๆ (0.4 วิ, 0.8 วิ) ผู้ใช้ 1 คนจะกลายเป็น 3 คำขอใน 1 วินาที
+        // 5 คนพร้อมกันก็เป็น 15 คำขอ — เราเองที่ไปเติมฟืนให้ไฟที่กำลังไหม้
+        // รอ 2 วิแล้ว 4 วิ ให้คิวมีโอกาสระบายก่อน
+        const slow = err && (err.message === 'POST_LOST' || err.message === 'BAD_RESPONSE');
+        const delay = slow ? 2000 * attempt : 400 * attempt;
         return new Promise(resolve => setTimeout(resolve, delay))
           .then(() => gasCallAPI(action, payload, attempt + 1, noRetry, timeoutMs));
       }
@@ -2162,8 +2171,8 @@ function apiErrMsg(err) {
   if (err && err.isTimeout) {
     return 'เซิร์ฟเวอร์ตอบช้าเกิน ' + (err.seconds || 45) + ' วินาที — ข้อมูลอาจมากเกินไป (ไม่ใช่ปัญหาอินเทอร์เน็ต)';
   }
-  if (err && err.message === 'POST_LOST') {
-    return 'เซิร์ฟเวอร์กำลังมีงานค้าง คำขอเลยหายระหว่างทาง — รอสักครู่แล้วลองใหม่ (ไม่ใช่ปัญหาอินเทอร์เน็ต)';
+  if (err && (err.message === 'POST_LOST' || err.message === 'BAD_RESPONSE')) {
+    return 'เซิร์ฟเวอร์กำลังมีงานค้างมาก — รอสัก 2-3 นาทีแล้วลองใหม่ (ไม่ใช่ปัญหาอินเทอร์เน็ตของคุณ)';
   }
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return 'อุปกรณ์ไม่ได้เชื่อมต่ออินเทอร์เน็ต';
@@ -5317,9 +5326,9 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.3.1"></script>
-<script src="ot.js?v=8.3.1"></script>
-<script src="payroll.js?v=8.3.1"></script>
+<script src="leave.js?v=8.3.2"></script>
+<script src="ot.js?v=8.3.2"></script>
+<script src="payroll.js?v=8.3.2"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
