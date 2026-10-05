@@ -1953,7 +1953,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.4.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.4.1';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -2011,9 +2011,13 @@ function applyLogo() {
  */
 function callAPI(action, payload, attempt, noRetry, timeoutMs) {
   const _t0 = Date.now();
-  return _callAPI(action, payload, attempt, noRetry, timeoutMs)
-    .then(r => { perfNote(action, Date.now() - _t0, r); return r; })
-    .catch(e => { perfNote(action, Date.now() - _t0, null, e); throw e; });
+  // ── กล่องจดว่า "ยิงไปกี่ครั้ง ครั้งละกี่วินาที" ──
+  // เวลารวมที่ผู้ใช้รอ อาจไม่ใช่การรอคิวครั้งเดียว แต่เป็นหลายครั้งบวกกัน
+  // ถ้าไม่แยกออกมา จะสรุปสาเหตุผิด และสองสาเหตุนี้แก้คนละทางกัน
+  const _st = { tries: [] };
+  return _callAPI(action, payload, attempt, noRetry, timeoutMs, _st)
+    .then(r => { perfNote(action, Date.now() - _t0, r, null, _st); return r; })
+    .catch(e => { perfNote(action, Date.now() - _t0, null, e, _st); throw e; });
 }
 
 /**
@@ -2045,7 +2049,7 @@ function perfToggle() {
   }
 }
 
-function perfNote(action, totalMs, r, err) {
+function perfNote(action, totalMs, r, err, st) {
   if (!PERF_ON) return;
   const srv = (r && r._srvMs) || 0;
   const sbN = (r && r._sbN) || 0;
@@ -2063,6 +2067,17 @@ function perfNote(action, totalMs, r, err) {
     txt += ' · Supabase ตอบใน ' + s(r.ms) + ' · เน็ต ' + s(Math.max(0, totalMs - r.ms));
   }
 
+  // ── แยก "รอคิวครั้งเดียวนาน" ออกจาก "ยิงซ้ำหลายครั้ง" ──
+  // สองอย่างนี้ให้เวลารวมเท่ากันได้ แต่สาเหตุและวิธีแก้ต่างกันสิ้นเชิง
+  const tries = (st && st.tries) || [];
+  const real = tries.filter(t => t.out !== 'รอก่อนลองใหม่');
+  if (real.length > 1) {
+    txt += '\n   ⚠ ยิงไป ' + real.length + ' ครั้ง: ' +
+           tries.map(t => s(t.ms) + ' (' + t.out + ')').join(' → ');
+  } else if (real.length === 1 && real[0].out !== 'ok') {
+    txt += '\n   ⚠ ' + real[0].out;
+  }
+
   let box = document.getElementById('perf-bar');
   if (!box) {
     box = document.createElement('div');
@@ -2076,7 +2091,7 @@ function perfNote(action, totalMs, r, err) {
   console.log('[PERF] ' + txt);
 }
 
-function _callAPI(action, payload, attempt, noRetry, timeoutMs) {
+function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
   if (sbReady() && SB.ACTIONS[action]) {
     const p = (action === 'login')
       ? sbLogin(payload, timeoutMs)
@@ -2089,11 +2104,11 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs) {
       if (!SB.FALLBACK) throw err;
       console.warn('[SB] ' + action + ' ไม่สำเร็จ (' + (err && err.message) + ') → ใช้ GAS แทน');
       sbMarkDown();
-      return gasCallAPI(action, payload, 1, noRetry, timeoutMs);
+      return gasCallAPI(action, payload, 1, noRetry, timeoutMs, st);
     });
   }
 
-  const p = gasCallAPI(action, payload, attempt, noRetry, timeoutMs);
+  const p = gasCallAPI(action, payload, attempt, noRetry, timeoutMs, st);
 
   // คำสั่งที่เขียนลงชีต — ทำสำเร็จแล้วยกธงบอกให้คัดลอกสำเนาใหม่
   if (sbReady() && SB.DIRTY[action]) {
@@ -2152,8 +2167,10 @@ function sbCheckFresh() {
 /** เรียก GAS function ผ่าน HTTP POST — คืนค่าเป็น Promise
  *  มี retry อัตโนมัติเมื่อพลาด (GAS บางครั้งช้า/สะดุด) + timeout กันค้าง
  */
-function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
+function gasCallAPI(action, payload, attempt, noRetry, timeoutMs, st) {
   attempt = attempt || 1;
+  const _a0 = Date.now();
+  const note = out => { if (st && st.tries) st.tries.push({ ms: Date.now() - _a0, out: out }); };
   const MAX_ATTEMPTS = noRetry ? 1 : 3;   // action ที่มี side-effect (ส่ง/ตั้งเวลา) ห้าม retry กันทำซ้ำ
   // ── timeout 45 วิ ──
   // เดิมตั้ง 15 วิ โดยคิดว่า backend ตอบใน 3-6 วิ แต่เมื่อข้อมูลโตขึ้น backend
@@ -2198,11 +2215,13 @@ function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
         if (data && data.success === false && data.message === 'ไม่พบ action ที่ระบุ') {
           throw new Error('POST_LOST');
         }
+        note('ok');
         return data;
       });
     })
     .catch(err => {
       clearTimeout(timer);
+      note(timedOut ? 'หมดเวลา' : ((err && err.message) || 'พลาด'));
 
       // ── ห้าม retry เมื่อ "หมดเวลา" ──
       // timeout แปลว่า server ยังทำงานค้างอยู่ การยิงซ้ำคือการสั่งงานหนักเพิ่มอีกชุด
@@ -2226,8 +2245,9 @@ function gasCallAPI(action, payload, attempt, noRetry, timeoutMs) {
         // รอ 2 วิแล้ว 4 วิ ให้คิวมีโอกาสระบายก่อน
         const slow = err && (err.message === 'POST_LOST' || err.message === 'BAD_RESPONSE');
         const delay = slow ? 2000 * attempt : 400 * attempt;
+        if (st && st.tries) st.tries.push({ ms: delay, out: 'รอก่อนลองใหม่' });
         return new Promise(resolve => setTimeout(resolve, delay))
-          .then(() => gasCallAPI(action, payload, attempt + 1, noRetry, timeoutMs));
+          .then(() => gasCallAPI(action, payload, attempt + 1, noRetry, timeoutMs, st));
       }
       throw err;
     });
@@ -5396,9 +5416,9 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.4.0"></script>
-<script src="ot.js?v=8.4.0"></script>
-<script src="payroll.js?v=8.4.0"></script>
+<script src="leave.js?v=8.4.1"></script>
+<script src="ot.js?v=8.4.1"></script>
+<script src="payroll.js?v=8.4.1"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
