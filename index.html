@@ -1763,7 +1763,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 //  โค้ดเดิมไม่ได้ถูกลบ แค่ไม่ถูกเรียก
 //
 //  ── ย้ายอะไรบ้าง ──────────────────────────────────────────
-//  ย้าย: login · getMyAttendance · payGetMySlips (การ์ดสลิปเงินเดือน)
+//  ย้าย: login · getMyAttendance · payGetMySlips (การ์ดสลิป)
+//        hrGetEmployeeList · hrFindEmployee (หน้าจอข้อมูลพนักงานของ HR)
 //  ไม่ย้าย: ที่เหลือทั้งหมด (ลา · โอที · หน้าจอเงินเดือนของ HR · เช็คอิน · สแกนนิ้ว)
 //
 //  คำสั่งที่ย้ายมาแล้วจะไม่วิ่งผ่าน GAS เลย จึงไม่ต้องรอคิว —
@@ -1780,7 +1781,8 @@ const SB = {
   ON:  true,
   URL: 'https://tauhfcanclelufuvtoud.supabase.co/functions/v1/rapid-task',   // ← ใส่ URL Edge Function
   KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
-  ACTIONS:  { login: 1, getMyAttendance: 1, payGetMySlips: 1 },
+  ACTIONS:  { login: 1, getMyAttendance: 1, payGetMySlips: 1,
+              hrGetEmployeeList: 1, hrFindEmployee: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -1929,6 +1931,37 @@ function sbPwPendingFor(empId) {
 function sbClearPwPending() { try { localStorage.removeItem('ws6_pw_pending'); } catch (e) {} }
 
 /**
+ * ── สำเนาทะเบียนพนักงาน "เพิ่งถูกแก้" (เฟส 5B) ────────────────
+ *
+ * ปัญหาที่ต้องกัน: ฝ่ายบุคคลแก้เบอร์โทรแล้วกดบันทึก หน้าจอโหลดข้อมูลซ้ำทันที
+ * แต่การบันทึกลงชีต ส่วนการอ่านมาจากสำเนาใน Supabase ที่ยังตามไม่ทัน (ราว 5 นาที)
+ * → ฝ่ายบุคคลจะเห็นเบอร์เดิม แล้วเข้าใจว่าบันทึกไม่สำเร็จ จึงกดบันทึกซ้ำ
+ *   หรือแย่กว่านั้นคือเชื่อว่าระบบเก็บข้อมูลไม่ได้
+ *
+ * ยอมช้าชั่วคราวดีกว่าแสดงข้อมูลเก่าให้คนตัดสินใจ:
+ * หลังแก้ข้อมูลพนักงาน ให้ 2 คำสั่งอ่านทะเบียนย้อนไปใช้ของเดิม (อ่านชีตตรง)
+ * จนกว่าสำเนาจะตามทัน — ตั้ง 7 นาที ยาวกว่ารอบคัดลอก 5 นาทีเล็กน้อย
+ */
+function sbMarkEmpStale() {
+  try { localStorage.setItem('ws6_emp_stale', String(Date.now() + 7 * 60 * 1000)); } catch (e) {}
+}
+function sbEmpStale() {
+  try {
+    const until = parseInt(localStorage.getItem('ws6_emp_stale') || '0', 10);
+    if (!until) return false;
+    if (Date.now() > until) { localStorage.removeItem('ws6_emp_stale'); return false; }
+    return true;
+  } catch (e) { return false; }
+}
+
+// คำสั่งที่แก้ทะเบียนพนักงาน → ทำให้สำเนาเก่าทันที
+var SB_EMP_WRITES = {
+  hrAddEmployee: 1, hrUpdateEmployee: 1, activateAccount: 1, resetPassword: 1,
+};
+// คำสั่งอ่านทะเบียนที่ต้องย้อนไปใช้ของเดิมระหว่างที่สำเนายังเก่า
+var SB_EMP_READS = { hrGetEmployeeList: 1, hrFindEmployee: 1 };
+
+/**
  * ยกธงบอก Supabase ว่า "มีของใหม่ในชีตแล้ว รบกวนมาคัดลอก"
  * ยิงแล้วไม่รอผล — ผู้ใช้ไม่ควรต้องรอเรื่องนี้
  */
@@ -1953,7 +1986,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.4.1';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.5.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -2092,7 +2125,11 @@ function perfNote(action, totalMs, r, err, st) {
 }
 
 function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
-  if (sbReady() && SB.ACTIONS[action]) {
+  // เพิ่งแก้ทะเบียนพนักงาน → อ่านจากของเดิมไว้ก่อน (ดูเหตุผลที่ sbMarkEmpStale)
+  const empStale = SB_EMP_READS[action] && sbEmpStale();
+  if (empStale) console.warn('[SB] ' + action + ': สำเนาทะเบียนเพิ่งถูกแก้ → อ่านจากของเดิมชั่วคราว');
+
+  if (sbReady() && SB.ACTIONS[action] && !empStale) {
     const p = (action === 'login')
       ? sbLogin(payload, timeoutMs)
       : sbCall(action, payload, timeoutMs);
@@ -2120,6 +2157,7 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
         if (action === 'activateAccount' || action === 'resetPassword') {
           sbMarkPwPending((payload && payload.employeeId) || '');
         }
+        if (SB_EMP_WRITES[action]) sbMarkEmpStale();
       }
       return r;
     });
@@ -2243,7 +2281,18 @@ function gasCallAPI(action, payload, attempt, noRetry, timeoutMs, st) {
         // ถ้ายิงซ้ำเร็ว ๆ (0.4 วิ, 0.8 วิ) ผู้ใช้ 1 คนจะกลายเป็น 3 คำขอใน 1 วินาที
         // 5 คนพร้อมกันก็เป็น 15 คำขอ — เราเองที่ไปเติมฟืนให้ไฟที่กำลังไหม้
         // รอ 2 วิแล้ว 4 วิ ให้คิวมีโอกาสระบายก่อน
-        const slow = err && (err.message === 'POST_LOST' || err.message === 'BAD_RESPONSE');
+        // ── อะไรนับว่า "GAS กำลังแน่น" ──
+        // POST_LOST     = คำขอ POST ถูกแปลงเป็น GET เปล่า
+        // BAD_RESPONSE  = ได้หน้าเว็บ HTML แทนข้อมูล
+        // HTTP nnn      = Google ปฏิเสธคำขอตรง ๆ (404 / 429 / 5xx)
+        //
+        // ⚠️ เดิมผมไม่ได้นับ HTTP 404 ไว้ในกลุ่มนี้ จึงยิงซ้ำหลังหน่วงแค่ 0.4 วินาที
+        //    เพราะคิดว่า 404 คือ "ไม่พบ URL" ซึ่งเป็นเรื่องตั้งค่าผิด ไม่ใช่เรื่องชั่วคราว
+        //    แต่วัดจากของจริง 5 ต.ค.: 404 มาหลังรอ 20-42 วินาที แล้วยิงซ้ำสำเร็จ
+        //    → แปลว่าเป็นอาการ "Google ยอมแพ้เพราะแน่น" ไม่ใช่ URL ผิด
+        //    ยิงซ้ำเร็ว ๆ ตอนนั้นคือการเติมฟืนให้ไฟ เหมือนกรณี BAD_RESPONSE
+        const m = (err && err.message) || '';
+        const slow = m === 'POST_LOST' || m === 'BAD_RESPONSE' || /^HTTP \d/.test(m);
         const delay = slow ? 2000 * attempt : 400 * attempt;
         if (st && st.tries) st.tries.push({ ms: delay, out: 'รอก่อนลองใหม่' });
         return new Promise(resolve => setTimeout(resolve, delay))
@@ -5416,9 +5465,9 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.4.1"></script>
-<script src="ot.js?v=8.4.1"></script>
-<script src="payroll.js?v=8.4.1"></script>
+<script src="leave.js?v=8.5.0"></script>
+<script src="ot.js?v=8.5.0"></script>
+<script src="payroll.js?v=8.5.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
