@@ -1765,6 +1765,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 //  ── ย้ายอะไรบ้าง ──────────────────────────────────────────
 //  ย้าย: login · getMyAttendance · payGetMySlips (การ์ดสลิป)
 //        hrGetEmployeeList · hrFindEmployee (หน้าจอข้อมูลพนักงานของ HR)
+//        leaveGetMyRequests · otGetMyRequests (ประวัติลา/โอทีของพนักงาน)
 //  ไม่ย้าย: ที่เหลือทั้งหมด (ลา · โอที · หน้าจอเงินเดือนของ HR · เช็คอิน · สแกนนิ้ว)
 //
 //  คำสั่งที่ย้ายมาแล้วจะไม่วิ่งผ่าน GAS เลย จึงไม่ต้องรอคิว —
@@ -1782,7 +1783,8 @@ const SB = {
   URL: 'https://tauhfcanclelufuvtoud.supabase.co/functions/v1/rapid-task',   // ← ใส่ URL Edge Function
   KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
   ACTIONS:  { login: 1, getMyAttendance: 1, payGetMySlips: 1,
-              hrGetEmployeeList: 1, hrFindEmployee: 1 },
+              hrGetEmployeeList: 1, hrFindEmployee: 1,
+              leaveGetMyRequests: 1, otGetMyRequests: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -1794,6 +1796,9 @@ const SB = {
     kioskCheckInOut: 1, checkIn: 1, checkOut: 1, hrRunAutoDeleteNow: 1,
     activateAccount: 1, resetPassword: 1, hrAddEmployee: 1, hrUpdateEmployee: 1,
     hrAddHoliday: 1, hrDeleteHoliday: 1,
+    leaveSubmit: 1, leaveApprove: 1, leaveReject: 1, leaveCancel: 1,
+    leaveCancelByApprover: 1,
+    otSubmit: 1, otApprove: 1, otReject: 1, otCancel: 1, otCancelByApprover: 1,
   },
 };
 
@@ -1961,6 +1966,28 @@ var SB_EMP_WRITES = {
 // คำสั่งอ่านทะเบียนที่ต้องย้อนไปใช้ของเดิมระหว่างที่สำเนายังเก่า
 var SB_EMP_READS = { hrGetEmployeeList: 1, hrFindEmployee: 1 };
 
+// ── เรื่องเดียวกันกับลา/โอที (เฟส 5C) ──
+// พนักงานส่งใบลาแล้วหน้าจอเด้งไปหน้าประวัติทันที ถ้าอ่านจากสำเนาที่ยังตามไม่ทัน
+// จะไม่เห็นใบที่เพิ่งส่ง แล้วกดส่งซ้ำ — กลายเป็นใบลาซ้อนที่หัวหน้าต้องมานั่งลบ
+var SB_LV_WRITES = {
+  leaveSubmit: 1, leaveApprove: 1, leaveReject: 1, leaveCancel: 1,
+  leaveCancelByApprover: 1,
+  otSubmit: 1, otApprove: 1, otReject: 1, otCancel: 1, otCancelByApprover: 1,
+};
+var SB_LV_READS = { leaveGetMyRequests: 1, otGetMyRequests: 1 };
+
+function sbMarkLvStale() {
+  try { localStorage.setItem('ws6_lv_stale', String(Date.now() + 7 * 60 * 1000)); } catch (e) {}
+}
+function sbLvStale() {
+  try {
+    const until = parseInt(localStorage.getItem('ws6_lv_stale') || '0', 10);
+    if (!until) return false;
+    if (Date.now() > until) { localStorage.removeItem('ws6_lv_stale'); return false; }
+    return true;
+  } catch (e) { return false; }
+}
+
 /**
  * ยกธงบอก Supabase ว่า "มีของใหม่ในชีตแล้ว รบกวนมาคัดลอก"
  * ยิงแล้วไม่รอผล — ผู้ใช้ไม่ควรต้องรอเรื่องนี้
@@ -1986,7 +2013,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.5.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.6.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -2126,8 +2153,9 @@ function perfNote(action, totalMs, r, err, st) {
 
 function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
   // เพิ่งแก้ทะเบียนพนักงาน → อ่านจากของเดิมไว้ก่อน (ดูเหตุผลที่ sbMarkEmpStale)
-  const empStale = SB_EMP_READS[action] && sbEmpStale();
-  if (empStale) console.warn('[SB] ' + action + ': สำเนาทะเบียนเพิ่งถูกแก้ → อ่านจากของเดิมชั่วคราว');
+  const empStale = (SB_EMP_READS[action] && sbEmpStale()) ||
+                   (SB_LV_READS[action] && sbLvStale());
+  if (empStale) console.warn('[SB] ' + action + ': สำเนาเพิ่งถูกแก้ → อ่านจากของเดิมชั่วคราว');
 
   if (sbReady() && SB.ACTIONS[action] && !empStale) {
     const p = (action === 'login')
@@ -2158,6 +2186,7 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
           sbMarkPwPending((payload && payload.employeeId) || '');
         }
         if (SB_EMP_WRITES[action]) sbMarkEmpStale();
+        if (SB_LV_WRITES[action]) sbMarkLvStale();
       }
       return r;
     });
@@ -5465,9 +5494,9 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.5.0"></script>
-<script src="ot.js?v=8.5.0"></script>
-<script src="payroll.js?v=8.5.0"></script>
+<script src="leave.js?v=8.6.0"></script>
+<script src="ot.js?v=8.6.0"></script>
+<script src="payroll.js?v=8.6.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
