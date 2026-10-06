@@ -1766,6 +1766,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 //  ย้าย: login · getMyAttendance · payGetMySlips (การ์ดสลิป)
 //        hrGetEmployeeList · hrFindEmployee (หน้าจอข้อมูลพนักงานของ HR)
 //        leaveGetMyRequests · otGetMyRequests (ประวัติลา/โอทีของพนักงาน)
+//        leaveGetTypes · otGetTypes (รายการประเภทในฟอร์ม)
 //  ไม่ย้าย: ที่เหลือทั้งหมด (ลา · โอที · หน้าจอเงินเดือนของ HR · เช็คอิน · สแกนนิ้ว)
 //
 //  คำสั่งที่ย้ายมาแล้วจะไม่วิ่งผ่าน GAS เลย จึงไม่ต้องรอคิว —
@@ -1784,7 +1785,8 @@ const SB = {
   KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
   ACTIONS:  { login: 1, getMyAttendance: 1, payGetMySlips: 1,
               hrGetEmployeeList: 1, hrFindEmployee: 1,
-              leaveGetMyRequests: 1, otGetMyRequests: 1 },
+              leaveGetMyRequests: 1, otGetMyRequests: 1,
+              leaveGetTypes: 1, otGetTypes: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -2013,7 +2015,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.6.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.7.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
