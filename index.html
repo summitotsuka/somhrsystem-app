@@ -2013,7 +2013,11 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.6.0';   // ⚠️ เปลี่ยนแล้วต้องเปลี่ยน ?v= ที่ท้ายไฟล์ (แท็ก script) ให้ตรงกัน
+const APP_VERSION = '8.6.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
+// ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
+// แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
+// แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
+// ไม่ต้องขยับทั้ง 4 ไฟล์พร้อมกันอีกแล้ว (ดูเหตุผลที่ตัวตรวจรุ่นท้ายไฟล์)
 
 // ── โลโก้บริษัท ──────────────────────────────────────────────
 // ใส่ Google Drive File ID ของรูปโลโก้ (จากลิงก์ share: .../file/d/<FILE_ID>/view)
@@ -5521,18 +5525,37 @@ applyLogo();
       });
     }
 
-    // ไฟล์ย่อยแต่ละตัวประกาศรุ่นของตัวเองไว้ — ถ้าไม่ตรง แปลว่าได้ของเก่ามา
-    const mods = { 'leave.js': window.LEAVE_JS_VERSION,
-                   'ot.js': window.OT_JS_VERSION,
-                   'payroll.js': window.PAYROLL_JS_VERSION };
-    const stale = Object.keys(mods).filter(f => mods[f] && mods[f] !== APP_VERSION);
+    // ── ตรวจว่าไฟล์ย่อยที่โหลดมา เป็นรุ่นที่ index.html สั่งไว้จริงไหม ──
+    //
+    // ── ทำไมต้องมี ──
+    // แท็ก ?v=... บังคับให้เบราว์เซอร์โหลดใหม่ได้ก็จริง แต่กันกรณีนี้ไม่ได้:
+    // อัปโหลด index.html ใหม่ แต่ลืมอัปโหลด leave.js → เบราว์เซอร์ขอ leave.js?v=ใหม่
+    // แล้วได้ "ไฟล์เก่าที่ยังวางอยู่" กลับมา โดยไม่มีอะไรผิดพลาดให้เห็น
+    //
+    // ── เดิมออกแบบผิด (แก้ 6 ต.ค.) ──
+    // เดิมบังคับให้ทุกไฟล์มีเลขเท่ากับ APP_VERSION เป๊ะ แปลว่าแก้ index.html
+    // บรรทัดเดียวก็ต้องไปขยับเลขในอีก 3 ไฟล์แล้วอัปโหลดใหม่ทั้งชุดทุกครั้ง
+    // ความยุ่งยากแบบนั้นทำให้วันหนึ่งจะมีคนอัปโหลดไม่ครบ — ซึ่งคือปัญหาที่ตัวตรวจนี้มีไว้จับพอดี
+    //
+    // ── ตอนนี้ ──
+    // เทียบกับเลขที่เขียนอยู่ในแท็ก <script src="leave.js?v=..."> ของหน้านี้เอง
+    // แต่ละไฟล์จึงมีรุ่นของตัวเองได้ — แก้ไฟล์ไหนก็ขยับเลขเฉพาะไฟล์นั้น อัปโหลดเฉพาะไฟล์นั้น
+    const MODVAR = { 'leave.js': 'LEAVE_JS_VERSION',
+                     'ot.js': 'OT_JS_VERSION',
+                     'payroll.js': 'PAYROLL_JS_VERSION' };
+    const stale = [];
+    document.querySelectorAll('script[src]').forEach(function(el) {
+      const m = String(el.getAttribute('src') || '').match(/([\w.-]+\.js)\?v=([\d.]+)/);
+      if (!m) return;
+      const want = m[2], got = window[MODVAR[m[1]]];
+      if (got && got !== want) stale.push(m[1] + ' (ขอ ' + want + ' ได้ ' + got + ')');
+    });
     if (stale.length) {
-      console.warn('[VERSION] ไฟล์ไม่ตรงรุ่น: ' + stale.join(', ') +
-                   ' — index.html = ' + APP_VERSION + ' · ได้รับ ' + stale.map(f => mods[f]).join(', '));
+      console.warn('[VERSION] ไฟล์ไม่ตรงรุ่น: ' + stale.join(', ') + ' — อัปโหลดไม่ครบหรือเบราว์เซอร์ใช้ของเก่าค้าง');
       if (v) {
         v.textContent = 'v' + APP_VERSION + ' \u26A0';
         v.style.color = 'var(--er)';
-        v.title = 'ไฟล์ ' + stale.join(', ') + ' เป็นรุ่นเก่า — กด Ctrl+Shift+R เพื่อโหลดใหม่';
+        v.title = 'ไฟล์ไม่ตรงรุ่น: ' + stale.join(', ') + ' — กด Ctrl+Shift+R เพื่อโหลดใหม่';
       }
     }
   })();
