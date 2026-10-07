@@ -1407,7 +1407,11 @@ textarea.inp{resize:vertical;min-height:60px}
   </div>
   <div style="display:flex;gap:8px;margin-bottom:14px">
     <button class="btn p" id="ot-goto-form" style="flex:1">+ ขอ OT</button>
-    <button class="btn o" id="ot-goto-approve" style="flex:1;display:none">อนุมัติ OT</button>
+    <!-- เดิมปุ่มนี้คือ "อนุมัติ OT" ซึ่งซ้ำกับเมนูหน้าหลัก และทำให้หัวหน้าที่ไม่ใช่
+         ฝ่ายบุคคลไม่มีทางไปหน้ารายงาน OT ได้เลย (ฝั่งลามีปุ่มรายงานอยู่ตรงนี้)
+         เปลี่ยนเป็นรายงาน OT ให้เหมือนกัน — สิทธิ์ว่าใครเห็นข้อมูลของใคร
+         ตัดสินที่เซิร์ฟเวอร์อยู่แล้ว ปุ่มนี้จึงแสดงให้ทุกคนได้เหมือนฝั่งลา -->
+    <button class="btn o" id="ot-goto-report" style="flex:1">รายงาน OT</button>
   </div>
   <div id="ot-history-list"></div>
 </div>
@@ -2022,7 +2026,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.8.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.8.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5508,7 +5512,7 @@ applyLogo();
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
 <script src="leave.js?v=8.6.0"></script>
-<script src="ot.js?v=8.6.0"></script>
+<script src="ot.js?v=8.8.1"></script>
 <script src="payroll.js?v=8.6.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ

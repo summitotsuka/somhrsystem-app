@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.6.0';
+window.OT_JS_VERSION = '8.8.1';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -348,12 +348,9 @@ function submitOT() {
 function loadOTHistory() {
   const box = document.getElementById('ot-history-list');
   if (box) box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด...</div>';
-  // เช็คว่าเป็นผู้อนุมัติไหม → แสดงปุ่มอนุมัติ
-  otFetchTeam(r => {
-    const btn = document.getElementById('ot-goto-approve');
-    if (btn && r && r.success && (r.isApprover || r.isHR)) btn.style.display = '';
-    else if (btn) btn.style.display = 'none';
-  });
+  // เดิมตรงนี้เรียก otFetchTeam เพื่อตัดสินว่าจะโชว์ปุ่ม "อนุมัติ OT" ไหม
+  // ตอนนี้ปุ่มนั้นเปลี่ยนเป็น "รายงาน OT" ซึ่งแสดงให้ทุกคนเหมือนฝั่งลา
+  // จึงไม่ต้องถามเซิร์ฟเวอร์ก่อนวาดหน้า — ประหยัดไปหนึ่งคำขอทุกครั้งที่เปิดหน้านี้
   // โหลดประเภทก่อน (ถ้ายังไม่มี) เพื่อแสดงชื่อ
   const load = () => gasRun('otGetMyRequests', { hrToken: S.hrToken })
     .withSuccessHandler(r => {
@@ -850,9 +847,9 @@ function initOTBindings() {
   // เมนู HR
   on('hr-menu-ot-approve', 'click', () => go('ot-approve'));
   on('hr-menu-ot-report', 'click', () => go('ot-report'));
-  // แท็บพนักงาน — ไปหน้าประวัติ (hub) ที่มีปุ่มขอ OT + อนุมัติ
+  // แท็บพนักงาน — ไปหน้าประวัติ (hub) ที่มีปุ่มขอ OT + รายงาน OT
   on('tab-ot', 'click', () => go('ot-history'));
   on('tab-ot-appr', 'click', () => go('ot-approve'));
   on('ot-goto-form', 'click', () => go('ot-form'));
-  on('ot-goto-approve', 'click', () => go('ot-approve'));
+  on('ot-goto-report', 'click', () => go('ot-report'));
 }
