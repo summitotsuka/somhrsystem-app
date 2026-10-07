@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.9.0';
+window.LEAVE_JS_VERSION = '8.9.1';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -512,10 +512,8 @@ function lvRenderApprovals(list) {
   box.querySelectorAll('.lv-reject-btn').forEach(b => b.addEventListener('click', () => openRejectDialog(b.getAttribute('data-id'))));
   box.querySelectorAll('.lv-apcancel-btn').forEach(b => b.addEventListener('click', () => cancelByApprover(b.getAttribute('data-id'), b)));
 
-  const chkAll = document.getElementById('lv-check-all');
-  if (chkAll) chkAll.addEventListener('change', () => {
-    box.querySelectorAll('.lv-appr-check').forEach(c => { c.checked = chkAll.checked; });
-  });
+  // ปุ่ม "อนุมัติที่เลือก" เริ่มเป็นสีเทากดไม่ได้ จนกว่าจะติ๊กอย่างน้อยหนึ่งรายการ
+  bulkBtnBind('lv-approve-selected', 'lv-check-all', '.lv-appr-check', box, 'อนุมัติที่เลือก');
   const btnSel = document.getElementById('lv-approve-selected');
   if (btnSel) btnSel.addEventListener('click', approveSelected);
 }

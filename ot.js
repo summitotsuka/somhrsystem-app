@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.9.0';
+window.OT_JS_VERSION = '8.9.1';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -540,10 +540,8 @@ function renderOTApprovals() {
   box.querySelectorAll('.ot-approve-btn').forEach(b => b.addEventListener('click', () => otApproveRequest(b.getAttribute('data-id'), b)));
   box.querySelectorAll('.ot-reject-btn').forEach(b => b.addEventListener('click', () => otRejectRequest(b.getAttribute('data-id'), b)));
   box.querySelectorAll('.ot-apcancel-btn').forEach(b => b.addEventListener('click', () => otCancelByApproverAction(b.getAttribute('data-id'), b)));
-  const chkAll = document.getElementById('ot-check-all');
-  if (chkAll) chkAll.addEventListener('change', () => {
-    box.querySelectorAll('.ot-check').forEach(c => { c.checked = chkAll.checked; });
-  });
+  // ปุ่ม "อนุมัติที่เลือก" เริ่มเป็นสีเทากดไม่ได้ จนกว่าจะติ๊กอย่างน้อยหนึ่งรายการ
+  bulkBtnBind('ot-approve-selected', 'ot-check-all', '.ot-check', box, 'อนุมัติที่เลือก');
   const apprSel = document.getElementById('ot-approve-selected');
   if (apprSel) apprSel.addEventListener('click', otApproveSelected);
 }

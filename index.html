@@ -2033,7 +2033,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.9.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.9.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5223,6 +5223,50 @@ function showToast(msg, ok) {
  * คืนค่า: ฟังก์ชันคืนสภาพปุ่ม · หรือ null ถ้าปุ่มนั้นกำลังทำงานอยู่แล้ว
  * ถ้าไม่ส่งปุ่มมา (บางที่เรียกโดยไม่มีปุ่ม) จะคืนฟังก์ชันเปล่าที่เรียกได้ปลอดภัย
  */
+/**
+ * ── ปุ่ม "ทำกับรายการที่เลือก" ที่บอกตัวเองว่ากดได้หรือยัง ──────
+ *
+ * ปัญหา: ปุ่ม "อนุมัติที่เลือก" เป็นสีเขียวตลอดเวลา ทั้งที่ยังไม่ได้ติ๊กอะไรเลย
+ * ผู้ใช้กดแล้วได้ข้อความ "ยังไม่ได้เลือกรายการ" ซึ่งรู้ทีหลัง
+ * ปุ่มควรบอกตั้งแต่ก่อนกดว่ากดได้หรือยัง
+ *
+ * ยังไม่เลือก → เทา กดไม่ได้ · เลือกแล้ว → เขียว พร้อมบอกจำนวนที่เลือก
+ */
+function bulkBtnSync(btn, checks, label) {
+  if (!btn) return;
+  const n = Array.prototype.filter.call(checks || [], c => c.checked).length;
+  btn.disabled = n === 0;
+  btn.textContent = n ? (label + ' (' + n + ')') : label;
+  // ใช้สีพื้นหลังบอกสถานะด้วย ไม่พึ่งแค่ความจางของปุ่มที่ถูกปิด
+  btn.style.background = n ? 'var(--ok)' : 'var(--bd2)';
+  btn.style.color = n ? '' : 'var(--tx3)';
+  btn.style.cursor = n ? '' : 'not-allowed';
+  btn.style.opacity = '';
+}
+
+/**
+ * ผูกช่องติ๊กทั้งหมดเข้ากับปุ่ม — ติ๊กทีละอัน หรือกด "เลือกทั้งหมด" ก็อัปเดตเหมือนกัน
+ * เรียกครั้งเดียวหลังวาดรายการใหม่
+ */
+function bulkBtnBind(btnId, allId, checkSelector, box, label) {
+  const btn = document.getElementById(btnId);
+  const all = document.getElementById(allId);
+  const checks = () => (box || document).querySelectorAll(checkSelector);
+  const sync = () => bulkBtnSync(btn, checks(), label);
+
+  checks().forEach(c => c.addEventListener('change', () => {
+    // ติ๊กออกทีละอัน → "เลือกทั้งหมด" ต้องไม่ค้างเป็นติ๊กอยู่
+    if (all) all.checked = Array.prototype.every.call(checks(), x => x.checked);
+    sync();
+  }));
+  if (all) all.addEventListener('change', () => {
+    checks().forEach(c => { c.checked = all.checked; });
+    sync();
+  });
+  sync();          // ตั้งสถานะเริ่มต้น = ยังไม่เลือกอะไร
+  return sync;
+}
+
 function btnBusy(btn, label) {
   if (!btn) return function () {};
   if (btn.dataset.busy === '1') return null;    // ← ด่านกันกดซ้ำ
@@ -5558,8 +5602,8 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.9.0"></script>
-<script src="ot.js?v=8.9.0"></script>
+<script src="leave.js?v=8.9.1"></script>
+<script src="ot.js?v=8.9.1"></script>
 <script src="payroll.js?v=8.6.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
