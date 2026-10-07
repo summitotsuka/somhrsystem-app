@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.9.1';
+window.OT_JS_VERSION = '8.9.2';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -477,7 +477,8 @@ function loadOTApprovals() {
   const load = () => gasRun('otGetPendingApprovals', { hrToken: S.hrToken })
     .withSuccessHandler(r => {
       if (!r || !r.success) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--er)">โหลดไม่สำเร็จ</div>'; return; }
-      OT.pending = r.requests || [];
+      // กรองใบที่เพิ่งจัดการไปแล้วออก — สำเนาอาจยังตามไม่ทัน (ดู apprFilter)
+      OT.pending = apprFilter(r.requests || []);
       renderOTApprovals();
     })
     .withFailureHandler(() => { if (box) box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
@@ -492,6 +493,7 @@ function loadOTApprovals() {
  * หลังอนุมัติใบแรกจะช้ากลับไป 8–20 วินาที ซึ่งกระทบคนที่นั่งเคลียร์ใบรวดเดียว
  */
 function otDropPending(ids) {
+  apprMarkDone(ids);          // จำไว้เผื่อออกจากหน้าแล้วกลับเข้ามาก่อนสำเนาตามทัน
   const gone = {};
   (Array.isArray(ids) ? ids : [ids]).forEach(function (x) { gone[String(x)] = true; });
   OT.pending = (OT.pending || []).filter(function (x) { return !gone[String(x.requestId)]; });

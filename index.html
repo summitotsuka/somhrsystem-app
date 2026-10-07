@@ -1988,13 +1988,57 @@ var SB_LV_WRITES = {
   leaveCancelByApprover: 1,
   otSubmit: 1, otApprove: 1, otReject: 1, otCancel: 1, otCancelByApprover: 1,
 };
-// รายการรออนุมัติอ่านจากตารางเดียวกับประวัติ จึงต้องอยู่ในรายการนี้ด้วย —
-// หัวหน้ากดอนุมัติแล้วหน้าจอโหลดใหม่ทันที ถ้าอ่านจากสำเนาที่ยังตามไม่ทัน
-// ใบที่เพิ่งอนุมัติจะยังค้างอยู่ในรายการ แล้วหัวหน้าจะกดอนุมัติซ้ำ
-var SB_LV_READS = {
-  leaveGetMyRequests: 1, otGetMyRequests: 1,
-  leaveGetPendingApprovals: 1, otGetPendingApprovals: 1,
-};
+// ⚠️ เฉพาะคำสั่งที่ต้อง "เห็นของใหม่" เท่านั้นที่อยู่ในรายการนี้
+//
+// พนักงานส่งใบลาแล้วเด้งไปหน้าประวัติ — ต้องเห็นใบที่เพิ่งส่ง ซึ่งสำเนายังไม่มี
+// จึงต้องถอยไปอ่านของเดิม ไม่มีทางอื่น
+//
+// ส่วนหน้า "รออนุมัติ" ปัญหาตรงข้ามกัน คือต้อง "ไม่เห็นของเก่า" (ใบที่เพิ่งอนุมัติ)
+// ซึ่งแก้ได้ด้วยการจำรหัสใบที่จัดการไปแล้วแล้วกรองออก — ดู apprDone ข้างล่าง
+// เคยใส่ไว้ในรายการนี้แล้วพบว่าผิด: หลังอนุมัติใบแรก หน้าอนุมัติจะช้ากลับไป
+// 8–20 วินาทีทุกครั้งเป็นเวลา 7 นาที ซึ่งคือสิ่งที่การย้ายขึ้น Supabase ตั้งใจแก้พอดี
+var SB_LV_READS = { leaveGetMyRequests: 1, otGetMyRequests: 1 };
+
+/**
+ * ── ใบที่เพิ่งจัดการไปแล้ว ───────────────────────────────────
+ *
+ * ปัญหา: การอนุมัติเขียนลงชีต แต่หน้า "รออนุมัติ" อ่านจากสำเนาใน Supabase
+ * ที่ตามหลังอยู่ราว 5 นาที ถ้าหัวหน้าออกจากหน้าแล้วกลับเข้ามาในช่วงนั้น
+ * ใบที่เพิ่งอนุมัติจะโผล่กลับมา แล้วกดอนุมัติซ้ำ
+ *
+ * แทนที่จะถอยไปอ่านของเดิมทั้งหมด (ช้า 8–20 วินาที) ให้จำไว้ว่าจัดการใบไหนไปแล้ว
+ * แล้วกรองออกจากคำตอบ — ได้ทั้งความเร็วและความถูกต้อง
+ *
+ * เก็บ 10 นาที ยาวกว่ารอบคัดลอก 5 นาทีพอสมควร และหมดอายุเองเสมอ
+ * บันทึกเฉพาะใบที่เซิร์ฟเวอร์ตอบว่าสำเร็จจริง ใบที่ล้มต้องยังอยู่ให้ลองใหม่
+ */
+var APPR_DONE_MS = 10 * 60 * 1000;
+function apprMarkDone(ids) {
+  try {
+    const m = apprDoneMap();
+    const until = Date.now() + APPR_DONE_MS;
+    (Array.isArray(ids) ? ids : [ids]).forEach(function (x) {
+      if (x) m[String(x)] = until;
+    });
+    localStorage.setItem('ws6_appr_done', JSON.stringify(m));
+  } catch (e) { /* เบราว์เซอร์ปิด storage — กรองไม่ได้ก็ไม่ถึงกับพัง */ }
+}
+function apprDoneMap() {
+  try {
+    const m = JSON.parse(localStorage.getItem('ws6_appr_done') || '{}');
+    const now = Date.now();
+    let changed = false;
+    Object.keys(m).forEach(function (k) { if (m[k] < now) { delete m[k]; changed = true; } });
+    if (changed) localStorage.setItem('ws6_appr_done', JSON.stringify(m));
+    return m;
+  } catch (e) { return {}; }
+}
+/** กรองใบที่จัดการไปแล้วออกจากรายการที่เซิร์ฟเวอร์ส่งมา */
+function apprFilter(list) {
+  const m = apprDoneMap();
+  if (!Object.keys(m).length) return list || [];
+  return (list || []).filter(function (x) { return !m[String(x && x.requestId)]; });
+}
 
 function sbMarkLvStale() {
   try { localStorage.setItem('ws6_lv_stale', String(Date.now() + 7 * 60 * 1000)); } catch (e) {}
@@ -2033,7 +2077,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.9.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.9.2';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2141,6 +2185,10 @@ function perfNote(action, totalMs, r, err, st) {
   const s = ms => (ms / 1000).toFixed(1) + ' วิ';
 
   let txt = action + ' · รวม ' + s(totalMs);
+  // ── บอกด้วยว่าทำไมรอบนี้ไม่ได้ใช้ Supabase ──
+  // เดิมถ้าระบบถอยไปใช้ GAS จะเห็นแค่ว่า "ช้า" แต่ไม่รู้สาเหตุ
+  // ต้องไปเปิด console ถึงจะเห็น ซึ่งไม่มีใครทำ — ทำให้วินิจฉัยผิดทางได้ง่าย
+  if (st && st.why) txt += ' · ⤷ ใช้ GAS: ' + st.why;
   if (err) {
     txt += ' · ❌ ' + (err.message || err);
   } else if (srv) {
@@ -2179,7 +2227,14 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
   // เพิ่งแก้ทะเบียนพนักงาน → อ่านจากของเดิมไว้ก่อน (ดูเหตุผลที่ sbMarkEmpStale)
   const empStale = (SB_EMP_READS[action] && sbEmpStale()) ||
                    (SB_LV_READS[action] && sbLvStale());
-  if (empStale) console.warn('[SB] ' + action + ': สำเนาเพิ่งถูกแก้ → อ่านจากของเดิมชั่วคราว');
+  if (empStale) {
+    console.warn('[SB] ' + action + ': สำเนาเพิ่งถูกแก้ → อ่านจากของเดิมชั่วคราว');
+    if (st) st.why = 'สำเนาเพิ่งถูกแก้';
+  } else if (sbReady() && !SB.ACTIONS[action]) {
+    if (st) st.why = 'ยังไม่ได้เปิดใช้คำสั่งนี้';
+  } else if (!sbReady()) {
+    if (st) st.why = 'ยังไม่ได้ตั้งค่า Supabase';
+  }
 
   if (sbReady() && SB.ACTIONS[action] && !empStale) {
     const p = (action === 'login')
@@ -2192,6 +2247,7 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
       // ถ้า Supabase ตอบมาว่า "รหัสผ่านไม่ถูกต้อง" นั่นคือคำตอบที่ถูกต้องแล้ว ไม่ถอย
       if (!SB.FALLBACK) throw err;
       console.warn('[SB] ' + action + ' ไม่สำเร็จ (' + (err && err.message) + ') → ใช้ GAS แทน');
+      if (st) st.why = 'Supabase ตอบไม่สำเร็จ — ' + String((err && err.message) || err).slice(0, 80);
       sbMarkDown();
       return gasCallAPI(action, payload, 1, noRetry, timeoutMs, st);
     });
@@ -5602,8 +5658,8 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.9.1"></script>
-<script src="ot.js?v=8.9.1"></script>
+<script src="leave.js?v=8.9.2"></script>
+<script src="ot.js?v=8.9.2"></script>
 <script src="payroll.js?v=8.6.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ

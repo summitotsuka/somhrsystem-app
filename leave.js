@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.9.1';
+window.LEAVE_JS_VERSION = '8.9.2';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -434,7 +434,8 @@ function loadLeaveApprovals() {
   gasRun('leaveGetPendingApprovals', { hrToken: S.hrToken })
     .withSuccessHandler(r => {
       if (!r || !r.success) { box.innerHTML = '<div style="padding:20px;color:var(--er)">' + lvEsc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>'; return; }
-      LV.pending = r.requests || [];
+      // กรองใบที่เพิ่งจัดการไปแล้วออก — สำเนาอาจยังตามไม่ทัน (ดู apprFilter)
+      LV.pending = apprFilter(r.requests || []);
       lvRenderApprovals(LV.pending);
     })
     .withFailureHandler(e => { box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
@@ -458,6 +459,7 @@ function loadLeaveApprovals() {
  * ถ้าหัวหน้าออกจากหน้านี้แล้วกลับเข้ามา จะได้ข้อมูลสดจากเซิร์ฟเวอร์ตามปกติ
  */
 function lvDropPending(ids) {
+  apprMarkDone(ids);          // จำไว้เผื่อออกจากหน้าแล้วกลับเข้ามาก่อนสำเนาตามทัน
   const gone = new Set((Array.isArray(ids) ? ids : [ids]).map(String));
   LV.pending = (LV.pending || []).filter(x => !gone.has(String(x.requestId)));
   lvRenderApprovals(LV.pending);
