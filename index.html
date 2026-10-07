@@ -2077,7 +2077,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.9.2';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.9.3';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2227,13 +2227,19 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
   // เพิ่งแก้ทะเบียนพนักงาน → อ่านจากของเดิมไว้ก่อน (ดูเหตุผลที่ sbMarkEmpStale)
   const empStale = (SB_EMP_READS[action] && sbEmpStale()) ||
                    (SB_LV_READS[action] && sbLvStale());
+  // ── คำสั่งเขียนข้อมูลไปที่ GAS เป็นปกติ ไม่ต้องขึ้นป้ายบอกเหตุผล ──
+  // สถาปัตยกรรมคือ GAS เขียนลงชีต · Supabase เป็นสำเนาไว้อ่าน
+  // ถ้าขึ้นป้ายกับคำสั่งเขียนด้วย ของที่ถูกต้องจะดูเหมือนตั้งค่าพลาด
+  // (เจอจริง: leaveApprove ขึ้นว่า "ยังไม่ได้เปิดใช้คำสั่งนี้" ทั้งที่ถูกแล้ว)
+  const isWrite = !!(SB.DIRTY[action] || SB_LV_WRITES[action] || SB_EMP_WRITES[action]);
+
   if (empStale) {
     console.warn('[SB] ' + action + ': สำเนาเพิ่งถูกแก้ → อ่านจากของเดิมชั่วคราว');
     if (st) st.why = 'สำเนาเพิ่งถูกแก้';
-  } else if (sbReady() && !SB.ACTIONS[action]) {
-    if (st) st.why = 'ยังไม่ได้เปิดใช้คำสั่งนี้';
   } else if (!sbReady()) {
-    if (st) st.why = 'ยังไม่ได้ตั้งค่า Supabase';
+    if (st && !isWrite) st.why = 'ยังไม่ได้ตั้งค่า Supabase';
+  } else if (!SB.ACTIONS[action] && !isWrite) {
+    if (st) st.why = 'คำสั่งนี้ยังไม่ได้ย้ายขึ้น Supabase';
   }
 
   if (sbReady() && SB.ACTIONS[action] && !empStale) {
