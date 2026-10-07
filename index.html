@@ -1770,7 +1770,13 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 //        hrGetEmployeeList · hrFindEmployee (หน้าจอข้อมูลพนักงานของ HR)
 //        leaveGetMyRequests · otGetMyRequests (ประวัติลา/โอทีของพนักงาน)
 //        leaveGetTypes · otGetTypes (รายการประเภทในฟอร์ม)
-//  ไม่ย้าย: ที่เหลือทั้งหมด (ลา · โอที · หน้าจอเงินเดือนของ HR · เช็คอิน · สแกนนิ้ว)
+//        leaveGetMyTeam · otGetMyTeam (รายชื่อทีมของหัวหน้า)
+//        leaveGetPendingApprovals · otGetPendingApprovals (หน้ารออนุมัติ)
+//        leaveGetReport · otGetReport (รายงานลา/โอที)
+//        payGetPeriods · payGetReportMeta (หน้าจัดการงวด · เปิดหน้ารายงานเงินเดือน)
+//  ไม่ย้าย: การ "เขียน" ทั้งหมด (ยื่น/อนุมัติ/เช็คอิน/อัปโหลด) ·
+//          payGetReport (ปุ่มออกรายงานเงินเดือน — ยังไม่ได้ยกตัวเลขเงินขึ้นไป) ·
+//          hrGetReport (รายงานลงเวลา)
 //
 //  คำสั่งที่ย้ายมาแล้วจะไม่วิ่งผ่าน GAS เลย จึงไม่ต้องรอคิว —
 //  นี่คือเหตุผลที่เมนูเช็คเวลาเร็ว 1-2 วินาที ขณะที่เมนูอื่นยัง 10-20 วินาที
@@ -1792,7 +1798,8 @@ const SB = {
               leaveGetTypes: 1, otGetTypes: 1,
               leaveGetMyTeam: 1, otGetMyTeam: 1,
               leaveGetPendingApprovals: 1, otGetPendingApprovals: 1,
-              leaveGetReport: 1, otGetReport: 1 },
+              leaveGetReport: 1, otGetReport: 1,
+              payGetPeriods: 1, payGetReportMeta: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -1807,6 +1814,13 @@ const SB = {
     leaveSubmit: 1, leaveApprove: 1, leaveReject: 1, leaveCancel: 1,
     leaveCancelByApprover: 1,
     otSubmit: 1, otApprove: 1, otReject: 1, otCancel: 1, otCancelByApprover: 1,
+    // ── เฟส 5H: คำสั่งที่แก้ชีตเงินเดือน ──
+    // ⚠️ สำคัญกว่าตัวอื่นในรายการนี้ เพราะสำเนาเงินเดือนคัดลอก "ทุก 2 ชั่วโมง"
+    // ไม่ใช่ทุก 5 นาทีเหมือนตัวอื่น ธงนี้จึงเป็นสิ่งเดียวที่ทำให้
+    // งวดที่ฝ่ายบุคคลเพิ่งสร้างขึ้นไปถึง Supabase ภายในไม่กี่นาที
+    // (ไฟล์ 17 ดูชื่อคำสั่งที่ขึ้นต้นด้วย pay แล้วคัดลอกเงินเดือนให้ทันที)
+    payCreatePeriod: 1, payDeletePeriod: 1, paySetPeriodStatus: 1,
+    payUploadExcel: 1, payUpdateRow: 1, payDeleteRow: 1,
   },
 };
 
@@ -2000,6 +2014,48 @@ var SB_LV_WRITES = {
 var SB_LV_READS = { leaveGetMyRequests: 1, otGetMyRequests: 1 };
 
 /**
+ * ── เฟส 5H: หน้าจอเงินเดือน ────────────────────────────────────
+ *
+ * เรื่องเดียวกับใบลา แต่แรงกว่า เพราะหน้าจัดการงวดคือหน้าที่
+ * "เขียนแล้วต้องเห็นผลทันที" เป็นหลัก ไม่ใช่หน้าอ่านอย่างเดียว:
+ * ฝ่ายบุคคลกดสร้างงวด → หน้าจอโหลดรายการใหม่ทันที → ต้องเห็นงวดนั้น
+ * ถ้าอ่านจากสำเนาที่ยังไม่มี จะดูเหมือนสร้างไม่สำเร็จ แล้วกดสร้างซ้ำ
+ * = งวดซ้ำในชีตเงินเดือน ซึ่งแก้ยากกว่าใบลาซ้ำมาก
+ *
+ * ที่นี่ใช้วิธี "ถอยไปอ่านของเดิม" ไม่ใช่วิธีจำรายการที่จัดการไปแล้ว
+ * (apprDone) เพราะโจทย์คนละข้อกัน — ที่นี่คือ "ต้องเห็นของใหม่"
+ * ซึ่งการกรองของเก่าออกช่วยไม่ได้เลย ต้องไปอ่านที่มีของจริง
+ *
+ * ราคาที่จ่าย: หลังแก้งวด หน้านี้จะช้ากลับไป 3 วินาทีราว 15 นาที
+ * ซึ่งรับได้ เพราะเป็นงานที่ทำเดือนละไม่กี่ครั้ง ไม่ใช่หน้าที่เปิดทั้งวัน
+ * (ต่างจากหน้ารออนุมัติ ที่เคยพลาดใส่ไว้แล้วทำให้ช้าทุกครั้งหลังอนุมัติ)
+ *
+ * 15 นาที ไม่ใช่ 7 เหมือนใบลา เพราะรอบคัดลอกเงินเดือนถูกเรียกด้วยธง
+ * แล้วรอรอบถัดไปของตัวตั้งเวลา (ทุก 5 นาที) บวกเวลาอ่านชีต — เผื่อไว้ให้พอ
+ *
+ * ⚠️ ธงนี้เก็บในเครื่องของคนที่กดเอง เครื่อง HR คนอื่นไม่รู้
+ *    จึงต้องมีธง SB.DIRTY คู่กันเสมอ เพื่อให้สำเนาตามทันเร็วที่สุดสำหรับทุกคน
+ */
+var SB_PAY_MS = 15 * 60 * 1000;
+var SB_PAY_WRITES = {
+  payCreatePeriod: 1, payDeletePeriod: 1, paySetPeriodStatus: 1,
+  payUploadExcel: 1, payUpdateRow: 1, payDeleteRow: 1,
+};
+var SB_PAY_READS = { payGetPeriods: 1, payGetReportMeta: 1 };
+
+function sbMarkPayStale() {
+  try { localStorage.setItem('ws6_pay_stale', String(Date.now() + SB_PAY_MS)); } catch (e) {}
+}
+function sbPayStale() {
+  try {
+    const until = parseInt(localStorage.getItem('ws6_pay_stale') || '0', 10);
+    if (!until) return false;
+    if (Date.now() > until) { localStorage.removeItem('ws6_pay_stale'); return false; }
+    return true;
+  } catch (e) { return false; }
+}
+
+/**
  * ── ใบที่เพิ่งจัดการไปแล้ว ───────────────────────────────────
  *
  * ปัญหา: การอนุมัติเขียนลงชีต แต่หน้า "รออนุมัติ" อ่านจากสำเนาใน Supabase
@@ -2077,7 +2133,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.11.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.12.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2226,12 +2282,14 @@ function perfNote(action, totalMs, r, err, st) {
 function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
   // เพิ่งแก้ทะเบียนพนักงาน → อ่านจากของเดิมไว้ก่อน (ดูเหตุผลที่ sbMarkEmpStale)
   const empStale = (SB_EMP_READS[action] && sbEmpStale()) ||
-                   (SB_LV_READS[action] && sbLvStale());
+                   (SB_LV_READS[action] && sbLvStale()) ||
+                   (SB_PAY_READS[action] && sbPayStale());
   // ── คำสั่งเขียนข้อมูลไปที่ GAS เป็นปกติ ไม่ต้องขึ้นป้ายบอกเหตุผล ──
   // สถาปัตยกรรมคือ GAS เขียนลงชีต · Supabase เป็นสำเนาไว้อ่าน
   // ถ้าขึ้นป้ายกับคำสั่งเขียนด้วย ของที่ถูกต้องจะดูเหมือนตั้งค่าพลาด
   // (เจอจริง: leaveApprove ขึ้นว่า "ยังไม่ได้เปิดใช้คำสั่งนี้" ทั้งที่ถูกแล้ว)
-  const isWrite = !!(SB.DIRTY[action] || SB_LV_WRITES[action] || SB_EMP_WRITES[action]);
+  const isWrite = !!(SB.DIRTY[action] || SB_LV_WRITES[action] ||
+                     SB_EMP_WRITES[action] || SB_PAY_WRITES[action]);
 
   if (empStale) {
     console.warn('[SB] ' + action + ': สำเนาเพิ่งถูกแก้ → อ่านจากของเดิมชั่วคราว');
@@ -2273,6 +2331,7 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
         }
         if (SB_EMP_WRITES[action]) sbMarkEmpStale();
         if (SB_LV_WRITES[action]) sbMarkLvStale();
+        if (SB_PAY_WRITES[action]) sbMarkPayStale();
       }
       return r;
     });
