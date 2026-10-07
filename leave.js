@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.10.0';
+window.LEAVE_JS_VERSION = '8.11.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -294,6 +294,9 @@ function lvRenderHistory(list, summary) {
   // แยก 3 กลุ่ม: รออนุมัติ (แยกการ์ด), อนุมัติแล้ว (รวมตามประเภท), ปฏิเสธ (ไม่แสดง)
   const pending = list.filter(r => r.status.indexOf('PENDING') === 0);
   const approved = list.filter(r => r.status === 'APPROVED');
+  // เดิมใบที่ไม่อนุมัติ/ยกเลิกถูกทิ้งไปเฉย ๆ พนักงานที่โดนไม่อนุมัติจึงหาใบ
+  // ของตัวเองไม่เจอในหน้าประวัติของตัวเอง ตอนนี้พับเก็บไว้แต่ยังเข้าถึงได้
+  const others = list.filter(r => r.status.indexOf('PENDING') !== 0 && r.status !== 'APPROVED');
 
   let html = '';
 
@@ -334,8 +337,13 @@ function lvRenderHistory(list, summary) {
     });
   }
 
+  // ── ไม่อนุมัติ / ยกเลิก: พับเก็บไว้ แต่ยังบอกจำนวน (ดู foldSection) ──
+  html += foldSection('lv-hist-other', 'ไม่อนุมัติ / ยกเลิก', others.length,
+    others.map(r => lvHistoryCard(r)).join(''));
+
   if (!html) html = '<div style="text-align:center;padding:30px;color:var(--tx3)">ยังไม่มีรายการ</div>';
   box.innerHTML = html;
+  foldBind(box);
 
   // ผูกปุ่มยกเลิก (สร้างใหม่ทุกครั้งที่ render)
   box.querySelectorAll('.lv-cancel-btn').forEach(b => {

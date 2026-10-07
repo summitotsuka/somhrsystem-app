@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.10.0';
+window.OT_JS_VERSION = '8.11.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -405,13 +405,12 @@ function renderOTHistory(r) {
     });
   }
 
-  // อื่นๆ (ยกเลิก/ปฏิเสธ)
-  if (others.length) {
-    html += '<div style="font-size:13px;font-weight:600;margin:14px 0 8px;color:var(--tx3)">รายการอื่นๆ</div>';
-    html += others.map(otHistoryCard).join('');
-  }
+  // อื่นๆ (ยกเลิก/ปฏิเสธ) — พับเก็บไว้ แต่ยังบอกจำนวน (ดู foldSection)
+  html += foldSection('ot-hist-other', 'ไม่อนุมัติ / ยกเลิก', others.length,
+    others.map(otHistoryCard).join(''));
 
   box.innerHTML = html;
+  foldBind(box);
   box.querySelectorAll('.ot-cancel-btn').forEach(b => b.addEventListener('click', () => otCancelRequest(b.getAttribute('data-id'), b)));
 }
 
