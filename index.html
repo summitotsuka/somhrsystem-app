@@ -2026,7 +2026,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.8.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.8.2';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5198,6 +5198,46 @@ function showToast(msg, ok) {
   _tt = setTimeout(() => el.classList.remove('show'), 4000);
 }
 
+/**
+ * ── ปุ่มที่กำลังทำงาน ─────────────────────────────────────────
+ *
+ * ปัญหาที่แก้: ปุ่มอนุมัติ/ไม่อนุมัติ/ยกเลิก กดแล้วหน้าจอนิ่งสนิท 4–7 วินาที
+ * ผู้ใช้ไม่รู้ว่าระบบรับคำสั่งไปหรือยัง จึงกดซ้ำ — แล้วคำขอเดียวถูกส่งหลายรอบ
+ *
+ * ของเดิมมีการทำแบบนี้อยู่หลายที่ แต่เขียนมือซ้ำ ๆ ทีละจุด
+ * (ตั้ง disabled เอง เปลี่ยนข้อความเอง แล้วต้องจำคืนค่าเองทั้งตอนสำเร็จและตอนล้ม)
+ * พอมีจุดใหม่ก็ลืม — ซึ่งคือสาเหตุที่หน้าอนุมัติไม่มี
+ *
+ * วิธีใช้:
+ *   const done = btnBusy(btn, 'กำลังอนุมัติ...');
+ *   if (!done) return;              // กดซ้ำระหว่างรอ → ไม่ทำอะไร
+ *   ...ยิงคำขอ... แล้วเรียก done() ทั้งตอนสำเร็จและตอนล้ม
+ *
+ * คืนค่า: ฟังก์ชันคืนสภาพปุ่ม · หรือ null ถ้าปุ่มนั้นกำลังทำงานอยู่แล้ว
+ * ถ้าไม่ส่งปุ่มมา (บางที่เรียกโดยไม่มีปุ่ม) จะคืนฟังก์ชันเปล่าที่เรียกได้ปลอดภัย
+ */
+function btnBusy(btn, label) {
+  if (!btn) return function () {};
+  if (btn.dataset.busy === '1') return null;    // ← ด่านกันกดซ้ำ
+  btn.dataset.busy = '1';
+
+  const oldHtml = btn.innerHTML;
+  const oldDis  = btn.disabled;
+  btn.disabled = true;
+  // ปุ่มพื้นอ่อน (.btn.o) ต้องใช้วงหมุนสีเข้ม ไม่งั้นขาวบนขาว มองไม่เห็น
+  const dark = btn.classList.contains('o') ? ' dk' : '';
+  btn.innerHTML = '<span class="spin' + dark + '"></span> ' + (label || 'กำลังทำงาน...');
+
+  let restored = false;
+  return function () {
+    if (restored) return;             // เรียกซ้ำไม่เป็นไร
+    restored = true;
+    delete btn.dataset.busy;
+    btn.disabled = oldDis;
+    btn.innerHTML = oldHtml;
+  };
+}
+
 setEB(1);
 applyLogo();
 
@@ -5511,8 +5551,8 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.6.0"></script>
-<script src="ot.js?v=8.8.1"></script>
+<script src="leave.js?v=8.8.2"></script>
+<script src="ot.js?v=8.8.2"></script>
 <script src="payroll.js?v=8.6.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ

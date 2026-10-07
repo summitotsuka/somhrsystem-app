@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.6.0';
+window.LEAVE_JS_VERSION = '8.8.2';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -242,7 +242,8 @@ function submitLeave() {
   const singleDay = (mode === 'HALF_AM' || mode === 'HALF_PM' || mode === 'HOURLY');
   const finalDateTo = singleDay ? dateFrom : dateTo;
 
-  btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+  const done = btnBusy(btn, 'กำลังส่ง...');
+  if (!done) return;
   gasRun('leaveSubmit', {
     hrToken: S.hrToken,
     leaveType, dateFrom, dateTo: finalDateTo, mode,
@@ -251,13 +252,13 @@ function submitLeave() {
     reason, fileUrl,
   })
     .withSuccessHandler(r => {
-      btn.disabled = false; btn.textContent = 'ส่งคำขอลา';
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ส่งคำขอไม่สำเร็จ'); return; }
       showToast('ส่งคำขอลาเรียบร้อย (' + r.hoursText + ')', true);
       go('leave-history');   // ไปหน้าประวัติ
     })
     .withFailureHandler(e => {
-      btn.disabled = false; btn.textContent = 'ส่งคำขอลา';
+      done();
       showToast('เกิดข้อผิดพลาด: ' + (e && e.message ? e.message : e));
     });
 }
@@ -276,7 +277,7 @@ function loadLeaveHistory() {
       LV.myRequests = r.requests || [];
       lvRenderHistory(LV.myRequests, r.summary || {});
     })
-    .withFailureHandler(e => { box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(e => { done(); box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
 }
 
 // format ช่วงรอบ yyyy-MM-dd → dd/mm/yyyy
@@ -338,21 +339,24 @@ function lvRenderHistory(list, summary) {
 
   // ผูกปุ่มยกเลิก (สร้างใหม่ทุกครั้งที่ render)
   box.querySelectorAll('.lv-cancel-btn').forEach(b => {
-    b.addEventListener('click', () => cancelLeave(b.getAttribute('data-id')));
+    b.addEventListener('click', () => cancelLeave(b.getAttribute('data-id'), b));
   });
 }
 
 // ยกเลิกคำขอของตัวเอง (เฉพาะที่ยังรออนุมัติ)
-function cancelLeave(reqId) {
+function cancelLeave(reqId, btn) {
   if (!reqId) return;
   if (!confirm('ยืนยันยกเลิกคำขอลานี้?')) return;
+  const done = btnBusy(btn, 'กำลังยกเลิก...');
+  if (!done) return;
   gasRun('leaveCancel', { hrToken: S.hrToken, requestId: reqId })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกคำขอเรียบร้อย', true);
       loadLeaveHistory();
     })
-    .withFailureHandler(e => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(e => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // การ์ดรายการเดี่ยว (สำหรับรออนุมัติ)
@@ -433,7 +437,7 @@ function loadLeaveApprovals() {
       LV.pending = r.requests || [];
       lvRenderApprovals(LV.pending);
     })
-    .withFailureHandler(e => { box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(e => { done(); box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
 }
 
 function lvRenderApprovals(list) {
@@ -481,9 +485,9 @@ function lvRenderApprovals(list) {
   box.innerHTML = html;
 
   // ผูก event
-  box.querySelectorAll('.lv-approve-btn').forEach(b => b.addEventListener('click', () => approveLeave(b.getAttribute('data-id'))));
+  box.querySelectorAll('.lv-approve-btn').forEach(b => b.addEventListener('click', () => approveLeave(b.getAttribute('data-id'), b)));
   box.querySelectorAll('.lv-reject-btn').forEach(b => b.addEventListener('click', () => openRejectDialog(b.getAttribute('data-id'))));
-  box.querySelectorAll('.lv-apcancel-btn').forEach(b => b.addEventListener('click', () => cancelByApprover(b.getAttribute('data-id'))));
+  box.querySelectorAll('.lv-apcancel-btn').forEach(b => b.addEventListener('click', () => cancelByApprover(b.getAttribute('data-id'), b)));
 
   const chkAll = document.getElementById('lv-check-all');
   if (chkAll) chkAll.addEventListener('change', () => {
@@ -499,12 +503,22 @@ function approveSelected() {
   if (!ids.length) { showToast('กรุณาเลือกรายการที่ต้องการอนุมัติ'); return; }
   if (!confirm(`ยืนยันอนุมัติ ${ids.length} รายการที่เลือก?`)) return;
 
+  // ปุ่มเดียวแต่ยิงหลายรอบต่อเนื่อง — ต้องหมุนจนครบทุกรอบ ไม่ใช่รอบแรก
+  // และบอกด้วยว่าทำถึงรายการที่เท่าไรแล้ว เพราะรวม ๆ อาจใช้เวลาหลายสิบวินาที
+  const btnSel = document.getElementById('lv-approve-selected');
+  const unbusy = btnBusy(btnSel, `กำลังอนุมัติ 1/${ids.length}...`);
+  if (!unbusy) return;
+
   let done = 0, failed = 0;
   const next = (i) => {
     if (i >= ids.length) {
+      unbusy();
       showToast(`อนุมัติสำเร็จ ${done} รายการ` + (failed ? ` (ไม่สำเร็จ ${failed})` : ''), true);
       loadLeaveApprovals();
       return;
+    }
+    if (btnSel && btnSel.dataset.busy === '1') {
+      btnSel.innerHTML = '<span class="spin"></span> กำลังอนุมัติ ' + (i + 1) + '/' + ids.length + '...';
     }
     gasRun('leaveApprove', { hrToken: S.hrToken, requestId: ids[i] })
       .withSuccessHandler(r => { if (r && r.success) done++; else failed++; next(i + 1); })
@@ -513,30 +527,37 @@ function approveSelected() {
   next(0);
 }
 
-function approveLeave(reqId) {
+function approveLeave(reqId, btn) {
   if (!reqId) return;
+  const done = btnBusy(btn, 'กำลังอนุมัติ...');
+  if (!done) return;          // กดซ้ำระหว่างรอ
   gasRun('leaveApprove', { hrToken: S.hrToken, requestId: reqId })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'อนุมัติไม่สำเร็จ'); return; }
       showToast(r.message || 'อนุมัติเรียบร้อย', true);
       loadLeaveApprovals();   // refresh
     })
-    .withFailureHandler(e => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(e => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // ── ผู้อนุมัติยกเลิกใบลาให้พนักงาน (กรณีพนักงานขอยกเลิกแต่เลยขั้นแรกมาแล้ว) ──
-function cancelByApprover(reqId) {
+function cancelByApprover(reqId, btn) {
   if (!reqId) return;
   const reason = prompt('ยกเลิกใบลาให้พนักงาน\nระบุเหตุผล (จำเป็น):', '');
   if (reason === null) return;   // กด cancel
   if (!reason.trim()) { showToast('กรุณากรอกเหตุผล'); return; }
+  // เริ่มหมุนหลังปิดกล่องถามเหตุผลแล้ว ไม่งั้นปุ่มหมุนอยู่ขณะกล่องยังเปิดค้าง
+  const done = btnBusy(btn, 'กำลังยกเลิก...');
+  if (!done) return;
   gasRun('leaveCancelByApprover', { hrToken: S.hrToken, requestId: reqId, cancelReason: reason.trim() })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกใบลาเรียบร้อย', true);
       loadLeaveApprovals();
     })
-    .withFailureHandler(e => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(e => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // ── ปฏิเสธ: เปิด dialog กรอกเหตุผล ──
@@ -556,14 +577,17 @@ function confirmReject() {
   if (!reason) { showToast('กรุณาระบุเหตุผลที่ไม่อนุมัติ'); return; }
   if (!LV.currentReject) return;
 
+  const done = btnBusy(document.getElementById('lv-reject-confirm'), 'กำลังส่ง...');
+  if (!done) return;
   gasRun('leaveReject', { hrToken: S.hrToken, requestId: LV.currentReject, rejectReason: reason })
     .withSuccessHandler(r => {
+      done();
       closeRejectDialog();
       if (!r || !r.success) { showToast((r && r.message) || 'ปฏิเสธไม่สำเร็จ'); return; }
       showToast('ปฏิเสธคำขอเรียบร้อย', true);
       loadLeaveApprovals();
     })
-    .withFailureHandler(e => { closeRejectDialog(); showToast('เกิดข้อผิดพลาด'); });
+    .withFailureHandler(e => { done(); closeRejectDialog(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // ═══════════════ หน้า "รายงานการลา" ═══════════════
@@ -611,6 +635,9 @@ function loadLeaveReport() {
 function runLeaveReport() {
   const box = document.getElementById('lvr-result');
   box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด...</div>';
+  // ปุ่มนี้วัดได้ 12 วินาที — ต้องบอกว่ากำลังทำงาน และกันกดซ้ำ
+  const done = btnBusy(document.getElementById('lvr-run'), 'กำลังค้นหา...');
+  if (!done) return;
 
   const empVal = document.getElementById('lvr-f-emp').value;
   const payload = {
@@ -624,12 +651,13 @@ function runLeaveReport() {
 
   gasRun('leaveGetReport', payload)
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { box.innerHTML = '<div style="padding:20px;color:var(--er)">' + lvEsc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>'; return; }
       LV.report = r.rows || [];
       LV.reportCanVoid = !!r.canVoid;
       lvRenderReport(LV.report);
     })
-    .withFailureHandler(e => { box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(e => { done(); box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
 }
 
 // เติม dropdown ชื่อพนักงาน (คงค่าที่เลือกไว้)
@@ -776,14 +804,17 @@ function confirmVoid() {
   const reason = document.getElementById('lvr-void-reason').value.trim();
   if (!reason) { showToast('กรุณาระบุเหตุผลที่ยกเลิก'); return; }
   if (!LV.currentVoid) return;
+  const done = btnBusy(document.getElementById('lvr-void-confirm'), 'กำลังยกเลิก...');
+  if (!done) return;
   gasRun('leaveVoidByHR', { hrToken: S.hrToken, requestId: LV.currentVoid, voidReason: reason })
     .withSuccessHandler(r => {
+      done();
       closeVoidDialog();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกใบลาเรียบร้อย', true);
       runLeaveReport();
     })
-    .withFailureHandler(e => { closeVoidDialog(); showToast('เกิดข้อผิดพลาด'); });
+    .withFailureHandler(e => { done(); closeVoidDialog(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // ═══════════════ ผูก event (เรียกตอนโหลดเสร็จ) ═══════════════

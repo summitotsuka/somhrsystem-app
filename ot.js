@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.8.1';
+window.OT_JS_VERSION = '8.8.2';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -317,7 +317,9 @@ function submitOT() {
   }
 
   const btn = document.getElementById('ot-submit');
-  if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง...'; }
+  // ใช้ตัวช่วยกลาง: ได้วงหมุน + ด่านกันกดซ้ำ และคืนสภาพปุ่มให้เองที่เดียว
+  const done = btnBusy(btn, OT.formFile ? 'กำลังอัปโหลดไฟล์...' : 'กำลังส่ง...');
+  if (!done) return;
 
   const doSubmit = (fileUrl) => {
     gasRun('otSubmit', {
@@ -326,19 +328,22 @@ function submitOT() {
       detail: detail, fileUrl: fileUrl || '',
     })
       .withSuccessHandler(r => {
-        if (btn) { btn.disabled = false; btn.textContent = 'ส่งคำขอ'; }
+        done();
         if (!r || !r.success) { showToast((r && r.message) || 'ส่งไม่สำเร็จ'); return; }
         showToast('ส่งคำขอ OT แล้ว (' + r.hours + ' ชม.)', true);
         go(S.role === 'HR' ? 'hr-dash' : 'ot-history');
       })
-      .withFailureHandler(() => { if (btn) { btn.disabled = false; btn.textContent = 'ส่งคำขอ'; } showToast('เกิดข้อผิดพลาด'); });
+      .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
   };
 
   // อัปโหลดไฟล์ก่อน (ถ้ามี) — ใช้ leaveUploadFile ร่วมกับระบบลา
   if (OT.formFile) {
+    const toStep2 = () => {
+      if (btn && btn.dataset.busy === '1') btn.innerHTML = '<span class="spin"></span> กำลังส่ง...';
+    };
     gasRun('leaveUploadFile', { hrToken: S.hrToken, fileData: OT.formFile.data, fileName: OT.formFile.name, mimeType: OT.formFile.type })
-      .withSuccessHandler(r => doSubmit(r && r.success ? r.url : ''))
-      .withFailureHandler(() => doSubmit(''));
+      .withSuccessHandler(r => { toStep2(); doSubmit(r && r.success ? r.url : ''); })
+      .withFailureHandler(() => { toStep2(); doSubmit(''); });
   } else {
     doSubmit('');
   }
@@ -407,7 +412,7 @@ function renderOTHistory(r) {
   }
 
   box.innerHTML = html;
-  box.querySelectorAll('.ot-cancel-btn').forEach(b => b.addEventListener('click', () => otCancelRequest(b.getAttribute('data-id'))));
+  box.querySelectorAll('.ot-cancel-btn').forEach(b => b.addEventListener('click', () => otCancelRequest(b.getAttribute('data-id'), b)));
 }
 
 function otHistoryCard(r) {
@@ -450,16 +455,19 @@ function otStepper(status) {
   return `<div style="display:flex;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--bd)">${dots}</div>`;
 }
 
-function otCancelRequest(reqId) {
+function otCancelRequest(reqId, btn) {
   if (!reqId) return;
   if (!confirm('ยกเลิกคำขอ OT นี้?')) return;
+  const done = btnBusy(btn, 'กำลังยกเลิก...');
+  if (!done) return;
   gasRun('otCancel', { hrToken: S.hrToken, requestId: reqId })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกแล้ว', true);
       loadOTHistory();
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // ════════ อนุมัติ OT ════════
@@ -516,9 +524,9 @@ function renderOTApprovals() {
   </div>`;
   box.innerHTML = bar + box.innerHTML;
 
-  box.querySelectorAll('.ot-approve-btn').forEach(b => b.addEventListener('click', () => otApproveRequest(b.getAttribute('data-id'))));
-  box.querySelectorAll('.ot-reject-btn').forEach(b => b.addEventListener('click', () => otRejectRequest(b.getAttribute('data-id'))));
-  box.querySelectorAll('.ot-apcancel-btn').forEach(b => b.addEventListener('click', () => otCancelByApproverAction(b.getAttribute('data-id'))));
+  box.querySelectorAll('.ot-approve-btn').forEach(b => b.addEventListener('click', () => otApproveRequest(b.getAttribute('data-id'), b)));
+  box.querySelectorAll('.ot-reject-btn').forEach(b => b.addEventListener('click', () => otRejectRequest(b.getAttribute('data-id'), b)));
+  box.querySelectorAll('.ot-apcancel-btn').forEach(b => b.addEventListener('click', () => otCancelByApproverAction(b.getAttribute('data-id'), b)));
   const chkAll = document.getElementById('ot-check-all');
   if (chkAll) chkAll.addEventListener('change', () => {
     box.querySelectorAll('.ot-check').forEach(c => { c.checked = chkAll.checked; });
@@ -527,15 +535,18 @@ function renderOTApprovals() {
   if (apprSel) apprSel.addEventListener('click', otApproveSelected);
 }
 
-function otApproveRequest(reqId) {
+function otApproveRequest(reqId, btn) {
   if (!reqId) return;
+  const done = btnBusy(btn, 'กำลังอนุมัติ...');
+  if (!done) return;          // กดซ้ำระหว่างรอ
   gasRun('otApprove', { hrToken: S.hrToken, requestId: reqId })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'อนุมัติไม่สำเร็จ'); return; }
       showToast(r.message || 'อนุมัติเรียบร้อย', true);
       loadOTApprovals();
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // อนุมัติหลายรายการที่เลือก (ทีละอันต่อเนื่อง)
@@ -543,12 +554,20 @@ function otApproveSelected() {
   const ids = Array.from(document.querySelectorAll('.ot-check:checked')).map(c => c.getAttribute('data-id'));
   if (!ids.length) { showToast('ยังไม่ได้เลือกรายการ'); return; }
   if (!confirm('อนุมัติ ' + ids.length + ' รายการที่เลือก?')) return;
+  // ปุ่มเดียวแต่ยิงหลายรอบต่อเนื่อง — ต้องหมุนจนครบ และบอกว่าถึงรายการที่เท่าไร
+  const btnSel = document.getElementById('ot-approve-selected');
+  const unbusy = btnBusy(btnSel, 'กำลังอนุมัติ 1/' + ids.length + '...');
+  if (!unbusy) return;
   let done = 0, ok = 0;
   const next = () => {
     if (done >= ids.length) {
+      unbusy();
       showToast('อนุมัติสำเร็จ ' + ok + '/' + ids.length + ' รายการ', true);
       loadOTApprovals();
       return;
+    }
+    if (btnSel && btnSel.dataset.busy === '1') {
+      btnSel.innerHTML = '<span class="spin"></span> กำลังอนุมัติ ' + (done + 1) + '/' + ids.length + '...';
     }
     gasRun('otApprove', { hrToken: S.hrToken, requestId: ids[done] })
       .withSuccessHandler(r => { if (r && r.success) ok++; done++; next(); })
@@ -557,30 +576,37 @@ function otApproveSelected() {
   next();
 }
 
-function otRejectRequest(reqId) {
+function otRejectRequest(reqId, btn) {
   const reason = prompt('เหตุผลที่ไม่อนุมัติ (จำเป็น):', '');
   if (reason === null) return;
   if (!reason.trim()) { showToast('กรุณากรอกเหตุผล'); return; }
+  // เริ่มหมุนหลังปิดกล่องถามเหตุผลแล้ว
+  const done = btnBusy(btn, 'กำลังส่ง...');
+  if (!done) return;
   gasRun('otReject', { hrToken: S.hrToken, requestId: reqId, rejectReason: reason.trim() })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ไม่สำเร็จ'); return; }
       showToast('ปฏิเสธคำขอแล้ว', true);
       loadOTApprovals();
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
-function otCancelByApproverAction(reqId) {
+function otCancelByApproverAction(reqId, btn) {
   const reason = prompt('ยกเลิกใบ OT ให้พนักงาน\nระบุเหตุผล (จำเป็น):', '');
   if (reason === null) return;
   if (!reason.trim()) { showToast('กรุณากรอกเหตุผล'); return; }
+  const done = btnBusy(btn, 'กำลังยกเลิก...');
+  if (!done) return;
   gasRun('otCancelByApprover', { hrToken: S.hrToken, requestId: reqId, cancelReason: reason.trim() })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกใบ OT แล้ว', true);
       loadOTApprovals();
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // ════════ รายงาน OT ════════
@@ -629,6 +655,8 @@ function otFillReportDropdown(list) {
 function runOTReport() {
   const box = document.getElementById('otr-result');
   box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด...</div>';
+  const done = btnBusy(document.getElementById('otr-search'), 'กำลังค้นหา...');
+  if (!done) return;
   const empVal = document.getElementById('otr-f-emp').value;
   gasRun('otGetReport', {
     hrToken: S.hrToken,
@@ -639,12 +667,13 @@ function runOTReport() {
     dateTo: document.getElementById('otr-f-to').value,
   })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { box.innerHTML = '<div style="padding:20px;color:var(--er)">' + otEsc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>'; return; }
       OT.report = r.rows || [];
       OT.reportCanVoid = !!r.canVoid;
       renderOTReport(OT.report);
     })
-    .withFailureHandler(() => { box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(() => { done(); box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
 }
 
 function renderOTReport(rows) {
@@ -713,7 +742,7 @@ function renderOTReport(rows) {
       if (detail) detail.style.display = (detail.style.display === 'none') ? 'table-row' : 'none';
     });
   });
-  box.querySelectorAll('.otr-void-btn').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); otVoidRequest(b.getAttribute('data-id')); }));
+  box.querySelectorAll('.otr-void-btn').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); otVoidRequest(b.getAttribute('data-id'), b); }));
 }
 
 // พิมพ์รายงาน OT เป็น PDF (เปิดหน้าต่างพิมพ์ → ผู้ใช้ Save as PDF)
@@ -778,16 +807,19 @@ function printOTReportPDF() {
   win.document.close();
 }
 
-function otVoidRequest(reqId) {
+function otVoidRequest(reqId, btn) {
   const reason = prompt('ยกเลิกใบ OT (HR)\nระบุเหตุผล:', '');
   if (reason === null) return;
+  const done = btnBusy(btn, 'กำลังยกเลิก...');
+  if (!done) return;
   gasRun('otVoidByHR', { hrToken: S.hrToken, requestId: reqId, voidReason: reason.trim() })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกใบ OT แล้ว', true);
       runOTReport();
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // Export CSV (ตามคอลัมน์ที่ผู้ใช้ระบุ)
