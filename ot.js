@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.9.2';
+window.OT_JS_VERSION = '8.10.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -669,6 +669,14 @@ function otFillReportDropdown(list) {
   if (cur) sel.value = cur;
 }
 
+/** เปลี่ยนสถานะใบในรายงานที่ถืออยู่เป็น "ถูกยกเลิก" แล้ววาดใหม่ (ไม่ถามเซิร์ฟเวอร์) */
+function otMarkVoided(reqId) {
+  (OT.report || []).forEach(function (r) {
+    if (String(r.requestId) === String(reqId)) r.status = 'VOIDED';
+  });
+  renderOTReport(OT.report || []);
+}
+
 function runOTReport() {
   const box = document.getElementById('otr-result');
   box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด...</div>';
@@ -834,7 +842,7 @@ function otVoidRequest(reqId, btn) {
       done();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกใบ OT แล้ว', true);
-      runOTReport();
+      otMarkVoided(reqId);   // แก้สถานะในมือ ไม่ค้นใหม่ (ดูเหตุผลที่ lvMarkVoided)
     })
     .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }

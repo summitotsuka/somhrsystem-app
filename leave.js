@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.9.2';
+window.LEAVE_JS_VERSION = '8.10.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -660,6 +660,14 @@ function loadLeaveReport() {
   if (box) box.innerHTML = '<div style="text-align:center;padding:30px;color:var(--tx3)">เลือกเงื่อนไขแล้วกด “ค้นหา” เพื่อดูรายงาน</div>';
 }
 
+/** เปลี่ยนสถานะใบในรายงานที่ถืออยู่เป็น "ถูกยกเลิก" แล้ววาดใหม่ (ไม่ถามเซิร์ฟเวอร์) */
+function lvMarkVoided(reqId) {
+  (LV.report || []).forEach(function (r) {
+    if (String(r.requestId) === String(reqId)) r.status = 'VOIDED';
+  });
+  lvRenderReport(LV.report || []);
+}
+
 function runLeaveReport() {
   const box = document.getElementById('lvr-result');
   box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด...</div>';
@@ -832,6 +840,7 @@ function confirmVoid() {
   const reason = document.getElementById('lvr-void-reason').value.trim();
   if (!reason) { showToast('กรุณาระบุเหตุผลที่ยกเลิก'); return; }
   if (!LV.currentVoid) return;
+  const voided = LV.currentVoid;   // เก็บไว้ก่อน เพราะ closeVoidDialog จะล้างค่า
   const done = btnBusy(document.getElementById('lvr-void-confirm'), 'กำลังยกเลิก...');
   if (!done) return;
   gasRun('leaveVoidByHR', { hrToken: S.hrToken, requestId: LV.currentVoid, voidReason: reason })
@@ -840,7 +849,10 @@ function confirmVoid() {
       closeVoidDialog();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกใบลาเรียบร้อย', true);
-      runLeaveReport();
+      // แก้สถานะในรายการที่ถืออยู่แล้ววาดใหม่ แทนการค้นหาใหม่ทั้งชุด
+      // เหตุผลเดียวกับหน้าอนุมัติ: เขียนลงชีต แต่สำเร็จอ่านจากสำเนาที่ตามหลัง 5 นาที
+      // ถ้าค้นใหม่ทันที จะเห็นสถานะเดิม แล้ว HR จะกดยกเลิกซ้ำ
+      lvMarkVoided(voided);
     })
     .withFailureHandler(e => { done(); closeVoidDialog(); showToast('เกิดข้อผิดพลาด'); });
 }

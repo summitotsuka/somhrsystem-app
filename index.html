@@ -1792,7 +1792,8 @@ const SB = {
               leaveGetMyRequests: 1, otGetMyRequests: 1,
               leaveGetTypes: 1, otGetTypes: 1,
               leaveGetMyTeam: 1, otGetMyTeam: 1,
-              leaveGetPendingApprovals: 1, otGetPendingApprovals: 1 },
+              leaveGetPendingApprovals: 1, otGetPendingApprovals: 1,
+              leaveGetReport: 1, otGetReport: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -2077,7 +2078,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.9.3';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.10.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5664,8 +5665,8 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.9.2"></script>
-<script src="ot.js?v=8.9.2"></script>
+<script src="leave.js?v=8.10.0"></script>
+<script src="ot.js?v=8.10.0"></script>
 <script src="payroll.js?v=8.6.0"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
