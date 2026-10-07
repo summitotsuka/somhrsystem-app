@@ -1786,7 +1786,8 @@ const SB = {
   ACTIONS:  { login: 1, getMyAttendance: 1, payGetMySlips: 1,
               hrGetEmployeeList: 1, hrFindEmployee: 1,
               leaveGetMyRequests: 1, otGetMyRequests: 1,
-              leaveGetTypes: 1, otGetTypes: 1 },
+              leaveGetTypes: 1, otGetTypes: 1,
+              leaveGetMyTeam: 1, otGetMyTeam: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -1966,7 +1967,13 @@ var SB_EMP_WRITES = {
   hrAddEmployee: 1, hrUpdateEmployee: 1, activateAccount: 1, resetPassword: 1,
 };
 // คำสั่งอ่านทะเบียนที่ต้องย้อนไปใช้ของเดิมระหว่างที่สำเนายังเก่า
-var SB_EMP_READS = { hrGetEmployeeList: 1, hrFindEmployee: 1 };
+// รายชื่อทีม (เฟส 5E) อ่านจากตารางเดียวกัน จึงต้องอยู่ในรายการนี้ด้วย —
+// ฝ่ายบุคคลเพิ่งย้ายลูกน้องไปอยู่ใต้หัวหน้าคนใหม่ แล้วหัวหน้าคนนั้นเปิดหน้า
+// อนุมัติทันที ต้องเห็นชื่อ ไม่ใช่รอ 7 นาทีโดยไม่รู้ว่าทำไมยังไม่ขึ้น
+var SB_EMP_READS = {
+  hrGetEmployeeList: 1, hrFindEmployee: 1,
+  leaveGetMyTeam: 1, otGetMyTeam: 1,
+};
 
 // ── เรื่องเดียวกันกับลา/โอที (เฟส 5C) ──
 // พนักงานส่งใบลาแล้วหน้าจอเด้งไปหน้าประวัติทันที ถ้าอ่านจากสำเนาที่ยังตามไม่ทัน
@@ -2015,7 +2022,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.7.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.8.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
