@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.8.2';
+window.LEAVE_JS_VERSION = '8.9.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -277,7 +277,7 @@ function loadLeaveHistory() {
       LV.myRequests = r.requests || [];
       lvRenderHistory(LV.myRequests, r.summary || {});
     })
-    .withFailureHandler(e => { done(); box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(e => { box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
 }
 
 // format ช่วงรอบ yyyy-MM-dd → dd/mm/yyyy
@@ -437,7 +437,30 @@ function loadLeaveApprovals() {
       LV.pending = r.requests || [];
       lvRenderApprovals(LV.pending);
     })
-    .withFailureHandler(e => { done(); box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(e => { box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+}
+
+/**
+ * ── เอาใบที่เพิ่งจัดการแล้วออกจากรายการ โดยไม่ถามเซิร์ฟเวอร์ใหม่ ────
+ *
+ * เดิมหลังกดอนุมัติจะเรียก loadLeaveApprovals() ไปอ่านรายการใหม่ทั้งชุด
+ * ซึ่งมีปัญหาสองชั้นหลังย้ายขึ้น Supabase:
+ *
+ *  1. การเขียนยังลงที่ชีต ส่วนการอ่านมาจากสำเนาที่ตามหลังอยู่ราว 5 นาที
+ *     ระบบจึงต้องถอยไปอ่านของเดิมชั่วคราว (เกราะกันสำเนาเก่า)
+ *     แปลว่าหลังอนุมัติใบแรก การโหลดใหม่ทุกครั้งจะช้ากลับไป 8–20 วินาที
+ *     — หัวหน้าที่นั่งเคลียร์ใบรวดเดียวคือคนที่เจอหนักที่สุด
+ *
+ *  2. ถ้าไม่ถอย ก็จะเห็นใบที่เพิ่งอนุมัติค้างอยู่ แล้วกดอนุมัติซ้ำ
+ *
+ * ทางออกคือไม่ต้องถามใหม่เลย — เรารู้อยู่แล้วว่าใบนั้นจัดการไปแล้ว
+ * เอาออกจากรายการในมือแล้ววาดใหม่ เร็วกว่าเดิมด้วยเพราะไม่มีการคุยกับเซิร์ฟเวอร์
+ * ถ้าหัวหน้าออกจากหน้านี้แล้วกลับเข้ามา จะได้ข้อมูลสดจากเซิร์ฟเวอร์ตามปกติ
+ */
+function lvDropPending(ids) {
+  const gone = new Set((Array.isArray(ids) ? ids : [ids]).map(String));
+  LV.pending = (LV.pending || []).filter(x => !gone.has(String(x.requestId)));
+  lvRenderApprovals(LV.pending);
 }
 
 function lvRenderApprovals(list) {
@@ -510,18 +533,22 @@ function approveSelected() {
   if (!unbusy) return;
 
   let done = 0, failed = 0;
+  const okIds = [];           // เอาออกเฉพาะใบที่สำเร็จจริง ใบที่ล้มต้องยังอยู่ให้ลองใหม่
   const next = (i) => {
     if (i >= ids.length) {
       unbusy();
       showToast(`อนุมัติสำเร็จ ${done} รายการ` + (failed ? ` (ไม่สำเร็จ ${failed})` : ''), true);
-      loadLeaveApprovals();
+      lvDropPending(okIds);
       return;
     }
     if (btnSel && btnSel.dataset.busy === '1') {
       btnSel.innerHTML = '<span class="spin"></span> กำลังอนุมัติ ' + (i + 1) + '/' + ids.length + '...';
     }
     gasRun('leaveApprove', { hrToken: S.hrToken, requestId: ids[i] })
-      .withSuccessHandler(r => { if (r && r.success) done++; else failed++; next(i + 1); })
+      .withSuccessHandler(r => {
+        if (r && r.success) { done++; okIds.push(ids[i]); } else failed++;
+        next(i + 1);
+      })
       .withFailureHandler(() => { failed++; next(i + 1); });
   };
   next(0);
@@ -536,7 +563,7 @@ function approveLeave(reqId, btn) {
       done();
       if (!r || !r.success) { showToast((r && r.message) || 'อนุมัติไม่สำเร็จ'); return; }
       showToast(r.message || 'อนุมัติเรียบร้อย', true);
-      loadLeaveApprovals();   // refresh
+      lvDropPending(reqId);
     })
     .withFailureHandler(e => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
@@ -555,7 +582,7 @@ function cancelByApprover(reqId, btn) {
       done();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกใบลาเรียบร้อย', true);
-      loadLeaveApprovals();
+      lvDropPending(reqId);
     })
     .withFailureHandler(e => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
@@ -577,6 +604,7 @@ function confirmReject() {
   if (!reason) { showToast('กรุณาระบุเหตุผลที่ไม่อนุมัติ'); return; }
   if (!LV.currentReject) return;
 
+  const gone = LV.currentReject;   // เก็บไว้ก่อน เพราะ closeRejectDialog จะล้างค่า
   const done = btnBusy(document.getElementById('lv-reject-confirm'), 'กำลังส่ง...');
   if (!done) return;
   gasRun('leaveReject', { hrToken: S.hrToken, requestId: LV.currentReject, rejectReason: reason })
@@ -585,7 +613,7 @@ function confirmReject() {
       closeRejectDialog();
       if (!r || !r.success) { showToast((r && r.message) || 'ปฏิเสธไม่สำเร็จ'); return; }
       showToast('ปฏิเสธคำขอเรียบร้อย', true);
-      loadLeaveApprovals();
+      lvDropPending(gone);
     })
     .withFailureHandler(e => { done(); closeRejectDialog(); showToast('เกิดข้อผิดพลาด'); });
 }

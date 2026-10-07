@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.8.2';
+window.OT_JS_VERSION = '8.9.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -485,6 +485,19 @@ function loadOTApprovals() {
   else gasRun('otGetTypes', { hrToken: S.hrToken }).withSuccessHandler(r => { if (r && r.success) OT.types = r.types || []; load(); });
 }
 
+/**
+ * เอาใบที่เพิ่งจัดการแล้วออกจากรายการ โดยไม่ถามเซิร์ฟเวอร์ใหม่
+ * เหตุผลเดียวกับ lvDropPending ใน leave.js — ดูคำอธิบายเต็มที่นั่น
+ * สรุป: การเขียนลงชีต การอ่านมาจากสำเนาที่ตามหลัง ถ้าโหลดใหม่ทุกครั้ง
+ * หลังอนุมัติใบแรกจะช้ากลับไป 8–20 วินาที ซึ่งกระทบคนที่นั่งเคลียร์ใบรวดเดียว
+ */
+function otDropPending(ids) {
+  const gone = {};
+  (Array.isArray(ids) ? ids : [ids]).forEach(function (x) { gone[String(x)] = true; });
+  OT.pending = (OT.pending || []).filter(function (x) { return !gone[String(x.requestId)]; });
+  renderOTApprovals();
+}
+
 function renderOTApprovals() {
   const box = document.getElementById('ot-approve-list');
   if (!box) return;
@@ -544,7 +557,7 @@ function otApproveRequest(reqId, btn) {
       done();
       if (!r || !r.success) { showToast((r && r.message) || 'อนุมัติไม่สำเร็จ'); return; }
       showToast(r.message || 'อนุมัติเรียบร้อย', true);
-      loadOTApprovals();
+      otDropPending(reqId);
     })
     .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
@@ -559,18 +572,22 @@ function otApproveSelected() {
   const unbusy = btnBusy(btnSel, 'กำลังอนุมัติ 1/' + ids.length + '...');
   if (!unbusy) return;
   let done = 0, ok = 0;
+  const okIds = [];           // เอาออกเฉพาะใบที่สำเร็จจริง
   const next = () => {
     if (done >= ids.length) {
       unbusy();
       showToast('อนุมัติสำเร็จ ' + ok + '/' + ids.length + ' รายการ', true);
-      loadOTApprovals();
+      otDropPending(okIds);
       return;
     }
     if (btnSel && btnSel.dataset.busy === '1') {
       btnSel.innerHTML = '<span class="spin"></span> กำลังอนุมัติ ' + (done + 1) + '/' + ids.length + '...';
     }
     gasRun('otApprove', { hrToken: S.hrToken, requestId: ids[done] })
-      .withSuccessHandler(r => { if (r && r.success) ok++; done++; next(); })
+      .withSuccessHandler(r => {
+        if (r && r.success) { ok++; okIds.push(ids[done]); }
+        done++; next();
+      })
       .withFailureHandler(() => { done++; next(); });
   };
   next();
@@ -588,7 +605,7 @@ function otRejectRequest(reqId, btn) {
       done();
       if (!r || !r.success) { showToast((r && r.message) || 'ไม่สำเร็จ'); return; }
       showToast('ปฏิเสธคำขอแล้ว', true);
-      loadOTApprovals();
+      otDropPending(reqId);
     })
     .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
@@ -604,7 +621,7 @@ function otCancelByApproverAction(reqId, btn) {
       done();
       if (!r || !r.success) { showToast((r && r.message) || 'ยกเลิกไม่สำเร็จ'); return; }
       showToast('ยกเลิกใบ OT แล้ว', true);
-      loadOTApprovals();
+      otDropPending(reqId);
     })
     .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
