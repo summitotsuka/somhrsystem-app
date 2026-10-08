@@ -1773,9 +1773,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 //        leaveGetMyTeam · otGetMyTeam (รายชื่อทีมของหัวหน้า)
 //        leaveGetPendingApprovals · otGetPendingApprovals (หน้ารออนุมัติ)
 //        leaveGetReport · otGetReport (รายงานลา/โอที)
-//        payGetPeriods · payGetReportMeta (หน้าจัดการงวด · เปิดหน้ารายงานเงินเดือน)
+//        payGetPeriods · payGetReportMeta · payGetReport (หน้าจอเงินเดือนของ HR)
 //  ไม่ย้าย: การ "เขียน" ทั้งหมด (ยื่น/อนุมัติ/เช็คอิน/อัปโหลด) ·
-//          payGetReport (ปุ่มออกรายงานเงินเดือน — ยังไม่ได้ยกตัวเลขเงินขึ้นไป) ·
 //          hrGetReport (รายงานลงเวลา)
 //
 //  คำสั่งที่ย้ายมาแล้วจะไม่วิ่งผ่าน GAS เลย จึงไม่ต้องรอคิว —
@@ -1799,7 +1798,7 @@ const SB = {
               leaveGetMyTeam: 1, otGetMyTeam: 1,
               leaveGetPendingApprovals: 1, otGetPendingApprovals: 1,
               leaveGetReport: 1, otGetReport: 1,
-              payGetPeriods: 1, payGetReportMeta: 1 },
+              payGetPeriods: 1, payGetReportMeta: 1, payGetReport: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -2041,7 +2040,7 @@ var SB_PAY_WRITES = {
   payCreatePeriod: 1, payDeletePeriod: 1, paySetPeriodStatus: 1,
   payUploadExcel: 1, payUpdateRow: 1, payDeleteRow: 1,
 };
-var SB_PAY_READS = { payGetPeriods: 1, payGetReportMeta: 1 };
+var SB_PAY_READS = { payGetPeriods: 1, payGetReportMeta: 1, payGetReport: 1 };
 
 function sbMarkPayStale() {
   try { localStorage.setItem('ws6_pay_stale', String(Date.now() + SB_PAY_MS)); } catch (e) {}
@@ -2133,7 +2132,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.13.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.14.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
