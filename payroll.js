@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.PAYROLL_JS_VERSION = '8.13.0';
+window.PAYROLL_JS_VERSION = '8.14.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  payroll.js — Frontend สลิปเงินเดือน (SOM HR System)
@@ -270,6 +270,11 @@ function renderLoadResult(res, headcount) {
   html += `<div><b style="font-size:16px;color:var(--wn)">${res.warned}</b> ⚠️ ยอดรวมไม่ตรง (ให้ตรวจสอบ)</div>`;
   if (res.warnList && res.warnList.length) {
     html += res.warnList.map(w => `<div style="font-size:13px;color:var(--wn);padding-left:20px">• ${payEsc(w)}</div>`).join('');
+  }
+  // คอลัมน์ในไฟล์ที่ระบบไม่รู้จักและมองข้ามไป — ไม่ใช่ข้อผิดพลาด แต่ต้องเห็น ไม่ใช่เงียบ
+  if (res.ignoredCols && res.ignoredCols.length) {
+    html += `<div style="margin-top:6px;font-size:13px;color:var(--tx3)">ℹ️ มองข้ามคอลัมน์ที่ระบบไม่ใช้ ${res.ignoredCols.length} ช่อง:</div>`;
+    html += res.ignoredCols.map(c => `<div style="font-size:13px;color:var(--tx3);padding-left:20px">• ${payEsc(c)}</div>`).join('');
   }
   if (headcount != null) {
     html += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)"><b style="font-size:16px;color:var(--ac)">${headcount}</b> คนในงวดนี้ทั้งหมด (หลังนำเข้า)</div>`;
