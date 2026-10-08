@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.PAYROLL_JS_VERSION = '8.6.0';
+window.PAYROLL_JS_VERSION = '8.13.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  payroll.js — Frontend สลิปเงินเดือน (SOM HR System)
@@ -38,7 +38,11 @@ function payFmtDate(s) {
 function payTypeText(t) { return t === 'BONUS' ? 'โบนัส' : 'ปกติ'; }
 
 // ════════ หน้าจัดการงวด ════════
-function loadPayPeriods() {
+function loadPayPeriods(btn) {
+  // btn ส่งมาเฉพาะตอนผู้ใช้กดปุ่ม ↻ — ตอนเรียกเองหลังสร้าง/ลบงวดจะไม่มีปุ่ม
+  // btnBusy คืนฟังก์ชันเปล่าที่เรียกได้ปลอดภัยถ้าไม่ส่งปุ่มมา
+  const done = btnBusy(btn, 'กำลังโหลด...');
+  if (!done) return;
   const box = document.getElementById('pay-periods-list');
   if (box) box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด...</div>';
   // ซ่อนฟอร์มสร้าง
@@ -46,21 +50,25 @@ function loadPayPeriods() {
 
   gasRun('payGetPeriods', { hrToken: S.hrToken })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { if (box) box.innerHTML = '<div style="padding:20px;color:var(--er)">' + payEsc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>'; return; }
       PAY.periods = r.periods || [];
       renderPayPeriods();
     })
-    .withFailureHandler(() => { if (box) box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(() => { done(); if (box) box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
 }
 
-function payDeletePeriodConfirm(periodId) {
+function payDeletePeriodConfirm(periodId, btn) {
   if (!confirm('ลบงวด ' + periodId + ' ?\n(ลบได้เฉพาะงวดที่ยังไม่มีข้อมูลพนักงาน)')) return;
+  const done = btnBusy(btn, 'กำลังลบ...');
+  if (!done) return;
   gasRunNoRetry('payDeletePeriod', { hrToken: S.hrToken, periodId: periodId })
     .withSuccessHandler(r => {
+      done();
       if (r && r.success) { showToast('ลบงวดเรียบร้อย'); loadPayPeriods(); }
       else showToast((r && r.message) || 'ลบไม่สำเร็จ');
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 function renderPayPeriods() {
@@ -98,9 +106,10 @@ function renderPayPeriods() {
   }).join('');
 
   box.querySelectorAll('.pay-review-btn').forEach(b => b.addEventListener('click', () => openPayReview(b.getAttribute('data-id'))));
-  box.querySelectorAll('.pay-lock2-btn').forEach(b => b.addEventListener('click', () => paySetStatus(b.getAttribute('data-id'), 'LOCKED')));
-  box.querySelectorAll('.pay-unlock-btn').forEach(b => b.addEventListener('click', () => paySetStatus(b.getAttribute('data-id'), 'OPEN')));
-  box.querySelectorAll('.pay-delperiod-btn').forEach(b => b.addEventListener('click', () => payDeletePeriodConfirm(b.getAttribute('data-id'))));
+  // ส่งตัวปุ่มเข้าไปด้วย เพื่อให้ btnBusy ทำให้ปุ่มนั้นหมุนได้ — การ์ดแต่ละใบมีปุ่มของตัวเอง
+  box.querySelectorAll('.pay-lock2-btn').forEach(b => b.addEventListener('click', () => paySetStatus(b.getAttribute('data-id'), 'LOCKED', b)));
+  box.querySelectorAll('.pay-unlock-btn').forEach(b => b.addEventListener('click', () => paySetStatus(b.getAttribute('data-id'), 'OPEN', b)));
+  box.querySelectorAll('.pay-delperiod-btn').forEach(b => b.addEventListener('click', () => payDeletePeriodConfirm(b.getAttribute('data-id'), b)));
 }
 
 // สร้างงวด
@@ -111,30 +120,36 @@ function payCreatePeriod() {
   if (!round) { showToast('กรอกรอบการจ่าย'); return; }
   if (!date) { showToast('เลือกวันที่จ่าย'); return; }
 
-  const btn = document.getElementById('pay-create-save');
-  if (btn) { btn.disabled = true; btn.textContent = 'กำลังสร้าง...'; }
+  // เดิมเขียน disabled + เปลี่ยนข้อความเอง ซึ่งทำงานได้ แต่คืนค่าด้วยข้อความที่พิมพ์ไว้ตรง ๆ
+  // ('สร้างงวด') ถ้าวันหนึ่งเปลี่ยนป้ายปุ่มในหน้า HTML ปุ่มจะกลับมาเป็นข้อความเก่า
+  // btnBusy จำข้อความเดิมของปุ่มเอง และมีด่านกันกดซ้ำให้ด้วย
+  const done = btnBusy(document.getElementById('pay-create-save'), 'กำลังสร้าง...');
+  if (!done) return;
   gasRun('payCreatePeriod', { hrToken: S.hrToken, payRound: round, payDate: date, payType: type })
     .withSuccessHandler(r => {
-      if (btn) { btn.disabled = false; btn.textContent = 'สร้างงวด'; }
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'สร้างไม่สำเร็จ'); return; }
       showToast(r.message || 'สร้างงวดแล้ว', true);
       document.getElementById('pay-f-round').value = '';
       document.getElementById('pay-f-date').value = '';
       loadPayPeriods();
     })
-    .withFailureHandler(() => { if (btn) { btn.disabled = false; btn.textContent = 'สร้างงวด'; } showToast('เกิดข้อผิดพลาด'); });
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
-function paySetStatus(periodId, status) {
+function paySetStatus(periodId, status, btn) {
   const msg = status === 'LOCKED' ? 'ปิดงวดนี้? (จะแก้ไขไม่ได้จนกว่าจะเปิดใหม่)' : 'เปิดงวดนี้กลับมาแก้ไข?';
   if (!confirm(msg)) return;
+  const done = btnBusy(btn, status === 'LOCKED' ? 'กำลังปิดงวด...' : 'กำลังเปิดงวด...');
+  if (!done) return;
   gasRun('paySetPeriodStatus', { hrToken: S.hrToken, periodId: periodId, status: status })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ไม่สำเร็จ'); return; }
       showToast(r.message || 'เรียบร้อย', true);
       loadPayPeriods();
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 function openPayReview(periodId) {
@@ -164,7 +179,7 @@ function loadPayReview() {
   if (upLabel) upLabel.parentElement.style.opacity = isOpen ? '1' : '.4';
   if (lockBtn) {
     lockBtn.textContent = isOpen ? '🔒 ปิดงวด' : '🔓 เปิดงวด';
-    lockBtn.onclick = () => paySetStatusFromReview(p.periodId, isOpen ? 'LOCKED' : 'OPEN');
+    lockBtn.onclick = () => paySetStatusFromReview(p.periodId, isOpen ? 'LOCKED' : 'OPEN', lockBtn);
   }
 
   document.getElementById('pay-upload-status').textContent = '';
@@ -176,17 +191,21 @@ function loadPayReview() {
   loadPayTable();
 }
 
-function paySetStatusFromReview(periodId, status) {
+function paySetStatusFromReview(periodId, status, btn) {
   const msg = status === 'LOCKED' ? 'ปิดงวดนี้? (จะแก้ไขไม่ได้)' : 'เปิดงวดนี้กลับมาแก้ไข?';
   if (!confirm(msg)) return;
+  const done = btnBusy(btn || document.getElementById('pay-lock-btn'),
+    status === 'LOCKED' ? 'กำลังปิดงวด...' : 'กำลังเปิดงวด...');
+  if (!done) return;
   gasRun('paySetPeriodStatus', { hrToken: S.hrToken, periodId: periodId, status: status })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ไม่สำเร็จ'); return; }
       showToast(r.message || 'เรียบร้อย', true);
       if (PAY.currentPeriod) PAY.currentPeriod.status = status;
       loadPayReview();
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // โหลดไฟล์ Excel
@@ -197,12 +216,24 @@ function payHandleUpload(file) {
   const status = document.getElementById('pay-upload-status');
   if (status) { status.style.color = 'var(--tx3)'; status.textContent = 'กำลังอ่านไฟล์...'; }
 
+  // ⚠️ ล็อกปุ่มเลือกไฟล์ไว้ระหว่างนำเข้า — นำเข้าซ้ำหมายถึงแถวซ้ำในชีตเงินเดือน
+  // ปิดตัว input เอง (วิธีเดียวกับที่ syncPayUploadUI ใช้ตอนงวดถูกปิด)
+  // label ที่ครอบ input ที่ถูกปิดอยู่ จะไม่เปิดหน้าต่างเลือกไฟล์
+  const upInput = document.getElementById('pay-upload-file');
+  const upLabel = document.getElementById('pay-upload-label');
+  const lockUp = (on) => {
+    if (upInput) upInput.disabled = on;
+    if (upLabel) upLabel.style.opacity = on ? '0.5' : '';
+  };
+  lockUp(true);
+
   const reader = new FileReader();
   reader.onload = () => {
     const base64 = reader.result.split(',')[1];
     if (status) status.textContent = 'กำลังนำเข้าข้อมูล... (อาจใช้เวลาสักครู่)';
     gasRun('payUploadExcel', { hrToken: S.hrToken, periodId: p.periodId, fileData: base64, fileName: file.name })
       .withSuccessHandler(r => {
+        lockUp(false);
         if (!r || !r.success) {
           if (status) { status.style.color = 'var(--er)'; status.textContent = '✗ ' + ((r && r.message) || 'นำเข้าไม่สำเร็จ'); }
           return;
@@ -211,7 +242,13 @@ function payHandleUpload(file) {
         renderLoadResult(r.result, r.headcount);
         loadPayTable();
       })
-      .withFailureHandler(() => { if (status) { status.style.color = 'var(--er)'; status.textContent = '✗ เกิดข้อผิดพลาด'; } });
+      .withFailureHandler(() => { lockUp(false); if (status) { status.style.color = 'var(--er)'; status.textContent = '✗ เกิดข้อผิดพลาด'; } });
+  };
+  // อ่านไฟล์เองไม่สำเร็จ (ไฟล์เสีย/ผู้ใช้ถอด USB) ก็ต้องคืนปุ่ม
+  // ไม่งั้นปุ่มเลือกไฟล์ตายค้างจนกว่าจะออกจากหน้าแล้วเข้ามาใหม่
+  reader.onerror = () => {
+    lockUp(false);
+    if (status) { status.style.color = "var(--er)"; status.textContent = "✗ อ่านไฟล์ไม่สำเร็จ"; }
   };
   reader.readAsDataURL(file);
 }
@@ -335,8 +372,8 @@ function renderPayTable() {
     </div></div>`;
 
   box.innerHTML = html;
-  box.querySelectorAll('.pay-edit-link').forEach(el => el.addEventListener('click', () => openPayEdit(el.getAttribute('data-id'))));
-  box.querySelectorAll('.pay-del-link').forEach(el => el.addEventListener('click', () => payDeleteRowWithPdf(el.getAttribute('data-id'))));
+  box.querySelectorAll('.pay-edit-link').forEach(el => el.addEventListener('click', () => openPayEdit(el.getAttribute('data-id'), el)));
+  box.querySelectorAll('.pay-del-link').forEach(el => el.addEventListener('click', () => payDeleteRowWithPdf(el.getAttribute('data-id'), el)));
   // เช็คบ็อกซ์
   const checkAll = document.getElementById('pay-check-all');
   if (checkAll) checkAll.addEventListener('change', () => {
@@ -389,7 +426,9 @@ const PAY_GROUPS = [
   ]},
 ];
 
-function openPayEdit(rowId) {
+function openPayEdit(rowId, btn) {
+  const done = btnBusy(btn, 'กำลังเปิด...');
+  if (!done) return;
   PAY.editRowId = rowId;
   const body = document.getElementById('pay-edit-body');
   const overlay = document.getElementById('pay-edit-overlay');
@@ -398,10 +437,11 @@ function openPayEdit(rowId) {
 
   gasRun('payGetRow', { hrToken: S.hrToken, rowId: rowId })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { body.innerHTML = '<div style="color:var(--er)">' + payEsc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>'; return; }
       renderPayEditForm(r.values || []);
     })
-    .withFailureHandler(() => { body.innerHTML = '<div style="color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(() => { done(); body.innerHTML = '<div style="color:var(--er)">เกิดข้อผิดพลาด</div>'; });
 }
 
 function renderPayEditForm(values) {
@@ -443,30 +483,33 @@ function savePayEdit() {
   const values = [];
   inputs.forEach(inp => { values[parseInt(inp.getAttribute('data-idx'), 10)] = inp.value; });
 
-  const btn = document.getElementById('pay-edit-save');
-  if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก...'; }
+  const done = btnBusy(document.getElementById('pay-edit-save'), 'กำลังบันทึก...');
+  if (!done) return;
   gasRun('payUpdateRow', { hrToken: S.hrToken, rowId: PAY.editRowId, values: values })
     .withSuccessHandler(r => {
-      if (btn) { btn.disabled = false; btn.textContent = 'บันทึก + คำนวณสะสมใหม่'; }
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'บันทึกไม่สำเร็จ'); return; }
       showToast('บันทึกแล้ว ' + (r.checkFlag === '⚠️' ? '(ยอดยังไม่ตรง ⚠️)' : '✓'), true);
       document.getElementById('pay-edit-overlay').style.display = 'none';
       loadPayTable();
     })
-    .withFailureHandler(() => { if (btn) { btn.disabled = false; btn.textContent = 'บันทึก + คำนวณสะสมใหม่'; } showToast('เกิดข้อผิดพลาด'); });
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 function deletePayRow() {
   if (!PAY.editRowId) return;
   if (!confirm('ลบข้อมูลพนักงานคนนี้ออกจากงวด?')) return;
+  const done = btnBusy(document.getElementById('pay-edit-delete'), 'กำลังลบ...');
+  if (!done) return;
   gasRun('payDeleteRow', { hrToken: S.hrToken, rowId: PAY.editRowId })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { showToast((r && r.message) || 'ลบไม่สำเร็จ'); return; }
       showToast('ลบแล้ว', true);
       document.getElementById('pay-edit-overlay').style.display = 'none';
       loadPayTable();
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // ════════ สร้าง PDF ════════
@@ -587,14 +630,17 @@ function payGenPDFSelected() {
 }
 
 // ลบแถวที่มี PDF แล้ว (ลบแถว + ไฟล์ PDF) — ใช้ตอนต้องแก้ไขคนที่สร้างสลิปแล้ว
-function payDeleteRowWithPdf(rowId) {
+function payDeleteRowWithPdf(rowId, btn) {
   if (!confirm('คนนี้สร้างสลิป PDF แล้ว\nการลบจะลบทั้งข้อมูลและไฟล์ PDF\nจากนั้นค่อยแก้ไขในไฟล์ Excel แล้วโหลดใหม่\n\nยืนยันลบ?')) return;
+  const done = btnBusy(btn, 'กำลังลบ...');
+  if (!done) return;
   gasRun('payDeleteRow', { hrToken: S.hrToken, rowId: rowId })
     .withSuccessHandler(r => {
+      done();
       if (r && r.success) { showToast('ลบเรียบร้อย'); loadPayTable(); }
       else showToast((r && r.message) || 'ลบไม่สำเร็จ');
     })
-    .withFailureHandler(() => showToast('เกิดข้อผิดพลาด'));
+    .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
 // ════════ ผูก event ════════
@@ -605,7 +651,9 @@ function initPayrollBindings() {
   on('hr-menu-payreport', 'click', () => go('pay-report'));
   // หน้าจัดการงวด
   on('pay-periods-back', 'click', () => go('hr-dash'));
-  on('pay-periods-refresh', 'click', loadPayPeriods);
+  on('pay-periods-refresh', 'click', function () {
+    loadPayPeriods(document.getElementById('pay-periods-refresh'));
+  });
   on('pay-create-btn', 'click', () => {
     const f = document.getElementById('pay-create-form');
     if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
@@ -779,16 +827,18 @@ function loadPayTgSchedules() {
           ${done ? '' : `<button class="btn o sm paytg-cancel" data-id="${payEsc(s.schedId)}" style="width:auto;padding:6px 14px">ยกเลิก</button>`}
         </div>`;
       }).join('');
-      box.querySelectorAll('.paytg-cancel').forEach(b => b.addEventListener('click', () => cancelPayTgSchedule(b.getAttribute('data-id'))));
+      box.querySelectorAll('.paytg-cancel').forEach(b => b.addEventListener('click', () => cancelPayTgSchedule(b.getAttribute('data-id'), b)));
     })
     .withFailureHandler(() => { box.innerHTML = ''; });
 }
 
-function cancelPayTgSchedule(schedId) {
+function cancelPayTgSchedule(schedId, btn) {
   if (!confirm('ยกเลิกกำหนดการนี้?')) return;
+  const done = btnBusy(btn, 'กำลังยกเลิก...');
+  if (!done) return;
   gasRun('payCancelSchedule', { hrToken: S.hrToken, schedId: schedId })
-    .withSuccessHandler(r => { showToast((r && r.message) || 'ยกเลิกแล้ว'); loadPayTgSchedules(); })
-    .withFailureHandler(() => showToast('ยกเลิกไม่สำเร็จ'));
+    .withSuccessHandler(r => { done(); showToast((r && r.message) || 'ยกเลิกแล้ว'); loadPayTgSchedules(); })
+    .withFailureHandler(() => { done(); showToast('ยกเลิกไม่สำเร็จ'); });
 }
 
 // ส่ง / ตั้งเวลา
@@ -805,26 +855,29 @@ function doPayTgSend() {
     if (!rowIds.length) { showToast('เลือกพนักงานก่อน'); return; }
   }
 
-  if (btn) btn.disabled = true;
+  // ⚠️ ปุ่มนี้ส่งสลิปเงินเดือนจริงให้พนักงาน การกดซ้ำแปลว่าพนักงานได้รับสองครั้ง
+  // เดิมกันไว้ด้วย disabled เอง ซึ่งกันได้ แต่ไม่มีวงหมุนบอกว่ากำลังทำงาน
+  const done = btnBusy(btn, PAYTG.time === 'sched' ? 'กำลังตั้งเวลา...' : 'กำลังส่ง...');
+  if (!done) return;
 
   if (PAYTG.time === 'sched') {
     // ตั้งเวลา
     const at = document.getElementById('paytg-sched-at').value;
-    if (!at) { showToast('เลือกวันเวลาก่อน'); if (btn) btn.disabled = false; return; }
+    if (!at) { showToast('เลือกวันเวลาก่อน'); done(); return; }
     if (status) status.textContent = 'กำลังตั้งเวลา...';
     gasRunNoRetry('payTelegramSchedule', { hrToken: S.hrToken, periodId: p.periodId, rowIds: rowIds, sendAt: at })
       .withSuccessHandler(r => {
-        if (btn) btn.disabled = false;
+        done();
         if (r && r.success) { if (status) status.textContent = '✓ ' + r.message; loadPayTgSchedules(); }
         else if (status) status.textContent = '✗ ' + ((r && r.message) || 'ตั้งเวลาไม่สำเร็จ');
       })
-      .withFailureHandler(() => { if (btn) btn.disabled = false; if (status) status.textContent = '✗ เกิดข้อผิดพลาด'; });
+      .withFailureHandler(() => { done(); if (status) status.textContent = '✗ เกิดข้อผิดพลาด'; });
   } else {
     // ส่งทันที
     if (status) status.textContent = 'กำลังส่ง...';
     gasRunNoRetry('payTelegramSendNow', { hrToken: S.hrToken, periodId: p.periodId, rowIds: rowIds })
       .withSuccessHandler(r => {
-        if (btn) btn.disabled = false;
+        done();
         if (r && r.success) {
           const rs = r.result || {};
           let msg = `✓ เปิดให้ดูสลิป ${rs.opened || 0} คน`;
@@ -835,7 +888,7 @@ function doPayTgSend() {
           loadPayReview();   // refresh สถานะส่งแล้ว
         } else if (status) status.textContent = '✗ ' + ((r && r.message) || 'ส่งไม่สำเร็จ');
       })
-      .withFailureHandler(() => { if (btn) btn.disabled = false; if (status) status.textContent = '✗ เกิดข้อผิดพลาด'; });
+      .withFailureHandler(() => { done(); if (status) status.textContent = '✗ เกิดข้อผิดพลาด'; });
   }
 }
 
@@ -930,16 +983,24 @@ function payrepRun() {
   if (PAYREP.periodScope === 'pick' && !periodIds.length) { showToast('เลือกงวดก่อน'); return; }
   if (PAYREP.empScope === 'pick' && !empIds.length) { showToast('เลือกพนักงานก่อน'); return; }
 
+  // ⚠️ ปุ่มนี้คือต้นเหตุของ 46 วินาทีที่วัดได้เมื่อ 08/10/2026
+  // เซิร์ฟเวอร์ใช้เวลาจริงแค่ 4 วินาที แต่ไม่มีอะไรบอกว่ากำลังทำงาน
+  // ผู้ใช้จึงกดซ้ำ 3 ครั้ง → GAS ต่อคิวให้ทีละคำขอ → POST_LOST → ลองใหม่
+  // คำขอสุดท้ายจึงรอ 42 วินาทีก่อนได้คิว
+  const done = btnBusy(document.getElementById('payrep-run'), 'กำลังออกรายงาน...');
+  if (!done) return;
+
   const box = document.getElementById('payrep-result');
   box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด...</div>';
 
   gasRun('payGetReport', { hrToken: S.hrToken, periodIds: periodIds, empIds: empIds, colKeys: colKeys })
     .withSuccessHandler(r => {
+      done();
       if (!r || !r.success) { box.innerHTML = '<div style="padding:20px;color:var(--er)">' + payEsc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>'; return; }
       PAYREP.lastResult = r;
       renderPayrepTable(r);
     })
-    .withFailureHandler(() => { box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
+    .withFailureHandler(() => { done(); box.innerHTML = '<div style="padding:20px;color:var(--er)">เกิดข้อผิดพลาด</div>'; });
 }
 
 function renderPayrepTable(r) {
