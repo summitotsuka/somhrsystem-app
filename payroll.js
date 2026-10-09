@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.PAYROLL_JS_VERSION = '8.14.0';
+window.PAYROLL_JS_VERSION = '8.15.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  payroll.js — Frontend สลิปเงินเดือน (SOM HR System)
@@ -13,6 +13,9 @@ const PAY = {
   editRowId: null,
   pdfToken: 0,           // token กัน batch PDF วนข้ามงวด/ซ้ำ
   pdfPeriodId: null,
+  // มีงานยาวค้างอยู่ไหม (โหลดไฟล์ / สร้าง PDF ทั้งงวด)
+  // ด่านสุดท้ายของการกันกดซ้อน — CSS กันได้แค่เมาส์ ด่านนี้กันได้ทุกทาง
+  busy: false,
 };
 
 function payEsc(s) {
@@ -192,6 +195,7 @@ function loadPayReview() {
 }
 
 function paySetStatusFromReview(periodId, status, btn) {
+  if (PAY.busy) return;   // มีงานยาวค้างอยู่ (โหลดไฟล์ / สร้าง PDF) ไม่รับงานใหม่
   const msg = status === 'LOCKED' ? 'ปิดงวดนี้? (จะแก้ไขไม่ได้)' : 'เปิดงวดนี้กลับมาแก้ไข?';
   if (!confirm(msg)) return;
   const done = btnBusy(btn || document.getElementById('pay-lock-btn'),
@@ -208,23 +212,93 @@ function paySetStatusFromReview(periodId, status, btn) {
     .withFailureHandler(() => { done(); showToast('เกิดข้อผิดพลาด'); });
 }
 
+// ════════════════════════════════════════════════════════════════
+//  ล็อกทั้งแถบเครื่องมือระหว่างงานยาว (โหลดไฟล์ / สร้าง PDF ทั้งงวด)
+//
+//  ⚠️ GAS ทำงานทีละคำขอต่อผู้ใช้หนึ่งคน — กดปุ่มอื่นระหว่างโหลดไฟล์
+//  ไม่ได้ทำงานขนาน แต่ไป "ต่อคิว" แล้วทำงานทันทีที่โหลดเสร็จ
+//  ซึ่งอันตรายกว่าทำพร้อมกัน: กดปิดงวดตอนเริ่มโหลด → งวดถูกปิดทันทีที่โหลดจบ
+//  ทั้งที่ยังไม่มีใครได้ดูผลเลยสักวินาที
+//
+//  เดิมล็อกคนละชุดและไม่ครบ:
+//    โหลดไฟล์   → ล็อกเฉพาะปุ่มเลือกไฟล์
+//    สร้าง PDF  → ล็อกเฉพาะสองปุ่ม PDF
+//  ต่างฝ่ายต่างไม่ล็อกของอีกฝ่าย จึงกดข้ามกันได้ทั้งสองทาง
+//  ตอนนี้ทั้งคู่ใช้ตัวล็อกตัวเดียวกัน
+// ════════════════════════════════════════════════════════════════
+var PAY_TOOLBAR_IDS = ['pay-upload-file', 'pay-genpdf-all-btn', 'pay-genpdf-sel-btn',
+                       'pay-tg-btn', 'pay-lock-btn'];
+
+function payLockToolbar(on) {
+  PAY.busy = !!on;
+  PAY_TOOLBAR_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!on;
+  });
+  // ป้ายที่ครอบ input ไฟล์ (input ที่ disabled จะไม่เปิดหน้าต่างเลือกไฟล์)
+  const upLabel = document.getElementById('pay-upload-label');
+  if (upLabel) upLabel.style.opacity = on ? '0.5' : '';
+  // ตารางข้างล่างมีลิงก์ แก้ไข/ลบ รายแถว — กันไว้ด้วย
+  // (ลิงก์ไม่ใช่ปุ่ม ตั้ง disabled ไม่ได้ จึงใช้ทั้ง pointer-events และด่านใน handler)
+  const tbl = document.getElementById('pay-review-table');
+  if (tbl) { tbl.style.pointerEvents = on ? 'none' : ''; tbl.style.opacity = on ? '0.55' : ''; }
+}
+
+// ── งวดปิด/เปิด มีกติกาของตัวเอง — ปลดล็อกผ่านตัวนี้เสมอ เพื่อคืนสภาพให้ถูก ──
+function payUnlockToolbar() {
+  payLockToolbar(false);
+  const p = PAY.currentPeriod;
+  if (!p) return;
+  const isOpen = p.status === 'OPEN';
+  const upInput = document.getElementById('pay-upload-file');
+  if (upInput) upInput.disabled = !isOpen;
+  const upLabel = document.getElementById('pay-upload-label');
+  if (upLabel && upLabel.parentElement) upLabel.parentElement.style.opacity = isOpen ? '1' : '.4';
+  if (typeof payUpdateSelCount === 'function') payUpdateSelCount();
+}
+
+// ── คำเตือนก่อนโหลดทับงวดที่มีข้อมูลอยู่แล้ว ──
+// ใช้ข้อมูลที่หน้าจอมีอยู่แล้ว (PAY.rows) ไม่ต้องถาม GAS เพิ่มแม้แต่ครั้งเดียว
+function payConfirmOverwrite() {
+  const rows = PAY.rows || [];
+  if (!rows.length) return true;   // งวดว่าง ไม่มีอะไรให้เสีย
+
+  const withPdf = rows.filter(r => r.urlPDF).length;
+  const sent    = rows.filter(r => r.statusSlip === 'ส่งแล้ว').length;
+
+  let msg = 'งวดนี้มีข้อมูลอยู่แล้ว ' + rows.length + ' คน\n' +
+            'การโหลดจะเขียนทับเฉพาะคนที่อยู่ในไฟล์ (คนอื่นในงวดไม่ถูกลบ)\n';
+  if (withPdf) {
+    // ⚠️ payUploadExcel เขียน urlPDF = '' และ statusSlip = 'ยังไม่สร้าง' ทุกแถวที่โหลด
+    // การ์ดสลิปของพนักงานต้องการทั้งสองช่อง สลิปจึงหายจากหน้าจอพนักงานทันที
+    msg += '\n⚠️ งวดนี้มีสลิป PDF ที่สร้างไว้แล้ว ' + withPdf + ' ใบ' +
+           (sent ? (' (ส่งให้พนักงานแล้ว ' + sent + ' ใบ)') : '') + '\n' +
+           'การโหลดใหม่จะล้างลิงก์สลิปของคนที่อยู่ในไฟล์\n' +
+           'พนักงานกลุ่มนั้นจะมองไม่เห็นสลิป จนกว่าจะสร้าง PDF และส่งใหม่\n';
+  }
+  msg += '\nยืนยันจะโหลดทับไหม?';
+  return confirm(msg);
+}
+
 // โหลดไฟล์ Excel
 function payHandleUpload(file) {
   if (!file) return;
   const p = PAY.currentPeriod;
   if (!p) return;
+  if (PAY.busy) return;            // มีงานยาวค้างอยู่ ไม่รับงานใหม่
+
+  const upInput = document.getElementById('pay-upload-file');
+  if (!payConfirmOverwrite()) {
+    // ล้างไฟล์ที่เลือกไว้ ไม่งั้นเลือกไฟล์เดิมซ้ำจะไม่เกิด event change อีก
+    if (upInput) upInput.value = '';
+    return;
+  }
+
   const status = document.getElementById('pay-upload-status');
   if (status) { status.style.color = 'var(--tx3)'; status.textContent = 'กำลังอ่านไฟล์...'; }
 
-  // ⚠️ ล็อกปุ่มเลือกไฟล์ไว้ระหว่างนำเข้า — นำเข้าซ้ำหมายถึงแถวซ้ำในชีตเงินเดือน
-  // ปิดตัว input เอง (วิธีเดียวกับที่ syncPayUploadUI ใช้ตอนงวดถูกปิด)
-  // label ที่ครอบ input ที่ถูกปิดอยู่ จะไม่เปิดหน้าต่างเลือกไฟล์
-  const upInput = document.getElementById('pay-upload-file');
-  const upLabel = document.getElementById('pay-upload-label');
-  const lockUp = (on) => {
-    if (upInput) upInput.disabled = on;
-    if (upLabel) upLabel.style.opacity = on ? '0.5' : '';
-  };
+  // ⚠️ ล็อกทั้งแถบระหว่างนำเข้า — ไม่ใช่แค่ปุ่มเลือกไฟล์
+  const lockUp = (on) => { on ? payLockToolbar(true) : payUnlockToolbar(); };
   lockUp(true);
 
   const reader = new FileReader();
@@ -234,23 +308,44 @@ function payHandleUpload(file) {
     gasRun('payUploadExcel', { hrToken: S.hrToken, periodId: p.periodId, fileData: base64, fileName: file.name })
       .withSuccessHandler(r => {
         lockUp(false);
+        if (upInput) upInput.value = '';   // ให้เลือกไฟล์เดิมซ้ำได้หลังแก้ไฟล์แล้ว
         if (!r || !r.success) {
-          if (status) { status.style.color = 'var(--er)'; status.textContent = '✗ ' + ((r && r.message) || 'นำเข้าไม่สำเร็จ'); }
+          // ข้อความปฏิเสธจากเกราะมีหลายบรรทัด และบอกว่าเพี้ยนช่องไหน
+          // textContent บรรทัดเดียวจะยุบเป็นพรืดเดียวจนอ่านไม่ออก — แสดงในกล่องผลแทน
+          if (status) { status.style.color = 'var(--er)'; status.textContent = '✗ นำเข้าไม่สำเร็จ'; }
+          payShowUploadError((r && r.message) || 'นำเข้าไม่สำเร็จ');
           return;
         }
         if (status) { status.style.color = 'var(--ok)'; status.textContent = '✓ นำเข้าเรียบร้อย'; }
         renderLoadResult(r.result, r.headcount);
         loadPayTable();
       })
-      .withFailureHandler(() => { lockUp(false); if (status) { status.style.color = 'var(--er)'; status.textContent = '✗ เกิดข้อผิดพลาด'; } });
+      .withFailureHandler(() => {
+        lockUp(false);
+        if (upInput) upInput.value = '';
+        if (status) { status.style.color = 'var(--er)'; status.textContent = '✗ เกิดข้อผิดพลาด'; }
+      });
   };
   // อ่านไฟล์เองไม่สำเร็จ (ไฟล์เสีย/ผู้ใช้ถอด USB) ก็ต้องคืนปุ่ม
   // ไม่งั้นปุ่มเลือกไฟล์ตายค้างจนกว่าจะออกจากหน้าแล้วเข้ามาใหม่
   reader.onerror = () => {
     lockUp(false);
+    if (upInput) upInput.value = '';
     if (status) { status.style.color = "var(--er)"; status.textContent = "✗ อ่านไฟล์ไม่สำเร็จ"; }
   };
   reader.readAsDataURL(file);
+}
+
+// ── แสดงเหตุผลที่ไฟล์ถูกปฏิเสธ แบบขึ้นบรรทัดใหม่ได้ ──
+// เกราะชายแดนบอกถึงระดับว่าเพี้ยนช่องไหน ควรเป็นอะไร ได้อะไรมา
+// ถ้ายุบเป็นบรรทัดเดียว ฝ่ายบุคคลจะอ่านไม่ออกแล้วโทรมาถามแทนที่จะแก้เองได้
+function payShowUploadError(msg) {
+  const box = document.getElementById('pay-load-result');
+  if (!box) return;
+  box.innerHTML = `<div class="card" style="margin-bottom:14px;border-color:var(--er)">
+    <div style="font-weight:600;font-size:15px;margin-bottom:8px;color:var(--er)">✗ ไม่ได้นำเข้า</div>
+    <div style="font-size:13px;white-space:pre-wrap;line-height:1.7;font-family:inherit">${payEsc(msg)}</div>
+  </div>`;
 }
 
 // สรุปผลโหลด
@@ -279,7 +374,21 @@ function renderLoadResult(res, headcount) {
   if (headcount != null) {
     html += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)"><b style="font-size:16px;color:var(--ac)">${headcount}</b> คนในงวดนี้ทั้งหมด (หลังนำเข้า)</div>`;
   }
-  html += `</div></div>`;
+  html += `</div></div>`;   // ปิดแถวรายการ + ปิดการ์ด "ผลการนำเข้า"
+  // ⚠️ ยอดสะสมประจำปีถูกคำนวณ "ตอนเขียน" แล้วเก็บค่าไว้ ไม่ได้คิดใหม่ตอนอ่าน
+  // โหลดงวดเก่าซ้ำ → งวดนั้นถูก แต่งวดถัดไปยังถือยอดสะสมชุดเดิมที่คิดจากค่าเก่า
+  // นี่คือกลไกเดียวกับที่ทำให้ เม.ย.–ก.ค. 2026 ยอดสะสมผิดทั้งที่ค่ารายงวดถูก
+  if (res.laterPeriods && res.laterPeriods.length) {
+    html += `<div class="card" style="margin-bottom:14px;border-color:var(--wn)">
+      <div style="font-weight:600;font-size:15px;margin-bottom:6px;color:var(--wn)">⚠️ ต้องตรวจยอดสะสมของงวดถัดไป</div>
+      <div style="font-size:13px;line-height:1.7">
+        ยอดสะสมประจำปีถูกคำนวณตอนที่โหลดข้อมูลของแต่ละงวด แล้วเก็บค่าไว้ —
+        <b>ไม่ได้คิดใหม่ให้เองเมื่อมีการแก้งวดก่อนหน้า</b><br>
+        งวดที่โหลดไปแล้วและอยู่หลังงวดนี้ในปีเดียวกัน จึงยังถือยอดสะสมชุดเดิม:
+        <div style="margin:8px 0 8px 4px;font-weight:600">${res.laterPeriods.map(payEsc).join(' · ')}</div>
+        ถ้าตัวเลขของงวดนี้เปลี่ยนไปจากเดิม ต้องโหลดงวดเหล่านี้ใหม่<b>ไล่ตามลำดับวันจ่าย</b> ด้วย
+      </div></div>`;
+  }
   box.innerHTML = html;
 }
 
@@ -411,7 +520,7 @@ const PAY_GROUPS = [
   ]},
   { title: 'เงินเดือน + OT', fields: [
     [15, 'P เงินเดือน'], [16, 'Q เงินเดือนอื่นๆ'], [17, 'R ขาดงาน(วัน)'], [18, 'S หักขาดงานวัน'],
-    [19, 'T ขาดงาน(นาที)'], [20, 'U หักขาดงานนาที'], [21, 'V เงินเดือนรวم', 'auto: P+Q-S-U'],
+    [19, 'T ขาดงาน(ชั่วโมง)'], [20, 'U หักขาดงานชั่วโมง'], [21, 'V เงินเดือนรวม', 'auto: P+Q-S-U'],
     [22, 'W ชม.OT ปกติ1.5'], [23, 'X ชม.OT หยุด1.5'], [24, 'Y ชม.OT หยุด2'], [25, 'Z ชม.OT หยุด3'],
     [26, 'AA เงินOT ปกติ1.5'], [27, 'AB เงินOT หยุด1.5'], [28, 'AC เงินOT หยุด2'], [29, 'AD เงินOT หยุด3'],
     [30, 'AE เงินOT รวม', 'auto: AA+AB+AC+AD'],
@@ -432,6 +541,7 @@ const PAY_GROUPS = [
 ];
 
 function openPayEdit(rowId, btn) {
+  if (PAY.busy) return;   // มีงานยาวค้างอยู่ (โหลดไฟล์ / สร้าง PDF) ไม่รับงานใหม่
   const done = btnBusy(btn, 'กำลังเปิด...');
   if (!done) return;
   PAY.editRowId = rowId;
@@ -529,8 +639,10 @@ function payGenPDF(rowIds, forceAll) {
   if (progress) progress.style.display = 'block';
   if (bar) bar.style.width = '0%';
 
-  const btns = ['pay-genpdf-all-btn', 'pay-genpdf-sel-btn'];
-  btns.forEach(id => { const b = document.getElementById(id); if (b) b.disabled = true; });
+  // ⚠️ เดิมล็อกแค่สองปุ่ม PDF — โหลดไฟล์ / ส่ง Telegram / ปิดงวด ยังกดได้
+  // ระหว่างสร้าง PDF ทั้งงวด ซึ่งไปต่อคิวแล้วทำงานทันทีที่ batch จบ
+  // ตอนนี้ใช้ตัวล็อกเดียวกับการโหลดไฟล์ ล็อกทั้งแถบ
+  payLockToolbar(true);
 
   // token กันวนข้ามงวด/ซ้ำ
   PAY.pdfToken = (PAY.pdfToken || 0) + 1;
@@ -539,7 +651,7 @@ function payGenPDF(rowIds, forceAll) {
 
   const finish = (msg) => {
     if (txt) txt.textContent = msg;
-    btns.forEach(id => { const b = document.getElementById(id); if (b) b.disabled = false; });
+    payUnlockToolbar();
     loadPayTable();
     setTimeout(() => { if (progress && myToken === PAY.pdfToken) progress.style.display = 'none'; }, 2500);
   };
@@ -629,6 +741,7 @@ function payGenPDF(rowIds, forceAll) {
 }
 
 function payGenPDFSelected() {
+  if (PAY.busy) return;   // มีงานยาวค้างอยู่ (โหลดไฟล์ / สร้าง PDF) ไม่รับงานใหม่
   const ids = Array.from(document.querySelectorAll('.pay-row-check:checked')).map(c => c.getAttribute('data-id'));
   if (!ids.length) { showToast('เลือกพนักงานก่อน'); return; }
   payGenPDF(ids);
@@ -636,6 +749,7 @@ function payGenPDFSelected() {
 
 // ลบแถวที่มี PDF แล้ว (ลบแถว + ไฟล์ PDF) — ใช้ตอนต้องแก้ไขคนที่สร้างสลิปแล้ว
 function payDeleteRowWithPdf(rowId, btn) {
+  if (PAY.busy) return;   // มีงานยาวค้างอยู่ (โหลดไฟล์ / สร้าง PDF) ไม่รับงานใหม่
   if (!confirm('คนนี้สร้างสลิป PDF แล้ว\nการลบจะลบทั้งข้อมูลและไฟล์ PDF\nจากนั้นค่อยแก้ไขในไฟล์ Excel แล้วโหลดใหม่\n\nยืนยันลบ?')) return;
   const done = btnBusy(btn, 'กำลังลบ...');
   if (!done) return;
@@ -733,6 +847,7 @@ function renderMyPayslips(slips) {
 window.PAYTG = window.PAYTG || { mode: 'all', time: 'now' };
 
 function openPayTelegram() {
+  if (PAY.busy) return;   // มีงานยาวค้างอยู่ (โหลดไฟล์ / สร้าง PDF) ไม่รับงานใหม่
   if (!PAY.currentPeriod) { showToast('เลือกงวดก่อน'); return; }
   go('pay-telegram');
 }
