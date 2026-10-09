@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.PAYROLL_JS_VERSION = '8.15.0';
+window.PAYROLL_JS_VERSION = '8.16.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  payroll.js — Frontend สลิปเงินเดือน (SOM HR System)
@@ -370,6 +370,11 @@ function renderLoadResult(res, headcount) {
   if (res.ignoredCols && res.ignoredCols.length) {
     html += `<div style="margin-top:6px;font-size:13px;color:var(--tx3)">ℹ️ มองข้ามคอลัมน์ที่ระบบไม่ใช้ ${res.ignoredCols.length} ช่อง:</div>`;
     html += res.ignoredCols.map(c => `<div style="font-size:13px;color:var(--tx3);padding-left:20px">• ${payEsc(c)}</div>`).join('');
+  }
+  // ลิงก์สลิปที่ถูกล้าง — ไฟล์ใน Drive ไม่ได้ถูกลบ บอกไว้ให้รู้ว่ายังกู้ได้
+  if (res.clearedPdf) {
+    html += `<div style="margin-top:6px;font-size:13px;color:var(--wn)">⚠️ ล้างลิงก์สลิปของ ${res.clearedPdf} คน — ต้องสร้าง PDF และส่งใหม่</div>
+      <div style="font-size:12px;color:var(--tx3);padding-left:20px">ไฟล์ PDF เดิมยังอยู่ใน Drive (การโหลดไม่ได้ลบไฟล์) ถ้าโหลดผิด บอกมาได้ ยังต่อลิงก์กลับได้</div>`;
   }
   if (headcount != null) {
     html += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)"><b style="font-size:16px;color:var(--ac)">${headcount}</b> คนในงวดนี้ทั้งหมด (หลังนำเข้า)</div>`;
