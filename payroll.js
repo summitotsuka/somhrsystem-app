@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.PAYROLL_JS_VERSION = '8.16.0';
+window.PAYROLL_JS_VERSION = '8.17.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  payroll.js — Frontend สลิปเงินเดือน (SOM HR System)
@@ -263,18 +263,21 @@ function payConfirmOverwrite() {
   const rows = PAY.rows || [];
   if (!rows.length) return true;   // งวดว่าง ไม่มีอะไรให้เสีย
 
-  const withPdf = rows.filter(r => r.urlPDF).length;
-  const sent    = rows.filter(r => r.statusSlip === 'ส่งแล้ว').length;
+  const sent     = rows.filter(r => r.statusSlip === 'ส่งแล้ว').length;
+  // มี PDF แต่ยังไม่ส่ง = กลุ่มที่ลิงก์จะถูกล้างจริง (กลุ่มที่ส่งแล้วถูกข้าม)
+  const madeOnly = rows.filter(r => r.urlPDF && r.statusSlip !== 'ส่งแล้ว').length;
 
   let msg = 'งวดนี้มีข้อมูลอยู่แล้ว ' + rows.length + ' คน\n' +
             'การโหลดจะเขียนทับเฉพาะคนที่อยู่ในไฟล์ (คนอื่นในงวดไม่ถูกลบ)\n';
-  if (withPdf) {
+  if (sent) {
+    msg += '\n🔒 ข้าม ' + sent + ' คนที่ส่งสลิปให้พนักงานไปแล้ว\n' +
+           'ส่งเงินเข้าธนาคารแล้ว ข้อมูลกลุ่มนี้แก้ย้อนหลังไม่ได้\n' +
+           'ถ้าตัวเลขของคนกลุ่มนี้ผิด ต้องปรับยอดในงวดถัดไป\n';
+  }
+  if (madeOnly) {
     // ⚠️ payUploadExcel เขียน urlPDF = '' และ statusSlip = 'ยังไม่สร้าง' ทุกแถวที่โหลด
-    // การ์ดสลิปของพนักงานต้องการทั้งสองช่อง สลิปจึงหายจากหน้าจอพนักงานทันที
-    msg += '\n⚠️ งวดนี้มีสลิป PDF ที่สร้างไว้แล้ว ' + withPdf + ' ใบ' +
-           (sent ? (' (ส่งให้พนักงานแล้ว ' + sent + ' ใบ)') : '') + '\n' +
-           'การโหลดใหม่จะล้างลิงก์สลิปของคนที่อยู่ในไฟล์\n' +
-           'พนักงานกลุ่มนั้นจะมองไม่เห็นสลิป จนกว่าจะสร้าง PDF และส่งใหม่\n';
+    msg += '\n⚠️ มีสลิป PDF ที่สร้างไว้แต่ยังไม่ส่ง ' + madeOnly + ' ใบ\n' +
+           'การโหลดใหม่จะล้างลิงก์สลิปของคนกลุ่มนี้ ต้องสร้าง PDF ใหม่\n';
   }
   msg += '\nยืนยันจะโหลดทับไหม?';
   return confirm(msg);
@@ -371,6 +374,16 @@ function renderLoadResult(res, headcount) {
     html += `<div style="margin-top:6px;font-size:13px;color:var(--tx3)">ℹ️ มองข้ามคอลัมน์ที่ระบบไม่ใช้ ${res.ignoredCols.length} ช่อง:</div>`;
     html += res.ignoredCols.map(c => `<div style="font-size:13px;color:var(--tx3);padding-left:20px">• ${payEsc(c)}</div>`).join('');
   }
+  // คนที่ถูกข้ามเพราะส่งสลิปไปแล้ว — ไม่ใช่ข้อผิดพลาด แต่ต้องเห็นว่าใครไม่ถูกอัปเดต
+  if (res.sentSkipped) {
+    html += `<div style="margin-top:6px;font-size:13px;color:var(--tx2)">🔒 ข้าม ${res.sentSkipped} คนที่ส่งสลิปแล้ว (ส่งเงินเข้าธนาคารแล้ว แก้ย้อนหลังไม่ได้)</div>`;
+    if (res.sentSkipList && res.sentSkipList.length) {
+      html += res.sentSkipList.map(s => `<div style="font-size:12px;color:var(--tx3);padding-left:20px">• ${payEsc(s)}</div>`).join('');
+      if (res.sentSkipped > res.sentSkipList.length) {
+        html += `<div style="font-size:12px;color:var(--tx3);padding-left:20px">• และอีก ${res.sentSkipped - res.sentSkipList.length} คน</div>`;
+      }
+    }
+  }
   // ลิงก์สลิปที่ถูกล้าง — ไฟล์ใน Drive ไม่ได้ถูกลบ บอกไว้ให้รู้ว่ายังกู้ได้
   if (res.clearedPdf) {
     html += `<div style="margin-top:6px;font-size:13px;color:var(--wn)">⚠️ ล้างลิงก์สลิปของ ${res.clearedPdf} คน — ต้องสร้าง PDF และส่งใหม่</div>
@@ -380,18 +393,26 @@ function renderLoadResult(res, headcount) {
     html += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)"><b style="font-size:16px;color:var(--ac)">${headcount}</b> คนในงวดนี้ทั้งหมด (หลังนำเข้า)</div>`;
   }
   html += `</div></div>`;   // ปิดแถวรายการ + ปิดการ์ด "ผลการนำเข้า"
-  // ⚠️ ยอดสะสมประจำปีถูกคำนวณ "ตอนเขียน" แล้วเก็บค่าไว้ ไม่ได้คิดใหม่ตอนอ่าน
-  // โหลดงวดเก่าซ้ำ → งวดนั้นถูก แต่งวดถัดไปยังถือยอดสะสมชุดเดิมที่คิดจากค่าเก่า
-  // นี่คือกลไกเดียวกับที่ทำให้ เม.ย.–ก.ค. 2026 ยอดสะสมผิดทั้งที่ค่ารายงวดถูก
+  // ⚠️ สัญญาณเตือนว่าเกราะพัง — ปกติข้อนี้ต้องไม่ขึ้นเลย
+  //
+  // ระบบมีเกราะสองชั้นที่ทำให้งวดที่เปิดอยู่เป็นงวดล่าสุดเสมอ:
+  //   payCreatePeriod      — สร้างงวดใหม่ไม่ได้ถ้ายังมีงวดไหน OPEN ค้าง
+  //                          และวันจ่ายงวดใหม่ต้อง ≥ วันจ่ายงวดล่าสุด
+  //   paySetPeriodStatus   — เปิดงวดกลับไม่ได้ถ้ามีงวดที่จ่ายทีหลังอยู่แล้ว
+  // และโหลดไฟล์ได้เฉพาะงวดที่ OPEN → จึงไม่มีทางโหลดทับงวดที่มีงวดถัดไปแล้ว
+  //
+  // ถ้าข้อนี้ขึ้น แปลว่ามีอะไรเลี่ยงเกราะไป (แก้ในชีตโดยตรง หรือเกราะพัง)
+  // ซึ่งเป็นเส้นทางเดียวกับที่ทำให้ยอดสะสม เม.ย.–ก.ค. 2026 ผิด
   if (res.laterPeriods && res.laterPeriods.length) {
-    html += `<div class="card" style="margin-bottom:14px;border-color:var(--wn)">
-      <div style="font-weight:600;font-size:15px;margin-bottom:6px;color:var(--wn)">⚠️ ต้องตรวจยอดสะสมของงวดถัดไป</div>
+    html += `<div class="card" style="margin-bottom:14px;border-color:var(--er)">
+      <div style="font-weight:600;font-size:15px;margin-bottom:6px;color:var(--er)">🚨 ผิดปกติ — ไม่ควรเกิดขึ้นได้</div>
       <div style="font-size:13px;line-height:1.7">
-        ยอดสะสมประจำปีถูกคำนวณตอนที่โหลดข้อมูลของแต่ละงวด แล้วเก็บค่าไว้ —
-        <b>ไม่ได้คิดใหม่ให้เองเมื่อมีการแก้งวดก่อนหน้า</b><br>
-        งวดที่โหลดไปแล้วและอยู่หลังงวดนี้ในปีเดียวกัน จึงยังถือยอดสะสมชุดเดิม:
+        งวดนี้มีงวดที่จ่ายทีหลังและโหลดข้อมูลไปแล้ว:
         <div style="margin:8px 0 8px 4px;font-weight:600">${res.laterPeriods.map(payEsc).join(' · ')}</div>
-        ถ้าตัวเลขของงวดนี้เปลี่ยนไปจากเดิม ต้องโหลดงวดเหล่านี้ใหม่<b>ไล่ตามลำดับวันจ่าย</b> ด้วย
+        ตามปกติระบบไม่ยอมให้เกิดสถานะนี้ (เปิดงวดกลับได้เฉพาะงวดล่าสุด)<br>
+        <b>ยอดสะสมประจำปีของงวดเหล่านั้นจะผิด</b> เพราะยอดสะสมคำนวณตอนเขียน
+        แล้วเก็บค่าไว้ ไม่ได้คิดใหม่ให้เอง<br>
+        <b>แจ้งคนดูแลระบบทันที</b> — อย่าโหลดงวดอื่นต่อจนกว่าจะตรวจแล้ว
       </div></div>`;
   }
   box.innerHTML = html;
@@ -455,9 +476,16 @@ function renderPayTable() {
     const hasPdf = !!row.urlPDF;
     const pdfLink = hasPdf ? `<a href="${payEsc(row.urlPDF)}" target="_blank" style="color:var(--ok);font-size:13px;text-decoration:none">📄 เปิด</a>` : '';
     netSum += payNum(row.net);
-    // ปุ่มการกระทำ: มี PDF แล้ว → ลบ (ต้องลบก่อนแก้), ยังไม่มี → แก้ไข (เฉพาะงวด OPEN)
+    // ปุ่มการกระทำ 3 ระดับ ตามสถานะสลิป:
+    //   ส่งแล้ว  → ไม่มีปุ่มเลย (ส่งเงินเข้าธนาคารแล้ว ข้อมูลเป็นข้อมูลถาวร)
+    //   มี PDF   → ลบ (ต้องลบก่อนแก้)
+    //   ไม่มี PDF → แก้ไข
+    // ⚠️ เดิมแถวที่ "ส่งแล้ว" ขึ้นปุ่ม "ลบ" ซึ่งลบทั้งแถวและลบไฟล์ PDF ด้วย
+    const isSent = row.statusSlip === 'ส่งแล้ว';
     let actionBtn = '';
-    if (isOpen) {
+    if (isOpen && isSent) {
+      actionBtn = `<span title="ส่งเงินเข้าธนาคารแล้ว แก้ไขหรือลบไม่ได้ — ถ้าตัวเลขผิดต้องปรับยอดในงวดถัดไป" style="color:var(--tx3);font-size:12px;cursor:help">🔒 ปิดแล้ว</span>`;
+    } else if (isOpen) {
       if (hasPdf) {
         actionBtn = `<span class="pay-del-link" data-id="${payEsc(row.rowId)}" style="color:var(--er);cursor:pointer;font-weight:600;font-size:13px">ลบ</span>`;
       } else {
@@ -668,12 +696,16 @@ function payGenPDF(rowIds, forceAll) {
     const BATCH = 3;
     const allIds = rowIds.slice();
     const totalSel = allIds.length;
-    let idx = 0, errCount = 0, retries = 0;
+    let idx = 0, errCount = 0, retries = 0, selSentSkipped = 0;
     const MAX_RETRY = 2;
 
     const runChunk = () => {
       if (!stillValid()) return;
-      if (idx >= totalSel) { finish(`✓ สร้าง PDF เสร็จ ${totalSel - errCount}/${totalSel} ใบ`); return; }
+      if (idx >= totalSel) {
+        const sk = selSentSkipped ? ` · ข้าม ${selSentSkipped} คนที่ส่งสลิปแล้ว` : '';
+        finish(`✓ สร้าง PDF เสร็จ ${totalSel - errCount - selSentSkipped}/${totalSel} ใบ${sk}`);
+        return;
+      }
       const chunk = allIds.slice(idx, idx + BATCH);
       gasRunLong('payGeneratePDF', { hrToken: S.hrToken, periodId: p.periodId, rowIds: chunk })
         .withSuccessHandler(r => {
@@ -686,6 +718,7 @@ function payGenPDF(rowIds, forceAll) {
           }
           retries = 0;   // สำเร็จ → reset retry
           if (r.errors && r.errors.length) errCount += r.errors.length;
+          if (r.sentSkipped) selSentSkipped += r.sentSkipped;   // ข้ามเพราะส่งสลิปแล้ว
           idx += chunk.length;
           const pct = Math.min(100, Math.round((idx / totalSel) * 100));
           if (bar) bar.style.width = pct + '%';
@@ -724,7 +757,9 @@ function payGenPDF(rowIds, forceAll) {
         if (bar) bar.style.width = pct + '%';
         if (txt) txt.textContent = `กำลังสร้าง PDF... ${done}/${total}`;
         if (r.done || r.remaining <= 0) {
-          finish(`✓ สร้าง PDF เสร็จ ${done}/${total} ใบ`);
+          // ข้ามคนที่ส่งสลิปแล้ว — ต้องบอก ไม่งั้นตัวเลข "เสร็จ X/Y" จะดูน้อยกว่าคนในงวด
+          const sk = r.sentSkipped ? ` · ข้าม ${r.sentSkipped} คนที่ส่งสลิปแล้ว` : '';
+          finish(`✓ สร้าง PDF เสร็จ ${done}/${total} ใบ${sk}`);
         } else if (r.generatedThisBatch === 0) {
           // batch นี้สร้างไม่ได้เลย (อาจ error ชั่วคราว/quota) → retry ก่อนยอมแพ้
           emptyBatches++;
