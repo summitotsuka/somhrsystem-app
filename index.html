@@ -2174,7 +2174,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.18.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.18.2';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2365,7 +2365,12 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
   // คำสั่งที่เขียนลงชีต — ทำสำเร็จแล้วยกธงบอกให้คัดลอกสำเนาใหม่
   if (sbReady() && SB.DIRTY[action]) {
     return p.then(r => {
-      if (r && r.success !== false) {
+      // ── already: true นับเป็น "ชีตเปลี่ยนแล้ว" ด้วย ──
+      // เกิดตอนคำขอเขียนสำเร็จแต่คำตอบหายกลางทาง แล้วหน้าเว็บยิงซ้ำ
+      // คำขอที่สองไปติดด่านกันซ้ำของเซิร์ฟเวอร์ ได้ success:false กลับมา
+      // ถ้าเชื่อแค่ success เราจะไม่ยกธงให้คัดลอกสำเนา ทั้งที่ชีตเปลี่ยนไปแล้วจริง
+      // → สำเนาค้างอยู่ที่ของเก่านานถึง 2 ชั่วโมง (รอรอบคัดลอกใหญ่)
+      if (r && (r.success !== false || r.already)) {
         sbFlagDirty(action);
         // ลงทะเบียน/รีเซ็ตรหัสผ่าน: จำไว้ว่าเครื่องนี้เพิ่งเปลี่ยนรหัสของใคร
         // เผื่อเขาล็อกอินทันทีก่อนสำเนาจะตามทัน
@@ -3027,9 +3032,10 @@ function renderHomeMenu() {
 // ========== วันหยุด (ใช้ร่วมกันระหว่างหน้าแรกกับหน้าปฏิทิน) ==========
 // หลักการ: วันหยุดเปลี่ยนปีละไม่กี่ครั้ง → จำไว้ในเครื่อง แล้ววาดทันที
 // หน้าแรกจึงยังเปิดได้ "ทันที" ไม่ต้องรอ server เหมือนเดิม
-// เบื้องหลังค่อยเช็คของใหม่วันละ 2 ครั้ง ถ้ามีอะไรเปลี่ยนค่อยวาดทับ
+// เบื้องหลังถามของใหม่ทุกครั้ง (เร็วแล้วตั้งแต่เฟส 5M) ถ้าต่างจากเดิมค่อยวาดทับ
 var HOL_STORE_KEY = 'ws6_holidays';
-var HOL_TTL_MS = 6 * 60 * 60 * 1000;   // 6 ชั่วโมง
+// (เคยมี HOL_TTL_MS = 6 ชั่วโมง สำหรับข้ามการถามเซิร์ฟเวอร์ — เลิกใช้ในเฟส 5M
+//  เหตุผลอยู่ที่ holLoad ด้านล่าง)
 var HOL_DATA = null;
 var _holFetching = false;
 
@@ -3069,8 +3075,20 @@ function holLoad(onData) {
   const st = holReadStore();
   if (st) { HOL_DATA = st.holidays; if (onData) onData(HOL_DATA, true); }
 
-  const fresh = st && (Date.now() - st.at) < HOL_TTL_MS;
-  if (fresh || _holFetching) return;          // ยังใหม่อยู่ / กำลังโหลดอยู่ → ไม่ยิงซ้ำ
+  // ── ทำไมเลิกใช้ "ของในเครื่องยังใหม่ → ไม่ต้องถามเซิร์ฟเวอร์" ──
+  //
+  // เดิมถ้าของที่จำไว้อายุน้อยกว่า 6 ชั่วโมง จะไม่ยิงถามเลย
+  // เหตุผลตอนนั้นถูกต้อง: getHolidays ใช้เวลา 5.5 วินาที ยิงทุกครั้งคือหน้าแรกช้า
+  //
+  // แต่เฟส 5M ย้าย getHolidays ขึ้น Supabase แล้ว — เหลือ 0.1-0.6 วินาที
+  // ราคาที่เคยต้องจ่ายจึงหายไป ส่วนราคาของการ "ไม่ถาม" ยังอยู่เต็ม ๆ:
+  // ฝ่ายบุคคลเพิ่มวันหยุดวันนี้ พนักงานที่เปิดเว็บไปแล้วจะไม่เห็นนานถึง 6 ชั่วโมง
+  // แม้กดกลับหน้าแรกใหม่ก็ไม่เห็น ต้องกด refresh เบราว์เซอร์ (เจอจริง 9 ต.ค.)
+  //
+  // ตอนนี้: วาดของเก่าให้ทันทีเหมือนเดิม แล้วถามของใหม่เบื้องหลังทุกครั้ง
+  // ถ้าต่างจากเดิมค่อยวาดทับ — ได้ทั้งเปิดเร็วและเห็นของจริง
+  // (ลบ HOL_TTL_MS ออกแล้ว — ไม่มีที่อื่นใช้)
+  if (_holFetching) return;                   // กำลังโหลดอยู่ → ไม่ยิงซ้ำ
 
   _holFetching = true;
   gasRun('getHolidays', { hrToken: S.hrToken }, 30000)
@@ -4145,7 +4163,8 @@ function loadHolidayPage() {
     .withFailureHandler(e => { document.getElementById('hrhol-loading').style.display = 'none'; showToast(e.message); });
 }
 
-let HOL_ALL = [];   // เก็บวันหยุดทั้งหมด (ไว้กรองตามปี)
+let HOL_ALL = [];        // เก็บวันหยุดทั้งหมด (ไว้กรองตามปี)
+let HOL_WANT_YEAR = '';  // ปีที่ต้องให้เห็นรอบถัดไป (ตั้งตอนเพิ่ม/ลบ) ใช้ครั้งเดียวแล้วล้าง
 
 function renderHolidays(r) {
   document.getElementById('hrhol-loading').style.display = 'none';
@@ -4164,9 +4183,15 @@ function renderHolidays(r) {
   let opts = '<option value="">ทุกปี</option>';
   years.forEach(y => { opts += `<option value="${y}">${(+y) + 543}</option>`; });
   sel.innerHTML = opts;
+  // ── ปีที่ต้องให้เห็นมาก่อนทุกอย่าง ──
+  // ตั้งไว้ตอนกดเพิ่ม/ลบ เพื่อให้วันที่ที่เพิ่งจัดการไปอยู่ในรายการที่เห็นแน่ ๆ
+  if (HOL_WANT_YEAR && years.indexOf(HOL_WANT_YEAR) !== -1) {
+    sel.value = HOL_WANT_YEAR;
+  }
   // เลือกปีล่าสุดเป็นค่าเริ่มต้น (ถ้ายังไม่เคยเลือก) หรือคงค่าเดิม
-  if (cur && (cur === '' || years.indexOf(cur) !== -1)) sel.value = cur;
+  else if (cur && (cur === '' || years.indexOf(cur) !== -1)) sel.value = cur;
   else if (years.length) sel.value = years[0];
+  HOL_WANT_YEAR = '';   // ใช้ครั้งเดียว ไม่ค้างไปล็อกตัวเลือกของผู้ใช้
 
   sel.onchange = renderHolidayList;
   renderHolidayList();
@@ -4209,25 +4234,39 @@ function hrAddHoliday() {
   if (!name) { showToast('กรุณากรอกชื่อวันหยุด'); return; }
   const btn = document.getElementById('hrhol-add');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> บันทึก...';
-  gasRun('hrAddHoliday', { hrToken: S.hrToken, date: date, name: name })
+  // ── เลือกปีของวันที่ที่เพิ่ง "เพิ่ม" ให้อัตโนมัติ ──
+  // รายการกรองตามปี ถ้าเพิ่มวันหยุดของปีอื่น มันจะหายไปจากหน้าจอทันที
+  // ทั้งที่บันทึกสำเร็จ — ดูเหมือนระบบไม่ทำงาน
+  HOL_WANT_YEAR = date.slice(6, 10);     // วว/ดด/ปปปป → ปปปป
+  // ⚠️ gasRunNoRetry: คำสั่งเขียนห้ามยิงซ้ำอัตโนมัติ
+  // ยิงซ้ำแล้วไปติดด่านกันซ้ำของเซิร์ฟเวอร์ จะได้ "มีในรายการแล้ว" กลับมา
+  // ทั้งที่คำขอแรกสำเร็จ (เกิดจริง 9 ต.ค. ตอน Google ตอบ 404 เพราะคิวแน่น)
+  gasRunNoRetry('hrAddHoliday', { hrToken: S.hrToken, date: date, name: name })
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = '+ เพิ่มวันหยุด';
       showToast(r.message, r.success);
-      if (r.success) loadHolidayPage();
+      // already = ชีตมีวันหยุดนี้อยู่แล้ว → หน้าจอยังไม่ตรงกับชีต ต้องโหลดใหม่
+      if (r.success || r.already) loadHolidayPage();
       else if (r.authError) setTimeout(() => logout(), 1500);
     })
-    .withFailureHandler(e => { btn.disabled = false; btn.textContent = '+ เพิ่มวันหยุด'; showToast(e.message); });
+    .withFailureHandler(e => {
+      btn.disabled = false; btn.textContent = '+ เพิ่มวันหยุด';
+      showToast(e.message);
+      // ไม่รู้ว่าคำขอถึงเซิร์ฟเวอร์หรือยัง — โหลดรายการใหม่ให้เห็นของจริง
+      loadHolidayPage();
+    });
 }
 
 function hrDeleteHoliday(date) {
   if (!confirm('ลบวันหยุดนี้?')) return;
-  gasRun('hrDeleteHoliday', { hrToken: S.hrToken, date: date })
+  HOL_WANT_YEAR = String(date).slice(0, 4);   // ปปปป-ดด-วว
+  gasRunNoRetry('hrDeleteHoliday', { hrToken: S.hrToken, date: date })
     .withSuccessHandler(r => {
       showToast(r.message, r.success);
-      if (r.success) loadHolidayPage();
+      if (r.success || r.already) loadHolidayPage();
       else if (r.authError) setTimeout(() => logout(), 1500);
     })
-    .withFailureHandler(e => showToast(e.message));
+    .withFailureHandler(e => { showToast(e.message); loadHolidayPage(); });
 }
 
 // ========== FACE-API.JS LOADER (โหลดครั้งเดียว แบบ lazy) ==========
