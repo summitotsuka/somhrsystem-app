@@ -1800,7 +1800,7 @@ const SB = {
               leaveGetReport: 1, otGetReport: 1,
               payGetPeriods: 1, payGetReportMeta: 1, payGetReport: 1,
               // ── เฟส 5M ──
-              getHolidays: 1, payGetPeriodData: 1 },
+              getHolidays: 1, hrGetHolidays: 1, payGetPeriodData: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -2058,7 +2058,10 @@ var SB_PAY_WRITES = {
 // (ก่อนเฟสนี้วันหยุดคัดลอกเฉพาะรอบ 2 ชั่วโมง)
 var SB_HOL_MS = 7 * 60 * 1000;
 var SB_HOL_WRITES = { hrAddHoliday: 1, hrDeleteHoliday: 1 };
-var SB_HOL_READS  = { getHolidays: 1 };
+// ⚠️ ทั้งสองคำสั่งอ่านวันหยุดชุดเดียวกัน ต่างกันแค่ด่านสิทธิ์
+// getHolidays = หน้าปฏิทินพนักงาน · hrGetHolidays = หน้าจัดการของฝ่ายบุคคล
+// เฟส 5M รอบแรกใส่แค่ตัวแรก หน้าฝ่ายบุคคลจึงยังวิ่ง GAS — ต้องมีคู่กันเสมอ
+var SB_HOL_READS  = { getHolidays: 1, hrGetHolidays: 1 };
 
 function sbMarkHolStale() {
   try { localStorage.setItem('ws6_hol_stale', String(Date.now() + SB_HOL_MS)); } catch (e) {}
@@ -2171,7 +2174,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.18.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.18.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
