@@ -79,6 +79,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;background:rgba(
 .hd-b-present{background:rgba(5,150,105,.12);color:var(--ok)}
 .hd-name{font-size:15px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hd-meta{font-size:13px;color:var(--tx3);margin-top:2px}
+/* แถววันหยุด: วันที่ก่อน แล้วชื่อ บรรทัดเดียว — tabular-nums ให้เลขตรงคอลัมน์กันทุกแถว */
+.hd-d1{font-variant-numeric:tabular-nums;color:var(--tx)}
+.hd-dw{color:var(--tx3);font-weight:400;margin:0 7px 0 5px}
+.hd-dw::after{content:"·";margin-left:7px}
 .hd-times{font-family:var(--mo);font-size:11px;color:var(--tx2);text-align:right;flex-shrink:0;line-height:1.5}
 .hd-card{padding:14px;text-align:center;background:var(--sf);border:1.5px solid var(--bd);border-radius:12px;cursor:pointer;transition:all .15s}
 .hd-card:active{transform:scale(.97)}
@@ -2183,7 +2187,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.19.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.19.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -4266,10 +4270,21 @@ function renderHolidayList() {
   shown.forEach(h => {
     const [y, m, d] = h.date.split('-');
     const thDate = `${d}/${m}/${(+y)+543}`;
+    // ชื่อวันในภาษาไทย — คิดจากวันที่เอง ไม่ใช้ช่อง dow
+    // (ช่อง dow เป็นอังกฤษ 'WED' และมาจากฐานข้อมูล ส่วนนี่ต้องอ่านง่ายสำหรับคนไทย)
+    const dowTh = TH_DOW_S[new Date(h.date + 'T00:00:00').getDay()] || '';
+    // ── วันที่ก่อน แล้วชื่อ บรรทัดเดียว ──
+    // เดิมชื่ออยู่บรรทัดบน วันที่อยู่บรรทัดล่าง ทำให้ไล่หาวันที่ยาก
+    // เอาวันที่ขึ้นก่อนแล้วชื่อต่อท้าย: ไล่สายตาลงมาตามคอลัมน์วันที่ได้เลย
+    // และวันที่จะไม่ถูกตัดด้วย ellipsis เพราะอยู่หน้าสุด
+    //
+    // ⚠️ esc() รอบชื่อวันหยุด — เดิมไม่มี
+    // ชื่อมาจากฐานข้อมูล ถ้ามีเครื่องหมาย < > ปนมาจะทำให้หน้าเว็บเพี้ยน
+    // (ที่อื่นอย่าง renderHomeHolidays ใส่ไว้แล้ว ตรงนี้หลุดไป)
     html += `<div class="hd-row">
       <div style="flex:1;min-width:0">
-        <div class="hd-name">${h.name}</div>
-        <div class="hd-meta">${thDate} (${h.dow})</div>
+        <div class="hd-name"><span class="hd-d1">${thDate}</span>` +
+        `<span class="hd-dw">${dowTh}</span>${esc(h.name)}</div>
       </div>
       <button class="btn o sm hrhol-del" data-date="${h.date}" style="color:var(--er);border-color:var(--er)">ลบ</button>
     </div>`;
