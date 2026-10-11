@@ -1800,7 +1800,16 @@ const SB = {
               leaveGetReport: 1, otGetReport: 1,
               payGetPeriods: 1, payGetReportMeta: 1, payGetReport: 1,
               // ── เฟส 5M ──
-              getHolidays: 1, hrGetHolidays: 1, payGetPeriodData: 1 },
+              getHolidays: 1, hrGetHolidays: 1, payGetPeriodData: 1,
+              // ── เฟส 5P: วันหยุดเขียนที่ Supabase ตรง ไม่ผ่าน GAS ──
+              // เป็นคำสั่ง "เขียน" คู่แรกที่ไม่ผ่าน GAS เลย
+              // เพราะคิวของ GAS คือต้นเหตุที่วัดได้: เพิ่มวันหยุดใช้ 20-65 วินาที
+              // และล้มเป็น POST_LOST / 404 / หมดเวลา ส่วนทางนี้ 0.2 วินาที
+              //
+              // ปลอดภัยเพราะ: Edge Function ตรวจ is_hr เอง · ฟังก์ชัน SQL
+              // ปฏิเสธถ้ายังไม่ได้สลับต้นฉบับ · และ GAS ยังรับทางเดิมไว้
+              // ให้เบราว์เซอร์ที่ยังแคชหน้าเว็บรุ่นเก่าอยู่ (ส่งต่อมาที่เดียวกัน)
+              hrAddHoliday: 1, hrDeleteHoliday: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -2174,7 +2183,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.18.4';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.19.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
