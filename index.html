@@ -2174,7 +2174,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.18.2';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.18.4';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2380,7 +2380,19 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
         if (SB_EMP_WRITES[action]) sbMarkEmpStale();
         if (SB_LV_WRITES[action]) sbMarkLvStale();
         if (SB_PAY_WRITES[action]) sbMarkPayStale();
-        if (SB_HOL_WRITES[action]) sbMarkHolStale();
+        // ── วันหยุด: ตั้งธงเฉพาะเมื่อเซิร์ฟเวอร์ "ไม่ได้" คัดลอกสำเนาให้แล้ว ──
+        //
+        // ฝั่ง GAS คัดลอกวันหยุดขึ้น Supabase ในคำขอเดียวกับที่เขียนลงชีต
+        // แล้วตอบ copied: true กลับมา — สำเนาจึงตรงกับชีตแล้วตอนนี้
+        // ไม่ต้องถอยไปอ่านชีต (ช้า 3-5 วินาที) เลย อ่านสำเนาได้ของจริงและเร็ว
+        //
+        // ถ้าคัดลอกไม่สำเร็จ (Supabase ล่ม / ยังไม่ได้วางไฟล์คัดลอก)
+        // จะไม่มี copied กลับมา → ตั้งธงถอยไปอ่านชีตเหมือนเดิมเป็นตัวสำรอง
+        //
+        // ⚠️ ธงนี้ช่วยได้แค่ "เครื่องที่กดเอง" เท่านั้น เครื่องพนักงานคนอื่น
+        //    ไม่มีธง จึงอ่านสำเนาเสมอ — นี่คือเหตุผลที่การคัดลอกทันที
+        //    ฝั่งเซิร์ฟเวอร์สำคัญกว่าธงนี้มาก (ดู holPushCopy_ ใน Code.gs)
+        if (SB_HOL_WRITES[action] && !r.copied) sbMarkHolStale();
       }
       return r;
     });
@@ -3094,14 +3106,46 @@ function holLoad(onData) {
   gasRun('getHolidays', { hrToken: S.hrToken }, 30000)
     .withSuccessHandler(function(r) {
       _holFetching = false;
-      if (!r || !r.success) return;           // โหลดไม่ได้ก็ใช้ของเก่าต่อไป ไม่ต้องรบกวนผู้ใช้
+      // ── โหลดไม่ได้ → ใช้ของเก่าต่อ แต่ต้อง "บอกให้รู้" ──
+      //
+      // ⚠️ เดิมบรรทัดนี้คือ `if (!r || !r.success) return;` เฉย ๆ
+      // เจตนาถูก (ไม่รบกวนผู้ใช้ด้วยข้อความที่เขาทำอะไรไม่ได้)
+      // แต่ผลคือถ้าเซิร์ฟเวอร์ตอบว่าไม่สำเร็จ การ์ดจะค้างแสดงของเก่า
+      // **โดยไม่มีร่องรอยอยู่ที่ไหนเลย** — ไม่ใน console ไม่ในแถบวัดเวลา
+      // เราตามหาสาเหตุ "วันหยุดใหม่ไม่ขึ้น" อยู่สองวันเพราะตรงนี้เงียบ
+      //
+      // ตอนนี้ยังไม่รบกวนผู้ใช้เหมือนเดิม แต่เขียนลง console และแถบวัดเวลา
+      // เพื่อให้ครั้งหน้าดูออกใน 10 วินาทีว่าปัญหาอยู่ฝั่งไหน
+      if (!r || !r.success) {
+        const why = 'ปฏิทิน: โหลดวันหยุดไม่สำเร็จ — ' +
+                    ((r && r.message) || 'ไม่มีข้อความจากเซิร์ฟเวอร์') +
+                    (r && r.authError ? ' [' + r.authError + ']' : '');
+        console.warn('[HOL] ' + why);
+        if (typeof perfNote === 'function') perfNote('getHolidays (ปฏิทิน)', 0, null, { message: why }, null);
+        return;
+      }
       const list = r.holidays || [];
+      // ── เตือนเมื่อเซิร์ฟเวอร์ตอบ "สำเร็จ" แต่ไม่มีวันหยุดเลย ──
+      // ถ้าเคยมีของอยู่แล้วกลับได้ศูนย์แถว แปลว่ามีอะไรผิดแน่ ๆ
+      // (ด่านสิทธิ์ผ่านแต่อ่านชีตไม่เจอ / ชื่อชีตเปลี่ยน) — อย่าทับของเก่าเงียบ ๆ
+      if (!list.length && (HOL_DATA || []).length) {
+        console.warn('[HOL] เซิร์ฟเวอร์ตอบสำเร็จแต่ได้ 0 วันหยุด ทั้งที่เคยมี ' +
+                     HOL_DATA.length + ' วัน — ไม่ทับของเก่า');
+        if (typeof perfNote === 'function') {
+          perfNote('getHolidays (ปฏิทิน)', 0, null,
+                   { message: 'ได้ 0 วันหยุด ทั้งที่เคยมี ' + HOL_DATA.length + ' วัน' }, null);
+        }
+        return;
+      }
       const changed = JSON.stringify(list) !== JSON.stringify(HOL_DATA || []);
       HOL_DATA = list;
       holWriteStore(list);
       if (changed && onData) onData(HOL_DATA, false);
     })
-    .withFailureHandler(function() { _holFetching = false; });
+    .withFailureHandler(function(e) {
+      _holFetching = false;
+      console.warn('[HOL] ปฏิทิน: ติดต่อเซิร์ฟเวอร์ไม่ได้ — ' + ((e && e.message) || ''));
+    });
 }
 
 /** วาดการ์ด "วันหยุดเดือนนี้" บนหน้าแรก */
