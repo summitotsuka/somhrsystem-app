@@ -1778,8 +1778,10 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 //        leaveGetPendingApprovals · otGetPendingApprovals (หน้ารออนุมัติ)
 //        leaveGetReport · otGetReport (รายงานลา/โอที)
 //        payGetPeriods · payGetReportMeta · payGetReport (หน้าจอเงินเดือนของ HR)
-//  ไม่ย้าย: การ "เขียน" ทั้งหมด (ยื่น/อนุมัติ/เช็คอิน/อัปโหลด) ·
-//          hrGetReport (รายงานลงเวลา)
+//        getHolidays · hrGetHolidays · payGetPeriodData (เฟส 5M)
+//        hrGetReport (รายงานลงเวลา — เฟส 5Q)
+//  ย้ายแล้วทั้ง "อ่านและเขียน": วันหยุด (เฟส 5P) — Supabase เป็นต้นฉบับ
+//  ไม่ย้าย: การ "เขียน" ที่เหลือ (ยื่น/อนุมัติ/เช็คอิน/อัปโหลด)
 //
 //  คำสั่งที่ย้ายมาแล้วจะไม่วิ่งผ่าน GAS เลย จึงไม่ต้องรอคิว —
 //  นี่คือเหตุผลที่เมนูเช็คเวลาเร็ว 1-2 วินาที ขณะที่เมนูอื่นยัง 10-20 วินาที
@@ -1805,6 +1807,10 @@ const SB = {
               payGetPeriods: 1, payGetReportMeta: 1, payGetReport: 1,
               // ── เฟส 5M ──
               getHolidays: 1, hrGetHolidays: 1, payGetPeriodData: 1,
+              // ── เฟส 5Q: รายงานการลงเวลา ──
+              // ตัวที่ช้าที่สุดที่เหลือ (9.8 วินาที) ตรรกะอยู่ในฟังก์ชัน SQL att_report
+              // ซึ่งถูกคุมด้วยชุดทดสอบเทียบผลกับ buildAttendanceMap_ ฝั่ง GAS
+              hrGetReport: 1,
               // ── เฟส 5P: วันหยุดเขียนที่ Supabase ตรง ไม่ผ่าน GAS ──
               // เป็นคำสั่ง "เขียน" คู่แรกที่ไม่ผ่าน GAS เลย
               // เพราะคิวของ GAS คือต้นเหตุที่วัดได้: เพิ่มวันหยุดใช้ 20-65 วินาที
@@ -2187,7 +2193,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.19.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.20.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
