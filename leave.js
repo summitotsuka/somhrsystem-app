@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.26.0';
+window.LEAVE_JS_VERSION = '8.27.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -95,58 +95,24 @@ function lvOnFilePick() {
   if (!input.files || !input.files[0]) { status.textContent = ''; return; }
 
   const file = input.files[0];
-  // จำกัดชนิด
-  const okType = /^image\//.test(file.type) || file.type === 'application/pdf';
-  if (!okType) { status.textContent = 'รองรับเฉพาะรูปภาพหรือ PDF'; status.style.color = 'var(--er)'; input.value = ''; return; }
-  // จำกัดขนาด 10MB
-  if (file.size > 10 * 1024 * 1024) { status.textContent = 'ไฟล์ใหญ่เกิน 10MB'; status.style.color = 'var(--er)'; input.value = ''; return; }
-
   status.textContent = 'กำลังเตรียมไฟล์...'; status.style.color = 'var(--tx3)';
 
   // ⚠️ ล็อกตั้งแต่ "เตรียมไฟล์" ไม่ใช่รอถึงตอนอัปโหลด
   //    การย่อรูป/อ่านไฟล์ก็กินเวลา และช่องซ่อนก็ยังว่างอยู่ในช่วงนั้นเหมือนกัน
   lvSetUploading(true);
-  const handOff = (dataUrl, mime) => {
-    lvSetUploading(false);          // ปล่อยของช่วงเตรียม แล้ว lvDoUpload จะจับใหม่
-    lvDoUpload(dataUrl, file.name, mime, status, hidden);
-  };
 
-  // รูปภาพ → ย่อขนาดก่อนอัปโหลด (ประหยัด Drive) / PDF → อัปโหลดตามเดิม
-  if (/^image\//.test(file.type)) {
-    lvResizeImage(file, 1280, 0.82, (dataUrl, mime) => handOff(dataUrl, mime));
-  } else {
-    const reader = new FileReader();
-    reader.onload = () => handOff(reader.result, file.type);
-    reader.onerror = () => {
+  // ⚠️ กติกาไฟล์แนบ (ชนิด · ขนาด 2 MB · ย่อรูป) อยู่ที่ attachPrepare ใน index.html
+  //    ใช้ร่วมกับฝั่งโอที — ของเดิมแยกกันคนละชุด แล้วฝั่งโอทีไม่มีกติกาเลย
+  attachPrepare(file,
+    (dataUrl, mime, bytes) => {
+      lvSetUploading(false);        // ปล่อยของช่วงเตรียม แล้ว lvDoUpload จะจับใหม่
+      lvDoUpload(dataUrl, file.name, mime, status, hidden, bytes);
+    },
+    (msg) => {
       lvSetUploading(false);
-      status.textContent = 'อ่านไฟล์ไม่สำเร็จ'; status.style.color = 'var(--er)';
-    };
-    reader.readAsDataURL(file);
-  }
-}
-
-// ย่อรูปด้วย canvas — คงสัดส่วน, ด้านยาวสุดไม่เกิน maxDim, บีบอัด JPEG
-function lvResizeImage(file, maxDim, quality, cb) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = new Image();
-    img.onload = () => {
-      let w = img.width, h = img.height;
-      if (w > maxDim || h > maxDim) {
-        if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
-        else        { w = Math.round(w * maxDim / h); h = maxDim; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      // PNG ที่มีความโปร่งใสจะกลายเป็นพื้นขาว แต่สำหรับใบลา/เอกสารไม่มีปัญหา
-      const dataUrl = canvas.toDataURL('image/jpeg', quality);
-      cb(dataUrl, 'image/jpeg');
-    };
-    img.onerror = () => cb(reader.result, file.type);   // ย่อไม่ได้ ใช้ต้นฉบับ
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(file);
+      status.textContent = msg; status.style.color = 'var(--er)';
+      input.value = '';
+    });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -183,8 +149,9 @@ function lvSetUploading(on) {
 }
 
 // อัปโหลดจริง (ใช้ร่วมทั้งรูปที่ย่อแล้วและ PDF)
-function lvDoUpload(dataUrl, fileName, mimeType, status, hidden) {
-  status.textContent = 'กำลังอัปโหลด...'; status.style.color = 'var(--tx3)';
+function lvDoUpload(dataUrl, fileName, mimeType, status, hidden, bytes) {
+  status.textContent = 'กำลังอัปโหลด' + (bytes ? ' (' + attachSizeText(bytes) + ')' : '') + '...';
+  status.style.color = 'var(--tx3)';
   lvSetUploading(true);
   gasRun('leaveUploadFile', {
     hrToken: S.hrToken, fileData: dataUrl, fileName: fileName, mimeType: mimeType,

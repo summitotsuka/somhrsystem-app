@@ -1322,7 +1322,7 @@ textarea.inp{resize:vertical;min-height:60px}
     </div>
 
     <div style="margin-bottom:16px">
-      <label class="lbl">ไฟล์แนบ (รูปภาพ หรือ PDF — ไม่บังคับ)</label>
+      <label class="lbl">ไฟล์แนบ (รูปภาพ หรือ PDF — ไม่เกิน 2 MB — ไม่บังคับ)</label>
       <input type="file" id="lv-file-input" class="inp" accept="image/*,application/pdf" style="padding:8px">
       <div id="lv-file-status" style="font-size:12px;color:var(--tx3);margin-top:4px"></div>
       <input type="hidden" id="lv-file">
@@ -1400,10 +1400,12 @@ textarea.inp{resize:vertical;min-height:60px}
     <div class="field"><label>รายละเอียดงานที่ทำ</label>
       <textarea class="inp" id="ot-detail" rows="3" placeholder="อธิบายงานที่ทำ"></textarea>
     </div>
-    <label class="btn o" style="display:block;text-align:center;cursor:pointer;margin-bottom:10px">
+    <label class="btn o" style="display:block;text-align:center;cursor:pointer;margin-bottom:4px">
       <span id="ot-file-label">แนบไฟล์ (ถ้ามี)</span>
-      <input type="file" id="ot-file" style="display:none">
+      <!-- ⚠️ accept ช่วยให้มือถือเปิดเฉพาะรูป/PDF — ด่านจริงอยู่ที่ attachPrepare และฝั่ง GAS -->
+      <input type="file" id="ot-file" accept="image/*,application/pdf" style="display:none">
     </label>
+    <div id="ot-file-status" style="font-size:12px;color:var(--tx3);margin-bottom:10px;text-align:center">รูปภาพ หรือ PDF — ไม่เกิน 2 MB</div>
     <button class="btn p" id="ot-submit" style="width:100%">ส่งคำขอ</button>
   </div>
 </div>
@@ -2254,7 +2256,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.26.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.27.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5707,6 +5709,106 @@ function foldBind(box) {
   });
 }
 
+/**
+ * ════════════════════════════════════════════════════════════════
+ *  เตรียมไฟล์แนบ — ใช้ร่วมทั้งใบลาและโอที
+ *
+ *  ⚠️ เขียนรวมที่เดียวโดยตั้งใจ ก่อนหน้านี้ฝั่งลามีกติกา (ชนิดไฟล์ · ขนาด ·
+ *     ย่อรูป) ส่วนฝั่งโอทีไม่มีเลย — รับไฟล์ทุกชนิดทุกขนาดขึ้น Drive
+ *     ถ้าแยกสองที่ วันหนึ่งจะแก้ข้างเดียวแล้วต่างกันอีก
+ *
+ *  กติกา:
+ *   · รับเฉพาะรูปภาพ และ PDF
+ *   · ไฟล์สุดท้ายต้องไม่เกิน 2 MB
+ *   · รูปภาพ: ย่อให้ด้านยาวสุดไม่เกิน 1600 px แล้วบีบเป็น JPEG
+ *       ถ้ายังเกิน 2 MB ลดลงทีละขั้น (1600/.82 → 1280/.75 → 1024/.70)
+ *       เอกสารถ่ายรูปที่ 1600 px ยังอ่านตัวหนังสือออก และได้ไฟล์ราว 300-600 KB
+ *   · PDF: ย่อไม่ได้ จึงต้องไม่เกิน 2 MB มาตั้งแต่ต้น
+ *
+ *  ⚠️ นี่เป็นด่านฝั่งหน้าเว็บ "เพื่อความสะดวก" เท่านั้น — แก้ค่าในเบราว์เซอร์
+ *     ข้ามได้ ด่านจริงอยู่ที่ leaveUploadFile ฝั่ง GAS ซึ่งตรวจซ้ำทั้งชนิดและขนาด
+ *
+ *  @param {File} file ไฟล์จาก <input type="file">
+ *  @param {Function} onOk  (dataUrl, mimeType, bytes) → void
+ *  @param {Function} onErr (ข้อความภาษาไทย) → void
+ */
+var ATTACH_MAX_BYTES = 2 * 1024 * 1024;            // 2 MB
+var ATTACH_IMG_STEPS = [[1600, 0.82], [1280, 0.75], [1024, 0.70]];
+
+/** ขนาดจริงเป็นไบต์ของ data URL (base64 ยาวกว่าไฟล์จริงราว 33%) */
+function attachBytes(dataUrl) {
+  const i = String(dataUrl || '').indexOf(',');
+  const b64 = i >= 0 ? dataUrl.slice(i + 1) : String(dataUrl || '');
+  const pad = (b64.slice(-2).match(/=/g) || []).length;
+  return Math.max(0, Math.floor(b64.length * 3 / 4) - pad);
+}
+
+/** ข้อความขนาดไฟล์อ่านง่าย */
+function attachSizeText(bytes) {
+  return bytes >= 1024 * 1024
+    ? (bytes / 1024 / 1024).toFixed(1) + ' MB'
+    : Math.round(bytes / 1024) + ' KB';
+}
+
+function attachPrepare(file, onOk, onErr) {
+  const isImage = /^image\//.test(file.type);
+  const isPdf = (file.type === 'application/pdf');
+  if (!isImage && !isPdf) {
+    onErr('รองรับเฉพาะรูปภาพ (JPG/PNG) หรือ PDF');
+    return;
+  }
+
+  // ── PDF: ย่อไม่ได้ ตรวจขนาดตรง ๆ ──
+  if (isPdf) {
+    if (file.size > ATTACH_MAX_BYTES) {
+      onErr('ไฟล์ PDF ใหญ่เกิน 2 MB (ไฟล์นี้ ' + attachSizeText(file.size) + ') กรุณาลดขนาดก่อน');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onOk(reader.result, file.type, file.size);
+    reader.onerror = () => onErr('อ่านไฟล์ไม่สำเร็จ');
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  // ── รูปภาพ: ย่อแล้วค่อยตรวจขนาดของ "ผลลัพธ์" ──
+  //    ⚠️ ไม่ตรวจขนาดไฟล์ต้นฉบับก่อนย่อ — รูปจากมือถือ 5-8 MB เป็นเรื่องปกติ
+  //       และย่อแล้วเหลือไม่ถึงครึ่งเมกฯ การปฏิเสธตั้งแต่ต้นจะกวนผู้ใช้เปล่า ๆ
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      for (let k = 0; k < ATTACH_IMG_STEPS.length; k++) {
+        const maxDim = ATTACH_IMG_STEPS[k][0], quality = ATTACH_IMG_STEPS[k][1];
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else        { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        // PNG โปร่งใสจะกลายเป็นพื้นดำ ถ้าไม่ทาขาวก่อน — เอกสารสแกนเจอบ่อย
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const bytes = attachBytes(dataUrl);
+        if (bytes <= ATTACH_MAX_BYTES) { onOk(dataUrl, 'image/jpeg', bytes); return; }
+      }
+      onErr('รูปใหญ่เกินไป ย่อแล้วยังเกิน 2 MB — กรุณาถ่ายใหม่หรือลดขนาดก่อน');
+    };
+    // ย่อไม่ได้ (ไฟล์เสีย/ชนิดที่เบราว์เซอร์เปิดไม่ได้) → ใช้ต้นฉบับถ้าไม่เกิน 2 MB
+    img.onerror = () => {
+      if (file.size > ATTACH_MAX_BYTES) {
+        onErr('ไฟล์ใหญ่เกิน 2 MB (ไฟล์นี้ ' + attachSizeText(file.size) + ')');
+        return;
+      }
+      onOk(reader.result, file.type, file.size);
+    };
+    img.src = reader.result;
+  };
+  reader.onerror = () => onErr('อ่านไฟล์ไม่สำเร็จ');
+  reader.readAsDataURL(file);
+}
+
 function btnBusy(btn, label) {
   if (!btn) return function () {};
   if (btn.dataset.busy === '1') return null;    // ← ด่านกันกดซ้ำ
@@ -6042,8 +6144,8 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.26.0"></script>
-<script src="ot.js?v=8.14.0"></script>
+<script src="leave.js?v=8.27.0"></script>
+<script src="ot.js?v=8.15.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ

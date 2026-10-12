@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.14.0';
+window.OT_JS_VERSION = '8.15.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -352,7 +352,11 @@ function submitOT() {
 
   const btn = document.getElementById('ot-submit');
   // ใช้ตัวช่วยกลาง: ได้วงหมุน + ด่านกันกดซ้ำ และคืนสภาพปุ่มให้เองที่เดียว
-  const done = btnBusy(btn, OT.formFile ? 'กำลังอัปโหลดไฟล์...' : 'กำลังส่ง...');
+  // ⚠️ เขียนให้ยาวพออ่านรู้เรื่อง — ปุ่มนี้กดแล้วรอหลายวินาทีถ้ามีไฟล์แนบ
+  //    ข้อความสั้น ๆ ทำให้คนคิดว่าเครื่องค้าง แล้วกดซ้ำ (ปุ่มล็อกไว้แล้วก็จริง)
+  const done = btnBusy(btn, OT.formFile
+    ? 'กำลังอัปโหลดไฟล์ กรุณารอสักครู่...'
+    : 'กำลังส่งใบคำขอโอที กรุณารอสักครู่...');
   if (!done) return;
 
   const doSubmit = (fileUrl) => {
@@ -376,8 +380,21 @@ function submitOT() {
       if (btn && btn.dataset.busy === '1') btn.innerHTML = '<span class="spin"></span> กำลังส่ง...';
     };
     gasRun('leaveUploadFile', { hrToken: S.hrToken, fileData: OT.formFile.data, fileName: OT.formFile.name, mimeType: OT.formFile.type })
-      .withSuccessHandler(r => { toStep2(); doSubmit(r && r.success ? r.url : ''); })
-      .withFailureHandler(() => { toStep2(); doSubmit(''); });
+      // ⚠️ ของเดิมอ่าน r.url ซึ่งไม่มีจริง — leaveUploadFile คืนชื่อ fileUrl
+      //    ผลคือไฟล์ขึ้น Drive สำเร็จ แต่ลิงก์เป็นค่าว่างทุกครั้ง
+      //    ใบโอทีจึงไม่เคยมีไฟล์แนบเลย และไฟล์ค้างอยู่ใน Drive โดยไม่มีใครชี้ถึง
+      .withSuccessHandler(r => {
+        toStep2();
+        if (r && r.success && r.fileUrl) { doSubmit(r.fileUrl); return; }
+        // อัปโหลดไม่สำเร็จ → บอกให้รู้ ไม่ใช่ส่งใบเปล่าเงียบ ๆ
+        showToast((r && r.message) || 'แนบไฟล์ไม่สำเร็จ — ส่งคำขอโดยไม่มีไฟล์แนบ');
+        doSubmit('');
+      })
+      .withFailureHandler(() => {
+        toStep2();
+        showToast('แนบไฟล์ไม่สำเร็จ — ส่งคำขอโดยไม่มีไฟล์แนบ');
+        doSubmit('');
+      });
   } else {
     doSubmit('');
   }
@@ -631,9 +648,7 @@ function otRejectRequest(reqId, btn) {
   if (reason === null) return;
   if (!reason.trim()) { showToast('กรุณากรอกเหตุผล'); return; }
   // เริ่มหมุนหลังปิดกล่องถามเหตุผลแล้ว
-  // ⚠️ เขียนให้ยาวพออ่านรู้เรื่อง — ปุ่มนี้กดแล้วรอ 3-6 วินาที
-  //    ข้อความสั้น ๆ ทำให้คนคิดว่าเครื่องค้าง แล้วกดซ้ำ (ปุ่มล็อกไว้แล้วก็จริง)
-  const done = btnBusy(btn, 'กำลังส่งใบคำขอโอที กรุณารอสักครู่...');
+  const done = btnBusy(btn, 'กำลังบันทึกการไม่อนุมัติ...');
   if (!done) return;
   gasRun('otReject', { hrToken: S.hrToken, requestId: reqId, rejectReason: reason.trim() })
     .withSuccessHandler(r => {
@@ -920,13 +935,29 @@ function initOTBindings() {
   on('ot-form-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
   on('ot-file', 'change', function(e) {
     const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      OT.formFile = { data: reader.result.split(',')[1], name: f.name, type: f.type };
-      const lbl = document.getElementById('ot-file-label'); if (lbl) lbl.textContent = f.name;
-    };
-    reader.readAsDataURL(f);
+    const lbl = document.getElementById('ot-file-label');
+    const st  = document.getElementById('ot-file-status');
+    if (!f) { OT.formFile = null; return; }
+
+    // ⚠️ ของเดิมรับไฟล์ "ทุกชนิดทุกขนาด" ขึ้น Drive โดยไม่ตรวจอะไรเลย
+    //    และไม่ย่อรูปด้วย — ต่างจากฝั่งลาที่มีกติกาครบ
+    //    ตอนนี้ใช้ attachPrepare ตัวเดียวกับใบลา (ดู index.html)
+    OT.formFile = null;
+    if (st) { st.textContent = 'กำลังเตรียมไฟล์...'; st.style.color = 'var(--tx3)'; }
+    attachPrepare(f,
+      (dataUrl, mime, bytes) => {
+        // ⚠️ เก็บ data URL เต็ม ไม่ใช่ตัดหัวทิ้ง — ฝั่ง GAS ตัดเองอยู่แล้ว
+        //    และการตัดที่นี่ทำให้ชนิดไฟล์จริงหายไปจากก้อนข้อมูล
+        OT.formFile = { data: dataUrl, name: f.name, type: mime };
+        if (lbl) lbl.textContent = f.name;
+        if (st) { st.textContent = '✓ พร้อมแนบ (' + attachSizeText(bytes) + ')'; st.style.color = 'var(--ok)'; }
+      },
+      (msg) => {
+        OT.formFile = null;
+        e.target.value = '';
+        if (lbl) lbl.textContent = 'แนบไฟล์ (ถ้ามี)';
+        if (st) { st.textContent = msg; st.style.color = 'var(--er)'; }
+      });
   });
   // ประวัติ
   on('ot-history-back', 'click', () => go(S.role === 'HR' ? 'hr-dash' : 'home'));
