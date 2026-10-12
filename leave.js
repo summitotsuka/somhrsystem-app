@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.11.0';
+window.LEAVE_JS_VERSION = '8.23.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -103,15 +103,24 @@ function lvOnFilePick() {
 
   status.textContent = 'กำลังเตรียมไฟล์...'; status.style.color = 'var(--tx3)';
 
+  // ⚠️ ล็อกตั้งแต่ "เตรียมไฟล์" ไม่ใช่รอถึงตอนอัปโหลด
+  //    การย่อรูป/อ่านไฟล์ก็กินเวลา และช่องซ่อนก็ยังว่างอยู่ในช่วงนั้นเหมือนกัน
+  lvSetUploading(true);
+  const handOff = (dataUrl, mime) => {
+    lvSetUploading(false);          // ปล่อยของช่วงเตรียม แล้ว lvDoUpload จะจับใหม่
+    lvDoUpload(dataUrl, file.name, mime, status, hidden);
+  };
+
   // รูปภาพ → ย่อขนาดก่อนอัปโหลด (ประหยัด Drive) / PDF → อัปโหลดตามเดิม
   if (/^image\//.test(file.type)) {
-    lvResizeImage(file, 1280, 0.82, (dataUrl, mime) => {
-      lvDoUpload(dataUrl, file.name, mime, status, hidden);
-    });
+    lvResizeImage(file, 1280, 0.82, (dataUrl, mime) => handOff(dataUrl, mime));
   } else {
     const reader = new FileReader();
-    reader.onload = () => lvDoUpload(reader.result, file.name, file.type, status, hidden);
-    reader.onerror = () => { status.textContent = 'อ่านไฟล์ไม่สำเร็จ'; status.style.color = 'var(--er)'; };
+    reader.onload = () => handOff(reader.result, file.type);
+    reader.onerror = () => {
+      lvSetUploading(false);
+      status.textContent = 'อ่านไฟล์ไม่สำเร็จ'; status.style.color = 'var(--er)';
+    };
     reader.readAsDataURL(file);
   }
 }
@@ -140,18 +149,56 @@ function lvResizeImage(file, maxDim, quality, cb) {
   reader.readAsDataURL(file);
 }
 
+// ════════════════════════════════════════════════════════════════
+//  ⚠️ ล็อกปุ่ม "ส่งคำขอลา" ระหว่างแนบไฟล์ (ซ่อมในเฟส 5T)
+//
+//  ของเดิม: submitLeave อ่าน fileUrl จากช่องซ่อน lv-file ซึ่ง "ว่าง"
+//  จนกว่าการอัปโหลดจะสำเร็จ และการอัปโหลดวัดได้ 8.5 วินาที
+//
+//  ถ้ากดส่งในช่วงนั้น: ใบลาถูกบันทึก "สำเร็จ" โดยไม่มีไฟล์แนบ
+//  แล้วหน้าเว็บเด้งไปหน้าประวัติทันที — ไฟล์ขึ้น Drive ไปแล้วแต่ไม่มีใครชี้ถึง
+//  พนักงานเชื่อว่าแนบใบรับรองแพทย์แล้ว ฝ่ายบุคคลเห็นใบลาเปล่า
+//
+//  ฝั่ง OT ทำถูกอยู่แล้ว (เรียก otSubmit ข้างใน success handler ของการอัปโหลด)
+//  ฝั่งลาใช้ช่องซ่อนจึงพลาดจุดนี้ — ที่นี่แก้ด้วยการล็อกปุ่มตรง ๆ
+//  ให้เห็นชัดว่า "ยังส่งไม่ได้เพราะอะไร" ไม่ใช่ปล่อยให้กดแล้วเสียของ
+// ════════════════════════════════════════════════════════════════
+var LV_UPLOADING = 0;   // จำนวนงานอัปโหลดที่ยังไม่จบ
+
+function lvSetUploading(on) {
+  LV_UPLOADING = Math.max(0, LV_UPLOADING + (on ? 1 : -1));
+  const btn = document.getElementById('lv-submit');
+  if (!btn) return;
+  // ถ้าปุ่มกำลังส่งอยู่ (btnBusy) อย่าไปยุ่ง — เจ้าของเดิมจะคืนสภาพให้เอง
+  if (btn.dataset.busy === '1') return;
+  if (LV_UPLOADING > 0) {
+    btn.disabled = true;
+    btn.dataset.lvWait = '1';
+    btn.textContent = 'กำลังแนบไฟล์...';
+  } else if (btn.dataset.lvWait === '1') {
+    btn.disabled = false;
+    delete btn.dataset.lvWait;
+    btn.textContent = 'ส่งคำขอลา';
+  }
+}
+
 // อัปโหลดจริง (ใช้ร่วมทั้งรูปที่ย่อแล้วและ PDF)
 function lvDoUpload(dataUrl, fileName, mimeType, status, hidden) {
   status.textContent = 'กำลังอัปโหลด...'; status.style.color = 'var(--tx3)';
+  lvSetUploading(true);
   gasRun('leaveUploadFile', {
     hrToken: S.hrToken, fileData: dataUrl, fileName: fileName, mimeType: mimeType,
   })
     .withSuccessHandler(r => {
+      lvSetUploading(false);
       if (!r || !r.success) { status.textContent = (r && r.message) || 'อัปโหลดไม่สำเร็จ'; status.style.color = 'var(--er)'; return; }
       hidden.value = r.fileUrl;
       status.textContent = '✓ แนบไฟล์แล้ว'; status.style.color = 'var(--ok)';
     })
-    .withFailureHandler(e => { status.textContent = 'อัปโหลดไม่สำเร็จ'; status.style.color = 'var(--er)'; });
+    .withFailureHandler(e => {
+      lvSetUploading(false);
+      status.textContent = 'อัปโหลดไม่สำเร็จ'; status.style.color = 'var(--er)';
+    });
 }
 
 // เปลี่ยนโหมดการลา → แสดง/ซ่อนช่อง + อัปเดตสรุปเวลา
@@ -229,6 +276,11 @@ function submitLeave() {
   const timeTo    = document.getElementById('lv-time-to') ? document.getElementById('lv-time-to').value : '';
   const reason    = document.getElementById('lv-reason').value.trim();
   const fileUrl   = document.getElementById('lv-file').value.trim();
+
+  // ⚠️ ด่านสุดท้าย — ถึงปุ่มถูกล็อกไว้แล้ว ก็ยังกันไว้อีกชั้น
+  //    (กดด้วยคีย์บอร์ด · เรียกจากที่อื่น · ปุ่มถูกปลดล็อกด้วยเหตุอื่น)
+  //    ของที่เสียคือไฟล์แนบของพนักงาน ซึ่งกู้คืนไม่ได้ จึงกันสองชั้น
+  if (LV_UPLOADING > 0) { showToast('กำลังแนบไฟล์อยู่ กรุณารอให้ขึ้น "แนบไฟล์แล้ว" ก่อนส่ง'); return; }
 
   // ตรวจเบื้องต้นฝั่ง client (server ตรวจซ้ำ)
   if (!leaveType) { showToast('กรุณาเลือกประเภทการลา'); return; }
