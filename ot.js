@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.11.0';
+window.OT_JS_VERSION = '8.12.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -597,7 +597,9 @@ function otRejectRequest(reqId, btn) {
   if (reason === null) return;
   if (!reason.trim()) { showToast('กรุณากรอกเหตุผล'); return; }
   // เริ่มหมุนหลังปิดกล่องถามเหตุผลแล้ว
-  const done = btnBusy(btn, 'กำลังส่ง...');
+  // ⚠️ เขียนให้ยาวพออ่านรู้เรื่อง — ปุ่มนี้กดแล้วรอ 3-6 วินาที
+  //    ข้อความสั้น ๆ ทำให้คนคิดว่าเครื่องค้าง แล้วกดซ้ำ (ปุ่มล็อกไว้แล้วก็จริง)
+  const done = btnBusy(btn, 'กำลังส่งใบคำขอโอที กรุณารอสักครู่...');
   if (!done) return;
   gasRun('otReject', { hrToken: S.hrToken, requestId: reqId, rejectReason: reason.trim() })
     .withSuccessHandler(r => {

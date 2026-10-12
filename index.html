@@ -1831,7 +1831,19 @@ const SB = {
               //    ฟังก์ชัน SQL ที่มันต้องใช้ (att_active_session) เพิ่งซ่อมเสร็จ
               //    ให้ login ซึ่งใช้ตัวเดียวกันวิ่งจริงให้เห็นก่อนสักระยะ
               //    แล้วค่อยย้าย — ได้ประโยชน์เท่ากันแต่เสี่ยงน้อยกว่า
-              bcGetRecipients: 1 },
+              bcGetRecipients: 1,
+              // ── เฟส 5U: ฝั่ง "เขียน" ของใบลา 6 คำสั่ง ──
+              //
+              // ⚠️ ใส่ไว้ได้ตั้งแต่ก่อนสลับต้นฉบับ — ไม่ต้องจับจังหวะ
+              //    ถ้าต้นฉบับใบลายังเป็นชีต Supabase จะตอบ useGas: true
+              //    แล้ว _callAPI ส่งคำสั่งเดิมไป GAS ให้เขียนลงชีตตามปกติ
+              //    (ถ้าไม่มีกลไกนี้ ช่วงระหว่างอัปเดตจะคีย์ใบลาไม่ได้ทั้งบริษัท)
+              //
+              // ⚠️ Telegram ไม่ได้ส่งจากที่นี่ Supabase เขียนเสร็จแล้ว
+              //    หน้าเว็บเรียก GAS คำสั่ง lvNotify ต่ออีกครั้ง (ทางเลือก ข.)
+              //    ผู้ใช้เห็นผลทันทีโดยไม่ต้องรอบอต — ดู SB_LV_NOTIFY
+              leaveSubmit: 1, leaveApprove: 1, leaveReject: 1,
+              leaveCancel: 1, leaveCancelByApprover: 1, leaveVoidByHR: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -2051,6 +2063,26 @@ var SB_LV_WRITES = {
 var SB_LV_READS = { leaveGetMyRequests: 1, otGetMyRequests: 1 };
 
 /**
+ * ── เฟส 5U: คำสั่งที่ Supabase เขียนเอง แล้วต้องให้ GAS ส่ง Telegram ต่อ ──
+ *
+ * ค่าในตารางคือ "ชื่อเหตุการณ์" ที่ส่งไปให้ GAS ('' = ไม่ต้องแจ้งใคร)
+ *
+ * ⚠️ ส่งไปแค่ "เลขที่ใบลา + ชื่อเหตุการณ์" ไม่เคยส่งเนื้อข้อความ
+ *    GAS จะไปอ่านแถวจริงจาก Supabase แล้วประกอบข้อความเอง
+ *    ถ้าให้หน้าเว็บส่งเนื้อข้อความไป ใครก็แก้ค่าในเบราว์เซอร์
+ *    แล้วสั่งให้บอตส่งข้อความปลอมถึงใครก็ได้
+ *
+ * ⚠️ ไม่รอผลการแจ้งเตือน — ใบลาถูกบันทึกไปแล้ว ถ้ารอแล้วบอตช้า
+ *    ผู้ใช้จะนั่งดูปุ่มหมุนต่ออีก 2-3 วินาทีโดยไม่ได้ประโยชน์
+ *    (ส่งไม่ออกจะเห็นใน Log ฝั่ง GAS)
+ */
+var SB_LV_NOTIFY = {
+  leaveSubmit: 'SUBMIT', leaveApprove: 'APPROVE', leaveReject: 'REJECT',
+  leaveCancelByApprover: 'CANCEL_BY_APPROVER', leaveVoidByHR: 'VOID',
+  // leaveCancel (พนักงานยกเลิกเอง) — ของเดิมไม่แจ้งใคร คงไว้เหมือนกัน
+};
+
+/**
  * ── เฟส 5H: หน้าจอเงินเดือน ────────────────────────────────────
  *
  * เรื่องเดียวกับใบลา แต่แรงกว่า เพราะหน้าจัดการงวดคือหน้าที่
@@ -2205,7 +2237,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.23.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.24.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2386,20 +2418,64 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
   }
 
   if (sbReady() && SB.ACTIONS[action] && !empStale) {
-    const p = (action === 'login')
+    // ⚠️ จดไว้ว่าคำตอบสุดท้ายมาจาก GAS หรือเปล่า
+    //    ถ้ามาจาก GAS แปลว่า GAS ส่ง Telegram ไปแล้วเอง (ทั้งทางชีตและทางส่งต่อ)
+    //    ยิง lvNotify ต่อจะได้ข้อความซ้ำสองรอบถึงคนเดียวกัน
+    //    ใช้ตัวแปรจดเอง ไม่ใช้ธงในคำตอบ — ไม่ต้องรอให้ฝั่งเซิร์ฟเวอร์ติดธงถูกทุกเส้น
+    let fromGas = false;
+
+    let p = (action === 'login')
       ? sbLogin(payload, timeoutMs)
       : sbCall(action, payload, timeoutMs);
 
-    return p.catch(err => {
-      // ── ถอยไปใช้ GAS เมื่อ Supabase ติดต่อไม่ได้ ──
-      // ทำงานเฉพาะตอน "ติดต่อไม่ได้จริง" (เน็ตหลุด · HTTP error · หมดเวลา)
-      // ถ้า Supabase ตอบมาว่า "รหัสผ่านไม่ถูกต้อง" นั่นคือคำตอบที่ถูกต้องแล้ว ไม่ถอย
+    // ── ถอยไปใช้ GAS เมื่อ Supabase ติดต่อไม่ได้ ──
+    // ทำงานเฉพาะตอน "ติดต่อไม่ได้จริง" (เน็ตหลุด · HTTP error · หมดเวลา)
+    // ถ้า Supabase ตอบมาว่า "รหัสผ่านไม่ถูกต้อง" นั่นคือคำตอบที่ถูกต้องแล้ว ไม่ถอย
+    //
+    // ⚠️ ด่านนี้ต้องอยู่ "ก่อน" ท่อน useGas ข้างล่าง
+    //    ถ้าอยู่หลัง เมื่อการยิงไป GAS ของท่อน useGas ล้ม ด่านนี้จะยิงไป GAS
+    //    อีกรอบ = ใบลาซ้ำสองใบ (กันไว้ด้วย already ทั้งสองฝั่งก็จริง
+    //    แต่ไม่ควรพึ่งด่านกันซ้ำในเรื่องที่เรียงลำดับให้ถูกได้ตั้งแต่ต้น)
+    p = p.catch(err => {
       if (!SB.FALLBACK) throw err;
       console.warn('[SB] ' + action + ' ไม่สำเร็จ (' + (err && err.message) + ') → ใช้ GAS แทน');
       if (st) st.why = 'Supabase ตอบไม่สำเร็จ — ' + String((err && err.message) || err).slice(0, 80);
       sbMarkDown();
+      fromGas = true;
       return gasCallAPI(action, payload, 1, noRetry, timeoutMs, st);
     });
+
+    // ── เฟส 5U: useGas = ต้นฉบับยังไม่ได้ย้าย → ส่งคำสั่งเดิมไป GAS ──
+    // ไม่ใช่ข้อผิดพลาด เป็นคำตอบที่ถูกต้องว่า "ยังไม่ถึงเวลาของทางนี้"
+    // (และยังเป็นทางถอยตอนเราสลับกลับไปใช้ชีตกลางวันทำงานได้ด้วย)
+    p = p.then(r => {
+      if (r && r.useGas) {
+        if (st) st.why = 'ต้นฉบับยังอยู่ที่ของเดิม';
+        fromGas = true;
+        return gasCallAPI(action, payload, 1, noRetry, timeoutMs, st);
+      }
+      return r;
+    });
+
+    // ── เฟส 5U: เขียนที่ Supabase สำเร็จ → ให้ GAS ส่ง Telegram ต่อ ──
+    // ยิงแล้วไม่รอผล (ดูเหตุผลที่ SB_LV_NOTIFY)
+    if (SB_LV_NOTIFY[action]) {
+      p = p.then(r => {
+        if (r && r.success && !fromGas) {
+          try {
+            gasCallAPI('lvNotify', {
+              hrToken: payload && payload.hrToken,
+              requestId: r.requestId || (payload && payload.requestId),
+              event: SB_LV_NOTIFY[action],
+            }, 1, true, 20000, null)
+              .catch(e => console.warn('[SB] แจ้งเตือนไม่สำเร็จ: ' + (e && e.message)));
+          } catch (e) { console.warn('[SB] แจ้งเตือนไม่สำเร็จ: ' + e.message); }
+        }
+        return r;
+      });
+    }
+
+    return p;
   }
 
   const p = gasCallAPI(action, payload, attempt, noRetry, timeoutMs, st);
@@ -5949,8 +6025,8 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.23.0"></script>
-<script src="ot.js?v=8.11.0"></script>
+<script src="leave.js?v=8.24.0"></script>
+<script src="ot.js?v=8.12.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ

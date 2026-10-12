@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.23.0';
+window.LEAVE_JS_VERSION = '8.24.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -294,7 +294,9 @@ function submitLeave() {
   const singleDay = (mode === 'HALF_AM' || mode === 'HALF_PM' || mode === 'HOURLY');
   const finalDateTo = singleDay ? dateFrom : dateTo;
 
-  const done = btnBusy(btn, 'กำลังส่ง...');
+  // ⚠️ เขียนให้ยาวพออ่านรู้เรื่อง — ปุ่มนี้กดแล้วรอ 3-6 วินาที
+  //    ข้อความสั้น ๆ ทำให้คนคิดว่าเครื่องค้าง แล้วกดซ้ำ (ปุ่มล็อกไว้แล้วก็จริง)
+  const done = btnBusy(btn, 'กำลังส่งใบคำขอลา กรุณารอสักครู่...');
   if (!done) return;
   gasRun('leaveSubmit', {
     hrToken: S.hrToken,
