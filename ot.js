@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.12.0';
+window.OT_JS_VERSION = '8.13.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -277,14 +277,48 @@ function otUpdatePreview() {
     dt = dd.toISOString().slice(0, 10);
   }
 
-  // คำนวณชั่วโมงคร่าวๆ ฝั่ง client (ตัดเศษ 30 นาที, ไม่รวมพักเที่ยง — server คำนวณจริงอีกที)
+  // ── คิดชั่วโมงให้ตรงกับที่เซิร์ฟเวอร์จะบันทึกจริง ──
+  //
+  // ⚠️ เดิมบรรทัดนี้โชว์ "ประมาณ 9.5 ชม. (ฝ่ายบุคคลจะหักพักเที่ยงให้ถ้าเป็นงานวันหยุด)"
+  //    แต่ระบบบันทึก 8.5 — พนักงานเห็นเลขหนึ่ง ได้เงินตามอีกเลขหนึ่ง
+  //    ตอนนี้หักพักเที่ยงด้วยกฎเดียวกับ calcOTHours_ / ot_calc_hours เป๊ะ:
+  //      พักเที่ยง 12:00–13:00 ของ "วันเริ่ม" · หักเฉพาะส่วนที่ทับ · แล้วตัดเศษลง 30 นาที
+  //
+  // ⚠️ ถ้าเซิร์ฟเวอร์ยังไม่ส่ง deductLunch มา (หน้าเว็บใหม่ + เซิร์ฟเวอร์เก่า)
+  //    จะไม่เดา แต่กลับไปใช้ข้อความเดิมที่บอกว่า "ฝ่ายบุคคลจะหักให้"
+  //    เดาแล้วโชว์เลขผิดแย่กว่าโชว์เลขคร่าว ๆ ที่บอกตรง ๆ ว่ายังไม่รวม
+  const typeSel = document.getElementById('ot-type');
+  const typeObj = OT.types.find(t => t.id === (typeSel ? typeSel.value : ''));
+  const dl = typeObj ? typeObj.deductLunch : undefined;
+
   const start = new Date(df + 'T' + tf + ':00');
   const end = new Date(dt + 'T' + tt + ':00');
   let diffMin = (end - start) / 60000;
   if (diffMin <= 0) { prev.innerHTML = '<span style="color:var(--er)">เวลาสิ้นสุดต้องหลังเวลาเริ่ม</span>'; return; }
+
+  let lunchMin = 0;
+  if (dl === true) {
+    const noonS = new Date(df + 'T12:00:00');
+    const noonE = new Date(df + 'T13:00:00');
+    if (start < noonE && end > noonS) {
+      const os = start > noonS ? start : noonS;
+      const oe = end < noonE ? end : noonE;
+      const ov = (oe - os) / 60000;
+      if (ov > 0) { lunchMin = ov; diffMin -= ov; }
+    }
+  }
+
   const hours = Math.floor(diffMin / 30) * 0.5;
   const crossDay = (otCross || df !== dt) ? ' (ข้ามวัน)' : '';
-  prev.innerHTML = `ประมาณ <b>${hours}</b> ชม.${crossDay} <span style="color:var(--tx3)">(ฝ่ายบุคคลจะหักพักเที่ยงให้ถ้าเป็นงานวันหยุด)</span>`;
+
+  if (dl === undefined) {
+    // เซิร์ฟเวอร์รุ่นเก่า — บอกตามจริงว่ายังไม่รวมพักเที่ยง
+    prev.innerHTML = `ประมาณ <b>${hours}</b> ชม.${crossDay} <span style="color:var(--tx3)">(ยังไม่รวมการหักพักเที่ยง)</span>`;
+    return;
+  }
+  const lunchNote = lunchMin > 0
+    ? ` <span style="color:var(--tx3)">(หักพักเที่ยง ${lunchMin / 60} ชม. แล้ว)</span>` : '';
+  prev.innerHTML = `<b>${hours}</b> ชม.${crossDay}${lunchNote}`;
 }
 
 // ตรวจว่าคู่เวลานี้ข้ามคืนไหม (ดูลำดับใน grid)

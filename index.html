@@ -1840,10 +1840,15 @@ const SB = {
               //    (ถ้าไม่มีกลไกนี้ ช่วงระหว่างอัปเดตจะคีย์ใบลาไม่ได้ทั้งบริษัท)
               //
               // ⚠️ Telegram ไม่ได้ส่งจากที่นี่ Supabase เขียนเสร็จแล้ว
-              //    หน้าเว็บเรียก GAS คำสั่ง lvNotify ต่ออีกครั้ง (ทางเลือก ข.)
-              //    ผู้ใช้เห็นผลทันทีโดยไม่ต้องรอบอต — ดู SB_LV_NOTIFY
+              //    หน้าเว็บเรียก GAS คำสั่งแจ้งเตือนต่ออีกครั้ง (ทางเลือก ข.)
+              //    ผู้ใช้เห็นผลทันทีโดยไม่ต้องรอบอต — ดู SB_REQ_NOTIFY
               leaveSubmit: 1, leaveApprove: 1, leaveReject: 1,
-              leaveCancel: 1, leaveCancelByApprover: 1, leaveVoidByHR: 1 },
+              leaveCancel: 1, leaveCancelByApprover: 1, leaveVoidByHR: 1,
+              // ── เฟส 5V: ฝั่ง "เขียน" ของโอที 6 คำสั่ง ──
+              // โครงเดียวกับใบลาทุกอย่าง รวมถึงกลไก useGas
+              // (ใส่ไว้ได้ตั้งแต่ก่อนสลับต้นฉบับ ไม่ต้องจับจังหวะ)
+              otSubmit: 1, otApprove: 1, otReject: 1,
+              otCancel: 1, otCancelByApprover: 1, otVoidByHR: 1 },
   FALLBACK: true,     // Supabase ไม่ตอบ → ถอยไปใช้ GAS เองอัตโนมัติ ผู้ใช้แทบไม่รู้สึก
   TIMEOUT:  20000,    // ปกติตอบใน 1 วิ ถ้าเกิน 20 วิ แปลว่ามีปัญหา ถอยไป GAS เลย
 
@@ -2076,10 +2081,20 @@ var SB_LV_READS = { leaveGetMyRequests: 1, otGetMyRequests: 1 };
  *    ผู้ใช้จะนั่งดูปุ่มหมุนต่ออีก 2-3 วินาทีโดยไม่ได้ประโยชน์
  *    (ส่งไม่ออกจะเห็นใน Log ฝั่ง GAS)
  */
-var SB_LV_NOTIFY = {
-  leaveSubmit: 'SUBMIT', leaveApprove: 'APPROVE', leaveReject: 'REJECT',
-  leaveCancelByApprover: 'CANCEL_BY_APPROVER', leaveVoidByHR: 'VOID',
-  // leaveCancel (พนักงานยกเลิกเอง) — ของเดิมไม่แจ้งใคร คงไว้เหมือนกัน
+var SB_REQ_NOTIFY = {
+  //  คำสั่ง              → [คำสั่ง GAS ที่ส่งข้อความ, ชื่อเหตุการณ์]
+  leaveSubmit:           ['lvNotify', 'SUBMIT'],
+  leaveApprove:          ['lvNotify', 'APPROVE'],
+  leaveReject:           ['lvNotify', 'REJECT'],
+  leaveCancelByApprover: ['lvNotify', 'CANCEL_BY_APPROVER'],
+  leaveVoidByHR:         ['lvNotify', 'VOID'],
+  // ── เฟส 5V: โอที ──
+  otSubmit:              ['otNotify', 'SUBMIT'],
+  otApprove:             ['otNotify', 'APPROVE'],
+  otReject:              ['otNotify', 'REJECT'],
+  otCancelByApprover:    ['otNotify', 'CANCEL_BY_APPROVER'],
+  otVoidByHR:            ['otNotify', 'VOID'],
+  // leaveCancel / otCancel (พนักงานยกเลิกเอง) — ของเดิมไม่แจ้งใคร คงไว้เหมือนกัน
 };
 
 /**
@@ -2237,7 +2252,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.24.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.25.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2458,15 +2473,15 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
     });
 
     // ── เฟส 5U: เขียนที่ Supabase สำเร็จ → ให้ GAS ส่ง Telegram ต่อ ──
-    // ยิงแล้วไม่รอผล (ดูเหตุผลที่ SB_LV_NOTIFY)
-    if (SB_LV_NOTIFY[action]) {
+    // ยิงแล้วไม่รอผล (ดูเหตุผลที่ SB_REQ_NOTIFY)
+    if (SB_REQ_NOTIFY[action]) {
       p = p.then(r => {
         if (r && r.success && !fromGas) {
           try {
-            gasCallAPI('lvNotify', {
+            gasCallAPI(SB_REQ_NOTIFY[action][0], {
               hrToken: payload && payload.hrToken,
               requestId: r.requestId || (payload && payload.requestId),
-              event: SB_LV_NOTIFY[action],
+              event: SB_REQ_NOTIFY[action][1],
             }, 1, true, 20000, null)
               .catch(e => console.warn('[SB] แจ้งเตือนไม่สำเร็จ: ' + (e && e.message)));
           } catch (e) { console.warn('[SB] แจ้งเตือนไม่สำเร็จ: ' + e.message); }
@@ -6025,8 +6040,8 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.24.0"></script>
-<script src="ot.js?v=8.12.0"></script>
+<script src="leave.js?v=8.25.0"></script>
+<script src="ot.js?v=8.13.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ
