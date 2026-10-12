@@ -102,7 +102,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;background:rgba(
 .rep-table th{background:var(--sf2);padding:9px 8px;text-align:left;color:var(--tx2);font-weight:700;white-space:nowrap;position:sticky;top:0;font-size:13px}
 .rep-table td{padding:9px 8px;border-top:1px solid var(--bd);white-space:nowrap;color:var(--tx)}
 .rep-bdg{font-size:9px;padding:2px 6px;border-radius:5px;font-weight:600}
-.nav-clock{font-family:var(--mo);font-size:11px;color:var(--tx3)}
+/* ⚠️ ขนาดเท่ากับชื่อระบบ (16px) ตามที่ ED ขอ — ของเดิม 11px เล็กเกินอ่านยาก
+   ใช้ฟอนต์ความกว้างคงที่เหมือนเดิม ตัวเลขจะได้ไม่ขยับตอนวินาทีเปลี่ยน */
+.nav-clock{font-family:var(--mo);font-size:16px;color:var(--tx3)}
 
 .page{display:none;position:fixed;top:52px;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(20px + var(--sab));z-index:1}
 .page.active{display:block}
@@ -261,7 +263,7 @@ textarea.inp{resize:vertical;min-height:60px}
 <body>
 
 <nav>
-  <div class="logo"><span style="font-size:16px;font-weight:700;color:var(--tx);white-space:nowrap">SOM HR System</span><span id="app-version" style="font-size:11px;color:var(--tx3);margin-left:6px"></span></div>
+  <div class="logo"><span style="font-size:16px;font-weight:700;color:var(--tx);white-space:nowrap">SOM HR System</span><span id="app-version" style="font-size:16px;color:var(--tx3);margin-left:6px"></span></div>
   <div class="nav-mid">
     <div class="nav-tabs" id="nav-tabs" style="display:none">
       <!-- เมนูพนักงาน -->
@@ -2252,7 +2254,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.25.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.26.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -6040,8 +6042,8 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.25.0"></script>
-<script src="ot.js?v=8.13.0"></script>
+<script src="leave.js?v=8.26.0"></script>
+<script src="ot.js?v=8.14.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
 <script>
   // ผูก event ระบบลา หลัง leave.js โหลดเสร็จ

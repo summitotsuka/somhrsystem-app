@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.25.0';
+window.LEAVE_JS_VERSION = '8.26.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -385,6 +385,7 @@ function lvRenderHistory(list, summary) {
         <div style="display:flex;flex-direction:column;gap:6px">
           ${items.map(r => `<div style="font-size:13px;color:var(--tx2);padding-left:8px;border-left:2px solid var(--bd)">
             ${lvEsc(lvFormatRange(r))} · ${lvEsc(LV_MODE[r.mode] || r.mode)} · ${lvEsc(r.hoursText)}
+            ${r.fileUrl ? ` · <a href="${lvEsc(r.fileUrl)}" target="_blank" style="color:var(--ac)">📎 ไฟล์แนบ</a>` : ''}
           </div>`).join('')}
         </div>
       </div>`;

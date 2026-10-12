@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.13.0';
+window.OT_JS_VERSION = '8.14.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)
@@ -432,8 +432,8 @@ function renderOTHistory(r) {
           <div style="font-size:13px"><b>${s.hours}</b> ชม.</div>
         </div>
         <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
-          ${items.map(it => `<div style="font-size:12px;color:var(--tx2);display:flex;justify-content:space-between;border-top:1px solid var(--bd);padding-top:6px">
-            <span>${otEsc(otFormatRange(it))}</span><span>${it.hours} ชม.</span></div>`).join('')}
+          ${items.map(it => `<div style="font-size:12px;color:var(--tx2);display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--bd);padding-top:6px">
+            <span>${otEsc(otFormatRange(it))}${it.fileUrl ? ` · <a href="${otEsc(it.fileUrl)}" target="_blank" style="color:var(--ac)">📎 ไฟล์แนบ</a>` : ''}</span><span style="white-space:nowrap">${it.hours} ชม.</span></div>`).join('')}
         </div>
       </div>`;
     });
