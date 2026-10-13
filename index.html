@@ -172,6 +172,17 @@ select.inp option{background:var(--sf2)}
 .status-late{color:var(--wn);font-size:12px}
 .status-err{color:var(--er);font-size:12px}
 .hist-empty{text-align:center;padding:32px 0;color:var(--tx3);font-size:14px}
+/* ── เฟส 5Y: แถวของ "วันที่ไม่มีการลงเวลา" ── */
+/* บางและจางกว่าแถวปกติครึ่งหนึ่ง — ตาต้องกวาดผ่านได้โดยไม่สะดุด
+   ถ้าทำให้เด่นเท่าแถวจริง จอจะรกจนคนเลิกอ่านทั้งหน้า */
+.hist-off td{padding:6px 8px;color:var(--tx3);font-size:12px;background:var(--sf2)}
+.hist-off .hist-date{color:var(--tx3);font-size:12px}
+.hist-miss td{padding:9px 8px;color:var(--er);font-size:12.5px;font-weight:600}
+.hist-miss .hist-date{color:var(--er)}
+.hist-chip{display:inline-block;margin-top:3px;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600;line-height:1.5;white-space:nowrap}
+.chip-w{background:rgba(234,88,12,.14);color:#c2410c}
+.chip-e{background:rgba(220,38,38,.12);color:var(--er)}
+.chip-d{background:var(--bd);color:var(--tx3);font-weight:500}
 .range-btn{flex:1;padding:8px 0;border-radius:8px;border:1px solid var(--bd2);background:var(--sf2);color:var(--tx2);font-size:12px;font-weight:500;font-family:var(--fn);cursor:pointer;transition:all .15s}
 .range-btn.active{background:var(--ac);border-color:var(--ac);color:#fff}
 
@@ -2266,7 +2277,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.28.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.29.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5471,47 +5482,166 @@ function renderHistory(r) {
   const body = document.getElementById('hist-body');
   if (!card || !body) return;
 
-  if (rows.length === 0) {
+  // ── เฟส 5Y: รายการ "ทุกวัน" มาจาก server เท่านั้น ──
+  // ถ้าไม่มี (เช่น ตอนถอยไปใช้ GAS เพราะ Supabase ล่ม) ให้วาดแบบเดิม
+  // ⚠️ ห้ามคิดปฏิทินเองฝั่งหน้าเว็บ — หน้าเว็บไม่รู้จักวันหยุดบริษัทกับใบลา
+  //    ถ้าเดาเอง วันที่ลาถูกต้องจะขึ้นแดงว่าขาดงาน
+  const dayList = Array.isArray(r.dayList) ? r.dayList : null;
+
+  if (!dayList) {
+    if (rows.length === 0) {
+      body.innerHTML = '<div class="hist-empty">ไม่มีข้อมูลการลงเวลาในช่วงนี้</div>';
+      card.style.display = 'block';
+      return;
+    }
+    let html = histTableHead();
+    let lastDate = '';
+    rows.forEach(row => {
+      if (!row || !row.date) return;
+      const groupDate = row.displayDate || row.date;
+      const isNewDay = groupDate !== lastDate; lastDate = groupDate;
+      html += histPunchRow(row, groupDate, isNewDay, '');
+    });
+    body.innerHTML = html + '</tbody></table>';
+    card.style.display = 'block';
+    return;
+  }
+
+  if (dayList.length === 0) {
     body.innerHTML = '<div class="hist-empty">ไม่มีข้อมูลการลงเวลาในช่วงนี้</div>';
     card.style.display = 'block';
     return;
   }
 
-  let html = '<table class="hist-table"><thead><tr><th>วัน/เวลา</th><th>ประเภท</th><th>สถานะ</th><th>ที่มา</th></tr></thead><tbody>';
-  let lastDate = '';
+  // ── จัดแถวลงเวลาเข้ากลุ่มตามวัน (กะข้ามวัน: OUT อยู่ใต้วันของ IN) ──
+  const byDay = {};
   rows.forEach(row => {
     if (!row || !row.date) return;
-    // ใช้ displayDate จัดกลุ่ม (กะข้ามวัน: OUT จะอยู่ใต้วันของ IN)
-    const groupDate = row.displayDate || row.date;
-    const isNewDay = groupDate !== lastDate; lastDate = groupDate;
-    const [yr, mo, dy] = (groupDate || '--').split('-');
-    const thDate = dy && mo && yr ? `${dy}/${mo}/${yr}` : groupDate;
-    const timeShort = row.time ? row.time.slice(0, 5) : '—';
-    // ถ้า OUT อยู่คนละวันกับกลุ่ม (ข้ามวัน) แสดงวันจริงเล็กๆ ต่อท้ายเวลา
-    let crossNote = '';
-    if (row.type === 'OUT' && row.displayDate && row.date !== row.displayDate) {
-      const [, om, od] = row.date.split('-');
-      crossNote = ` <span style="font-size:9px;color:var(--tx3)">(+${od}/${om})</span>`;
-    }
-    let statusHtml = '';
-    const st = row.status || 'OK';
-    if (st === 'OK') statusHtml = '<span class="status-ok">✓ ปกติ</span>';
-    else if (st.startsWith('LATE')) statusHtml = `<span class="status-late">⏰ ${st.replace('LATE ','สาย ')}</span>`;
-    else if (st === 'OUT_NO_IN') statusHtml = '<span class="status-err">⚠ รอเช็คอิน (แจ้ง HR)</span>';
-    else if (st === 'MANUAL') statusHtml = '<span class="status-late">✎ คีย์โดย HR</span>';
-    else statusHtml = `<span class="status-err">✗ ${st}</span>`;
-    const typeHtml = row.type === 'IN' ? '<span class="type-in">เข้า</span>' : '<span class="type-out">ออก</span>';
-    const srcMap = { FACE: 'Kiosk', KIOSK: 'Kiosk', FINGER: 'สแกนนิ้ว', GPS: 'มือถือ', MANUAL: 'คีย์มือ' };
-    const srcLabel = srcMap[String(row.source || '').toUpperCase()] || '—';
-    const srcHtml = srcLabel === 'คีย์มือ'
-      ? `<span style="font-size:14px;color:#e8590c;font-weight:700">${srcLabel}</span>`
-      : `<span style="font-size:12px;color:var(--tx3)">${srcLabel}</span>`;
-    const dim = row.complete === false ? 'opacity:.5' : '';
-    html += `<tr style="${isNewDay?'border-top:2px solid var(--bd2);':''}${dim}"><td><div class="hist-date">${thDate}</div><div style="font-family:var(--mo);font-size:13px;color:var(--tx)">${timeShort}${crossNote}</div></td><td>${typeHtml}</td><td>${statusHtml}</td><td>${srcHtml}</td></tr>`;
+    const k = row.displayDate || row.date;
+    (byDay[k] = byDay[k] || []).push(row);
   });
+
+  let html = histTableHead();
+  let nMiss = 0, nHol = 0, nFix = 0;
+
+  dayList.forEach(d => {
+    if (!d || !d.date) return;
+    const punches = byDay[d.date] || [];
+
+    // ── ป้ายเตือน: ติดเฉพาะวันที่มีเรื่องให้ดู จึงไม่รก ──
+    let chips = '';
+    if (d.workedHoliday) {
+      nHol++;
+      chips += '<div><span class="hist-chip chip-w">ทำงานวันหยุด' +
+               (d.holiday ? ' · ' + esc(d.holiday) : (d.sunday ? ' · วันอาทิตย์' : '')) +
+               '</span></div>';
+    }
+    if (d.needFix) {
+      nFix++;
+      chips += '<div><span class="hist-chip chip-e">ไม่มีเวลาออก</span></div>';
+    }
+    if (d.leave && punches.length) {
+      chips += '<div><span class="hist-chip chip-d">' + esc(d.leave) + '</span></div>';
+    }
+
+    if (punches.length) {
+      punches.forEach((row, i) => {
+        html += histPunchRow(row, d.date, i === 0, i === 0 ? chips : '');
+      });
+      return;
+    }
+
+    // ── วันที่ไม่มีการลงเวลาเลย — บรรทัดเดียว บาง ๆ ──
+    let txt, cls;
+    if (d.missing) {
+      nMiss++; cls = 'hist-miss'; txt = '⚠ ไม่มีข้อมูลการลงเวลา';
+    } else if (d.leave) {
+      // ⚠️ ไม่ใช้ emoji ตรงนี้ — เครื่อง Android บางรุ่นไม่มีสัญลักษณ์บางตัว
+      //    แล้วจะขึ้นเป็นกล่องสี่เหลี่ยม ดูเหมือนหน้าเว็บพัง
+      cls = 'hist-off'; txt = esc(d.leave);
+    } else if (d.holiday) {
+      cls = 'hist-off'; txt = 'วันหยุด · ' + esc(d.holiday);
+    } else if (d.sunday) {
+      cls = 'hist-off'; txt = 'วันอาทิตย์';
+    } else {
+      // เหลือแค่ "วันนี้ที่ยังไม่ได้สแกน" — ไม่ตัดสินอะไร
+      cls = 'hist-off'; txt = 'ยังไม่มีการลงเวลา';
+    }
+    html += '<tr class="' + cls + '" style="border-top:2px solid var(--bd2)">' +
+            '<td><div class="hist-date">' + histDayLabel(d.date) + '</div></td>' +
+            '<td colspan="3">' + txt + '</td></tr>';
+  });
+
   html += '</tbody></table>';
-  body.innerHTML = html;
+
+  // ── สรุปหนึ่งบรรทัด + ทางออกให้พนักงานเมื่อเห็นสีแดง ──
+  // ⚠️ บรรทัดนี้สำคัญพอ ๆ กับตาราง: เปิดให้ทุกคนเห็นพร้อมกัน ถ้าไม่บอกว่า
+  //    "เจอแล้วทำยังไงต่อ" ฝ่ายบุคคลจะโดนถามคำถามเดียวกัน 80 รอบ
+  let note = '';
+  if (nMiss || nHol || nFix) {
+    const bits = [];
+    if (nMiss) bits.push('ไม่มีข้อมูล ' + nMiss + ' วัน');
+    if (nFix)  bits.push('ไม่มีเวลาออก ' + nFix + ' วัน');
+    if (nHol)  bits.push('ทำงานวันหยุด ' + nHol + ' วัน');
+    note = '<div style="padding:10px 12px;border-bottom:1px solid var(--bd);' +
+           'font-size:12.5px;color:var(--tx2);background:var(--sf2)">ในช่วงนี้: ' +
+           bits.join(' · ') + '<div style="color:var(--tx3);margin-top:3px">' +
+           'ถ้าคิดว่าวันไหนไม่ถูกต้อง แจ้งฝ่ายบุคคลเพื่อคีย์เวลาให้</div></div>';
+  }
+
+  body.innerHTML = note + html;
   card.style.display = 'block';
+}
+
+/** หัวตารางประวัติ — ใช้ร่วมกันทั้งแบบใหม่และแบบถอยไปใช้ GAS */
+function histTableHead() {
+  return '<table class="hist-table"><thead><tr><th>วัน/เวลา</th><th>ประเภท</th>' +
+         '<th>สถานะ</th><th>ที่มา</th></tr></thead><tbody>';
+}
+
+/** ป้ายวันที่ + ชื่อวัน เช่น "13/10/2026 (จ.)"
+ *  ⚠️ ยึดเที่ยงวัน UTC ตอนหาชื่อวัน ไม่งั้นเครื่องที่ตั้งเขตเวลาอื่นจะเพี้ยนไปหนึ่งวัน */
+function histDayLabel(iso) {
+  const [yr, mo, dy] = String(iso || '').split('-');
+  if (!yr || !mo || !dy) return esc(iso);
+  const dow = TH_DOW_S[new Date(iso + 'T12:00:00Z').getUTCDay()] || '';
+  return dy + '/' + mo + '/' + yr + (dow ? ' <span style="color:var(--tx3)">(' + dow + ')</span>' : '');
+}
+
+/** หนึ่งแถวของการตอกบัตร — โค้ดชุดเดียวกับของเดิมเป๊ะ ย้ายออกมาเพื่อใช้ร่วมกัน
+ *  (ถ้าคัดลอกไว้สองที่ วันหนึ่งจะแก้ที่เดียวแล้วอีกที่เพี้ยนตามไม่ทัน) */
+function histPunchRow(row, groupDate, isNewDay, chipsHtml) {
+  const timeShort = row.time ? row.time.slice(0, 5) : '—';
+  // ถ้า OUT อยู่คนละวันกับกลุ่ม (ข้ามวัน) แสดงวันจริงเล็กๆ ต่อท้ายเวลา
+  let crossNote = '';
+  if (row.type === 'OUT' && row.displayDate && row.date !== row.displayDate) {
+    const [, om, od] = row.date.split('-');
+    crossNote = ` <span style="font-size:9px;color:var(--tx3)">(+${od}/${om})</span>`;
+  }
+  let statusHtml = '';
+  const st = row.status || 'OK';
+  if (st === 'OK') statusHtml = '<span class="status-ok">✓ ปกติ</span>';
+  else if (st.startsWith('LATE')) statusHtml = `<span class="status-late">⏰ ${esc(st.replace('LATE ','สาย '))}</span>`;
+  else if (st === 'OUT_NO_IN') statusHtml = '<span class="status-err">⚠ รอเช็คอิน (แจ้ง HR)</span>';
+  else if (st === 'MANUAL') statusHtml = '<span class="status-late">✎ คีย์โดย HR</span>';
+  else statusHtml = `<span class="status-err">✗ ${esc(st)}</span>`;
+  const typeHtml = row.type === 'IN' ? '<span class="type-in">เข้า</span>' : '<span class="type-out">ออก</span>';
+  const srcMap = { FACE: 'Kiosk', KIOSK: 'Kiosk', FINGER: 'สแกนนิ้ว', GPS: 'มือถือ', MANUAL: 'คีย์มือ' };
+  const srcLabel = srcMap[String(row.source || '').toUpperCase()] || '—';
+  const srcHtml = srcLabel === 'คีย์มือ'
+    ? `<span style="font-size:14px;color:#e8590c;font-weight:700">${srcLabel}</span>`
+    : `<span style="font-size:12px;color:var(--tx3)">${srcLabel}</span>`;
+  const dim = row.complete === false ? 'opacity:.5' : '';
+  // ── วันที่ขึ้นครั้งเดียวต่อวัน ──
+  // ⚠️ ของเดิมพิมพ์วันที่ซ้ำทุกแถว (เข้าแถวหนึ่ง · ออกอีกแถวหนึ่ง) พอเติมชื่อวัน
+  //    กับรายการ "ทุกวัน" เข้าไป จอจะหนักขึ้นเท่าตัวโดยไม่ได้ข้อมูลเพิ่มเลย
+  //    — เป็นความรกที่ตัดออกได้ฟรี และทำให้เส้นแบ่งวันอ่านง่ายขึ้นด้วย
+  const dateHtml = isNewDay ? `<div class="hist-date">${histDayLabel(groupDate)}</div>` : '';
+  return `<tr style="${isNewDay ? 'border-top:2px solid var(--bd2);' : ''}${dim}">` +
+         `<td>${dateHtml}` +
+         `<div style="font-family:var(--mo);font-size:13px;color:var(--tx)">${timeShort}${crossNote}</div>` +
+         `${chipsHtml || ''}</td>` +
+         `<td>${typeHtml}</td><td>${statusHtml}</td><td>${srcHtml}</td></tr>`;
 }
 
 // ========== WORK TIMER ==========
