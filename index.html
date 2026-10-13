@@ -861,7 +861,12 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="field" style="flex:1"><label>เวลา (HH:mm)</label>
           <input class="inp" id="hrman-time" placeholder="08:30" inputmode="numeric" maxlength="5"></div>
       </div>
-      <button class="btn p" id="hrman-submit" style="margin-top:6px">บันทึกเวลาย้อนหลัง</button>
+      <!-- ของที่มีอยู่แล้วในวันนั้น — โผล่เมื่อกรอกวันที่ครบ -->
+      <!-- ⚠️ นี่คือตัวกันคีย์ซ้ำที่ได้ผลกว่าการบล็อก: ด่านบล็อกจับได้แค่เวลาตรงกันเป๊ะ
+           แต่ความซ้ำส่วนใหญ่คือ "ไม่รู้ว่ามีอยู่แล้ว" ซึ่งแก้ด้วยการให้เห็น -->
+      <div id="hrman-day" style="display:none;margin-top:10px;padding:10px 12px;
+           background:var(--sf2);border-radius:8px;font-size:12.5px;line-height:1.7"></div>
+      <button class="btn p" id="hrman-submit" style="margin-top:10px">บันทึกเวลาย้อนหลัง</button>
     </div>
   </div>
 
@@ -2277,7 +2282,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.29.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.30.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -4969,6 +4974,11 @@ function fillEmployeeForm(emp, mode) {
   // เติมค่าในฟอร์ม
   document.getElementById('hremp-f-empid').value      = emp.employeeId || '';
   document.getElementById('hremp-empid-locked').value = emp.employeeId || '';
+  // ⚠️ เปลี่ยนคน → รายการ "วันนี้มีอยู่แล้ว" ของคนก่อนหน้าต้องหายไปทันที
+  //    ถ้าค้างอยู่ ฝ่ายบุคคลจะตัดสินใจคีย์โดยดูข้อมูลของคนอื่น
+  { const _dayBox = document.getElementById('hrman-day');
+    if (_dayBox) { _dayBox.style.display = 'none'; _dayBox.innerHTML = ''; }
+    if (typeof hrManLoadDay === 'function') hrManLoadDay(); }
   document.getElementById('hremp-f-fullname').value   = emp.fullName || '';
   document.getElementById('hremp-f-title').value      = emp.title || '';
   document.getElementById('hremp-f-department').value = emp.department || '';
@@ -5092,6 +5102,53 @@ function maskTime(el) {
   else el.value = raw;
 }
 
+/**
+ * แสดงรายการลงเวลาที่ "มีอยู่แล้ว" ของคนนั้นในวันนั้น
+ *
+ * ทำไมต้องมี: ด่านกันซ้ำฝั่งเซิร์ฟเวอร์จับได้เฉพาะ "เวลาตรงกันเป๊ะ"
+ * แต่ความซ้ำที่เกิดจริงส่วนใหญ่คือฝ่ายบุคคลไม่รู้ว่าวันนั้นมีข้อมูลอยู่แล้ว
+ * (เช่น พนักงานสแกนนิ้วไว้ 08:01 แล้วมาแจ้งว่าลืมสแกน) — แก้ด้วยการให้เห็น
+ *
+ * ⚠️ ใช้ hrGetRawLog ที่มีอยู่แล้ว ไม่สร้างคำสั่งใหม่
+ *    มันย้ายขึ้น Supabase ไปตั้งแต่เฟส 5R แล้ว จึงตอบใน ~1 วินาที
+ */
+function hrManLoadDay() {
+  const box = document.getElementById('hrman-day');
+  if (!box) return;
+  const empId = (document.getElementById('hremp-empid-locked') || {}).value || '';
+  const date  = document.getElementById('hrman-date').value.trim();
+  if (!empId || !/^\d{2}\/\d{2}\/\d{4}$/.test(date)) { box.style.display = 'none'; return; }
+
+  box.style.display = 'block';
+  box.innerHTML = '<span style="color:var(--tx3)">กำลังตรวจของที่มีอยู่แล้ว...</span>';
+
+  gasRun('hrGetRawLog', { hrToken: S.hrToken, dateFrom: date, dateTo: date, employeeIds: [empId] }, 30000)
+    .withSuccessHandler(r => {
+      if (!r || !r.success) { box.style.display = 'none'; return; }
+      const rows = (r.rows || []).filter(x => String(x.empId).toUpperCase() === String(empId).toUpperCase());
+      if (!rows.length) {
+        box.innerHTML = '<span style="color:var(--tx3)">วันนี้ยังไม่มีข้อมูลลงเวลาของคนนี้</span>';
+        return;
+      }
+      // ⚠️ บรรทัดละรายการ ไม่ใช่ต่อกันด้วยจุดคั่น — วันละ 2-4 รายการเท่านั้น
+      //    พอต่อกันแล้วมันตัดบรรทัดกลางรายการ อ่านแล้วแยกไม่ออกว่าอันไหนคู่กับอันไหน
+      //    (เห็นตอนวาดจริงออกมาดู ไม่ใช่ตอนเขียนโค้ด)
+      const line = rows.map(x => {
+        const t = String(x.time || '').slice(0, 5);
+        const kind = x.type === 'IN'
+          ? '<span class="type-in">เข้า</span>' : '<span class="type-out">ออก</span>';
+        const src = (x.source === 'คีย์มือ')
+          ? '<span style="color:#e8590c;font-weight:700">' + esc(x.source) + '</span>'
+          : '<span style="color:var(--tx3)">' + esc(x.source) + '</span>';
+        return '<div style="display:flex;align-items:center;gap:8px;margin-top:3px">' + kind +
+               '<b style="font-family:var(--mo);font-size:13px">' + esc(t) + '</b>' + src + '</div>';
+      }).join('');
+      box.innerHTML = '<div style="color:var(--tx2)">วันนี้มีอยู่แล้ว ' +
+        rows.length + ' รายการ</div>' + line;
+    })
+    .withFailureHandler(() => { box.style.display = 'none'; });
+}
+
 function hrSubmitManual() {
   const empId = document.getElementById('hremp-empid-locked').value;
   if (!empId) { showToast('กรุณาค้นหาพนักงานก่อน'); return; }
@@ -5100,18 +5157,26 @@ function hrSubmitManual() {
   const time = document.getElementById('hrman-time').value.trim();
   if (!date || !time) { showToast('กรุณากรอกวันที่และเวลา'); return; }
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date)) { showToast('วันที่ต้องเป็น วว/ดด/ปปปป'); return; }
-  if (!/^\d{1,2}:\d{2}$/.test(time)) { showToast('เวลาต้องเป็น HH:mm เช่น 08:30'); return; }
+  // ⚠️ ตรวจ "ค่า" ไม่ใช่แค่ "รูปแบบ" — 25:99 เคยผ่านทั้งหน้าเว็บและเซิร์ฟเวอร์
+  //    ด่านจริงอยู่ที่เซิร์ฟเวอร์ ตรงนี้แค่บอกผู้ใช้เร็วขึ้นโดยไม่ต้องรอ
+  const tmOk = /^(\d{1,2}):(\d{2})$/.exec(time);
+  if (!tmOk || +tmOk[1] > 23 || +tmOk[2] > 59) {
+    showToast('เวลาต้องเป็น HH:mm เช่น 08:30 (ชั่วโมง 00-23 นาที 00-59)'); return;
+  }
 
   const btn = document.getElementById('hrman-submit');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> บันทึก...';
-  gasRun('hrManualEntry', { hrToken: S.hrToken, employeeId: empId, date: date, type: type, time: time })
+  gasRunNoRetry('hrManualEntry', { hrToken: S.hrToken, employeeId: empId, date: date, type: type, time: time })
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'บันทึกเวลาย้อนหลัง';
       showToast(r.message, r.success);
       if (r.success) {
-        document.getElementById('hrman-date').value = '';
+        // ⚠️ ล้างเฉพาะช่องเวลา เก็บวันที่ไว้ — ฝ่ายบุคคลมักคีย์ IN แล้วคีย์ OUT
+        //    ของวันเดียวกันต่อทันที และยังได้เห็นรายการที่เพิ่งเพิ่มเข้าไปด้วย
         document.getElementById('hrman-time').value = '';
       }
+      // ทั้งสำเร็จและโดนบล็อกซ้ำ ต่างต้องเห็นของที่มีอยู่จริงในวันนั้น
+      hrManLoadDay();
       if (r.authError) setTimeout(() => logout(), 1500);
     })
     .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'บันทึกเวลาย้อนหลัง'; showToast(e.message); });
@@ -6114,7 +6179,9 @@ applyLogo();
   });
   on('hremp-toggle-status', 'click', hrToggleStatus);
   // B4 Manual Entry
-  on('hrman-date', 'input', function() { maskDate(this); });
+  // ⚠️ hrManLoadDay มีด่านของตัวเอง (ยิงเฉพาะเมื่อวันที่ครบ วว/ดด/ปปปป)
+  //    จึงผูกกับ input ได้โดยไม่ยิงรัว ๆ ระหว่างพิมพ์
+  on('hrman-date', 'input', function() { maskDate(this); hrManLoadDay(); });
   on('hrman-date', 'keydown', function(e) { allowDateKeys(e); });
   on('hrman-time', 'input', function() { maskTime(this); });
   on('hrman-submit', 'click', hrSubmitManual);
