@@ -133,6 +133,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;background:rgba(
 .inp{width:100%;padding:12px 14px;background:var(--sf2);border:1px solid var(--bd2);border-radius:8px;color:var(--tx);font-size:15px;font-family:var(--fn);outline:none;transition:border-color .15s;-webkit-appearance:none}
 .inp:focus{border-color:var(--ac)}
 .inp.mono{font-family:var(--mo);letter-spacing:4px;text-align:center;font-size:22px}
+/* ปุ่มปฏิทินข้างช่องวันที่ — ยังพิมพ์เองได้เหมือนเดิม ปุ่มเป็นทางเลือกเพิ่ม
+   ⚠️ ไม่เปลี่ยนช่องเป็น type="date" เพราะรูปแบบที่แสดงจะเปลี่ยนตามเครื่อง
+   (บางเครื่อง mm/dd/yyyy) ซึ่งคือปัญหาที่พยายามแก้พอดี */
+.dp-wrap{position:relative}
+.dp-wrap .inp{padding-right:44px}
+.dp-btn{position:absolute;right:1px;top:1px;bottom:1px;width:40px;border:0;
+  background:transparent;color:var(--tx3);font-size:17px;cursor:pointer;
+  border-radius:0 8px 8px 0;display:flex;align-items:center;justify-content:center}
+.dp-btn:hover{color:var(--ac);background:var(--sf)}
+.dp-native{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;
+  right:10px;bottom:0;border:0;padding:0}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 select.inp option{background:var(--sf2)}
 
@@ -2289,7 +2300,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.31.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.32.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2919,6 +2930,72 @@ function maskDate(el) {
 function allowDateKeys(e) {
   const ok = /^\d$/.test(e.key) || ['Backspace','Delete','Tab','ArrowLeft','ArrowRight'].includes(e.key);
   if (!ok) e.preventDefault();
+}
+
+/**
+ * ติดปุ่มปฏิทินให้ช่องวันที่แบบพิมพ์เอง
+ *
+ * ⚠️ ทำไมไม่เปลี่ยนช่องเป็น type="date" ไปเลย
+ *    เพราะช่อง type="date" แสดงผลตามภาษาของเครื่อง บางเครื่องขึ้น mm/dd/yyyy
+ *    ซึ่งคือความสับสนที่เรากำลังจะแก้พอดี ช่องข้อความยังเป็น วว/ดด/ปปปป
+ *    เหมือนเดิมทุกเครื่อง ปุ่มปฏิทินเป็นแค่ "ทางลัด" ให้ไม่ต้องพิมพ์
+ *
+ * ⚠️ ต้องยิง event 'input' หลังเลือกเสมอ — ช่องพวกนี้มีคนฟังอยู่
+ *    (เช่น hrman-date ที่โหลดรายการของวันนั้นมาโชว์กันคีย์ซ้ำ)
+ *    ถ้าไม่ยิง จะเลือกวันได้แต่หน้าจอไม่ขยับตาม
+ */
+function attachDayPicker(id) {
+  const el = document.getElementById(id);
+  if (!el || el.dataset.dp) return;
+  el.dataset.dp = '1';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'dp-wrap';
+  el.parentNode.insertBefore(wrap, el);
+  wrap.appendChild(el);
+
+  const nat = document.createElement('input');
+  nat.type = 'date';
+  nat.className = 'dp-native';
+  nat.tabIndex = -1;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'dp-btn';
+  btn.title = 'เลือกจากปฏิทิน';
+  btn.setAttribute('aria-label', 'เลือกวันที่จากปฏิทิน');
+  btn.textContent = '📅';
+
+  wrap.appendChild(nat);
+  wrap.appendChild(btn);
+
+  btn.addEventListener('click', function() {
+    // เปิดปฏิทินค้างที่วันที่ที่พิมพ์ไว้แล้ว (ถ้ามี) ไม่งั้นเปิดที่วันนี้
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(el.value || '').trim());
+    if (m) {
+      // รองรับ พ.ศ. ด้วย — ฝั่ง GAS ก็แปลงให้อยู่แล้ว ที่นี่แปลงเพื่อเปิดปฏิทินให้ถูกปี
+      const y = +m[3] > 2400 ? +m[3] - 543 : +m[3];
+      nat.value = y + '-' + m[2] + '-' + m[1];
+    } else {
+      nat.value = '';
+    }
+    try {
+      if (typeof nat.showPicker === 'function') { nat.showPicker(); return; }
+    } catch (err) { /* บางเบราว์เซอร์ห้ามเรียกนอก user gesture — ตกไปทางสำรอง */ }
+    // ทางสำรองสำหรับเบราว์เซอร์เก่า: โผล่ช่องจริงให้กดเอง
+    nat.style.cssText = 'position:absolute;right:2px;top:2px;bottom:2px;width:38px;opacity:0;pointer-events:auto';
+    nat.focus();
+    nat.click();
+  });
+
+  nat.addEventListener('change', function() {
+    const v = String(nat.value || '');          // yyyy-mm-dd จากเบราว์เซอร์
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    const p = v.split('-');
+    el.value = p[2] + '/' + p[1] + '/' + p[0];  // คืนเป็น วว/ดด/ปปปป เสมอ
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 }
 
 // ========== GPS ==========
@@ -5739,7 +5816,9 @@ function renderHistory(r) {
       //    แล้วจะขึ้นเป็นกล่องสี่เหลี่ยม ดูเหมือนหน้าเว็บพัง
       cls = 'hist-off'; txt = esc(d.leave);
     } else if (d.holiday) {
-      cls = 'hist-off'; txt = 'วันหยุด · ' + esc(d.holiday);
+      // ⚠️ ไม่นำหน้าด้วยคำว่า "วันหยุด" — แถวเป็นสีเทาอยู่แล้ว และชื่อวันหยุด
+      //    ก็บอกตัวเองอยู่แล้ว ประหยัดพื้นที่บนจอมือถือ
+      cls = 'hist-off'; txt = esc(d.holiday);
     } else if (d.sunday) {
       cls = 'hist-off'; txt = 'วันอาทิตย์';
     } else {
@@ -6210,8 +6289,14 @@ applyLogo();
   on('hrdm-emp-all', 'click', hrDmEmpAll);
   on('hrdm-emp-none', 'click', hrDmEmpNone);
   on('hrdm-emp-search', 'input', function() { renderDmList(this.value); });
-  on('hrdm-from', 'input', resetDmPreview);
-  on('hrdm-to', 'input', resetDmPreview);
+  // ⚠️ สองช่องนี้เดิมไม่มี maskDate (ช่องวันที่อื่นมีหมด) ทำให้ต้องพิมพ์ / เอง
+  //    ใส่ให้ตรงกับช่องอื่น และติดปุ่มปฏิทินให้ด้วย
+  on('hrdm-from', 'input', function() { maskDate(this); resetDmPreview(); });
+  on('hrdm-to', 'input', function() { maskDate(this); resetDmPreview(); });
+  on('hrdm-from', 'keydown', allowDateKeys);
+  on('hrdm-to', 'keydown', allowDateKeys);
+  attachDayPicker('hrdm-from');
+  attachDayPicker('hrdm-to');
   on('hr-autodel-save', 'click', hrAutoDelSave);
   on('hr-autodel-runnow', 'click', hrAutoDelRunNow);
   on('hrrep-csv', 'click', hrRepDownloadCSV);
@@ -6297,6 +6382,7 @@ applyLogo();
   //    จึงผูกกับ input ได้โดยไม่ยิงรัว ๆ ระหว่างพิมพ์
   on('hrman-date', 'input', function() { maskDate(this); hrManLoadDay(); });
   on('hrman-date', 'keydown', function(e) { allowDateKeys(e); });
+  attachDayPicker('hrman-date');
   on('hrman-time', 'input', function() { maskTime(this); });
   hrManBuildNoteOptions();
   on('hrman-note', 'change', hrManNoteChanged);
