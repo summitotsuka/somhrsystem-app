@@ -861,6 +861,13 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="field" style="flex:1"><label>เวลา (HH:mm)</label>
           <input class="inp" id="hrman-time" placeholder="08:30" inputmode="numeric" maxlength="5"></div>
       </div>
+      <!-- เฟส 5Z: เหตุผล — ตัวเลือกสร้างจากตาราง ATT_NOTE ตอนเริ่มต้น ไม่เขียนซ้ำที่นี่ -->
+      <div class="field"><label>เหตุผลที่คีย์ย้อนหลัง <span style="color:var(--er)">*</span></label>
+        <select class="inp" id="hrman-note"></select></div>
+      <!-- ช่องรายละเอียด โผล่เฉพาะเหตุผลที่ต้องการข้อมูลเพิ่ม (นอกสถานที่ · อบรม · อื่น ๆ) -->
+      <div class="field" id="hrman-note-wrap" style="display:none">
+        <label id="hrman-note-label">รายละเอียด</label>
+        <input class="inp" id="hrman-note-text" maxlength="200" placeholder=""></div>
       <!-- ของที่มีอยู่แล้วในวันนั้น — โผล่เมื่อกรอกวันที่ครบ -->
       <!-- ⚠️ นี่คือตัวกันคีย์ซ้ำที่ได้ผลกว่าการบล็อก: ด่านบล็อกจับได้แค่เวลาตรงกันเป๊ะ
            แต่ความซ้ำส่วนใหญ่คือ "ไม่รู้ว่ามีอยู่แล้ว" ซึ่งแก้ด้วยการให้เห็น -->
@@ -2282,7 +2289,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.30.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.31.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3232,6 +3239,43 @@ var TH_MON = ['มกราคม','กุมภาพันธ์','มีน�
               'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 var TH_MON_S = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 var TH_DOW_S = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+
+/**
+ * ── เฟส 5Z: เหตุผลการคีย์เวลาย้อนหลัง ──
+ *
+ * ⚠️ **นี่คือที่เดียวในระบบที่เก็บคำแปลภาษาไทยของรหัสเหตุผล**
+ *    ฐานข้อมูลกับ GAS เก็บและส่งแต่ "รหัส" (FORGOT, OFFSITE, ...)
+ *    เพราะรหัสเอาไปนับได้ เช่น "เดือนนี้เครื่องสแกนเสียกี่ครั้ง"
+ *    ส่วนข้อความไทยเป็นเรื่องของการแสดงผล จึงอยู่ที่หน้าจอที่เดียว
+ *    ถ้าแปลไว้หลายที่ วันหนึ่งจะแก้ที่เดียวแล้วอีกที่เพี้ยนตามไม่ทัน
+ *
+ * ⚠️ รายชื่อรหัสต้องตรงกับ ATT_NOTE_CODES ใน Code.gs
+ *    (ฝั่งนั้นเป็นด่านจริง ฝั่งนี้แค่ทำให้ผู้ใช้เลือกได้สะดวก)
+ */
+var ATT_NOTE = {
+  FORGOT:      'ลืมสแกน',
+  SCAN_FAIL:   'สแกนไม่สำเร็จ',
+  NO_BIO:      'ไม่มีลายนิ้วมือ/ข้อมูลใบหน้า',
+  DEVICE_DOWN: 'เครื่องสแกนเสีย',
+  OFFSITE:     'ทำงานนอกสถานที่',
+  TRAINING:    'เข้าอบรม/สัมมนา',
+  OTHER:       'อื่น ๆ',
+};
+
+/** รหัสที่ต้องกรอกรายละเอียดเพิ่ม → ข้อความบอกว่าให้กรอกอะไร */
+var ATT_NOTE_DETAIL = {
+  OFFSITE:  'ไปทำงานที่ไหน',
+  TRAINING: 'อบรมเรื่องอะไร ที่ไหน',
+  OTHER:    'ระบุเหตุผล',
+};
+
+/** รหัส + รายละเอียด → ข้อความเดียวสำหรับแสดงผล (ว่าง = ไม่ใช่แถวคีย์มือ) */
+function attNoteLabel(code, text) {
+  var lb = ATT_NOTE[String(code || '').trim().toUpperCase()];
+  if (!lb) return '';
+  var t = String(text || '').trim();
+  return t ? (lb + ' · ' + t) : lb;
+}
 
 /** กันข้อความจากชีตทำให้หน้าเว็บเพี้ยน (เช่น ชื่อวันหยุดมีเครื่องหมาย < >) */
 function esc(s) {
@@ -4208,7 +4252,9 @@ function renderDmPreview(r) {
   html += '<thead><tr style="background:var(--sf2);position:sticky;top:0">' +
     '<th style="padding:5px 8px;text-align:left">รหัส</th><th style="padding:5px 8px;text-align:left">ชื่อ</th>' +
     '<th style="padding:5px 8px;text-align:left">วันที่</th><th style="padding:5px 8px;text-align:left">เวลา</th>' +
-    '<th style="padding:5px 8px;text-align:center">ประเภท</th><th style="padding:5px 8px;text-align:center">ลบ</th></tr></thead><tbody>';
+    '<th style="padding:5px 8px;text-align:center">ประเภท</th>' +
+    '<th style="padding:5px 8px;text-align:left">เหตุผลที่คีย์</th>' +
+    '<th style="padding:5px 8px;text-align:center">ลบ</th></tr></thead><tbody>';
   r.rows.forEach((row, idx) => {
     const [y,m,d] = row.date.split('-');
     html += `<tr style="border-top:1px solid var(--sf2)" data-idx="${idx}">
@@ -4217,6 +4263,7 @@ function renderDmPreview(r) {
       <td style="padding:4px 8px;white-space:nowrap">${d}/${m}/${y}</td>
       <td style="padding:4px 8px;white-space:nowrap">${row.time}</td>
       <td style="padding:4px 8px;text-align:center">${row.type}</td>
+      <td style="padding:4px 8px">${hrManNoteCell(row)}</td>
       <td style="padding:4px 8px;text-align:center">
         <button class="hrdm-del-row" data-emp="${row.empId}" data-name="${encodeURIComponent(row.name)}" data-date="${row.date}" data-time="${row.time}" data-type="${row.type}"
           style="background:none;border:1px solid var(--er);color:var(--er);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px">🗑</button>
@@ -5149,6 +5196,48 @@ function hrManLoadDay() {
     .withFailureHandler(() => { box.style.display = 'none'; });
 }
 
+/**
+ * ช่อง "เหตุผลที่คีย์" ในตารางรายการคีย์มือของฝ่ายบุคคล
+ * ⚠️ แถวที่คีย์ก่อนเฟส 5Z ไม่มีเหตุผล — ต้องบอกให้ชัดว่า "ไม่ได้บันทึกไว้"
+ *    ไม่ใช่ปล่อยว่างจนดูเหมือนระบบลืมแสดง
+ */
+function hrManNoteCell(row) {
+  const t = attNoteLabel(row.noteCode, row.noteText);
+  return t ? esc(t)
+           : '<span style="color:var(--tx3)">— ไม่ได้บันทึกไว้ —</span>';
+}
+
+/** สร้างตัวเลือกเหตุผลจากตาราง ATT_NOTE — ไม่เขียนรายการซ้ำใน HTML */
+function hrManBuildNoteOptions() {
+  const sel = document.getElementById('hrman-note');
+  if (!sel || sel.options.length) return;
+  let html = '<option value="">— เลือกเหตุผล —</option>';
+  Object.keys(ATT_NOTE).forEach(k => {
+    html += '<option value="' + k + '">' + esc(ATT_NOTE[k]) + '</option>';
+  });
+  sel.innerHTML = html;
+}
+
+/** เปิด/ปิดช่องรายละเอียดตามเหตุผลที่เลือก */
+function hrManNoteChanged() {
+  const code = (document.getElementById('hrman-note') || {}).value || '';
+  const wrap = document.getElementById('hrman-note-wrap');
+  const lbl  = document.getElementById('hrman-note-label');
+  const inp  = document.getElementById('hrman-note-text');
+  if (!wrap || !lbl || !inp) return;
+  const need = ATT_NOTE_DETAIL[code];
+  if (need) {
+    lbl.innerHTML = esc(need) + ' <span style="color:var(--er)">*</span>';
+    inp.placeholder = esc(need);
+    wrap.style.display = '';
+  } else {
+    // ⚠️ ล้างค่าด้วย ไม่ใช่แค่ซ่อน — ไม่งั้นพิมพ์ไว้แล้วเปลี่ยนเหตุผล
+    //    ข้อความเก่าจะติดไปกับเหตุผลใหม่ที่ไม่เกี่ยวกันเลย
+    inp.value = '';
+    wrap.style.display = 'none';
+  }
+}
+
 function hrSubmitManual() {
   const empId = document.getElementById('hremp-empid-locked').value;
   if (!empId) { showToast('กรุณาค้นหาพนักงานก่อน'); return; }
@@ -5164,9 +5253,20 @@ function hrSubmitManual() {
     showToast('เวลาต้องเป็น HH:mm เช่น 08:30 (ชั่วโมง 00-23 นาที 00-59)'); return;
   }
 
+  // ── เฟส 5Z: เหตุผล — บังคับเลือก และบางเหตุผลต้องมีรายละเอียด ──
+  // ด่านจริงอยู่ที่เซิร์ฟเวอร์ ตรงนี้แค่บอกผู้ใช้เร็วขึ้นโดยไม่ต้องรอ
+  const noteCode = (document.getElementById('hrman-note') || {}).value || '';
+  const noteText = ((document.getElementById('hrman-note-text') || {}).value || '').trim();
+  if (!noteCode) { showToast('กรุณาเลือกเหตุผลที่คีย์ย้อนหลัง'); return; }
+  if (ATT_NOTE_DETAIL[noteCode] && !noteText) {
+    showToast('กรุณาระบุ' + ATT_NOTE_DETAIL[noteCode]); return;
+  }
+
   const btn = document.getElementById('hrman-submit');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> บันทึก...';
-  gasRunNoRetry('hrManualEntry', { hrToken: S.hrToken, employeeId: empId, date: date, type: type, time: time })
+  gasRunNoRetry('hrManualEntry', { hrToken: S.hrToken, employeeId: empId, date: date,
+                                   type: type, time: time,
+                                   noteCode: noteCode, noteText: noteText })
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'บันทึกเวลาย้อนหลัง';
       showToast(r.message, r.success);
@@ -5607,6 +5707,20 @@ function renderHistory(r) {
     }
     if (d.leave && punches.length) {
       chips += '<div><span class="hist-chip chip-d">' + esc(d.leave) + '</span></div>';
+    }
+    // ── เฟส 5Z: วันที่ฝ่ายบุคคลคีย์เวลาให้ — บอกเหตุผลด้วย ──
+    // ⚠️ โผล่เฉพาะวันที่มีจริง เดือนหนึ่งมีไม่กี่วัน จึงไม่ทำให้จอรก
+    //    และเป็นคำตอบของคำถาม "ใครมาแก้เวลาผม" ที่ไม่งั้นจะวิ่งไปหาฝ่ายบุคคล
+    // ⚠️ กันซ้ำด้วยข้อความ — วันหนึ่งคีย์ทั้ง IN และ OUT ด้วยเหตุผลเดียวกัน
+    //    ถ้าไม่กัน จะขึ้นป้ายเดียวกันสองอันติดกัน
+    {
+      const seenNote = {};
+      punches.forEach(row => {
+        const t = attNoteLabel(row.noteCode, row.noteText);
+        if (!t || seenNote[t]) return;
+        seenNote[t] = 1;
+        chips += '<div><span class="hist-chip chip-d">✎ ' + esc(t) + '</span></div>';
+      });
     }
 
     if (punches.length) {
@@ -6184,6 +6298,8 @@ applyLogo();
   on('hrman-date', 'input', function() { maskDate(this); hrManLoadDay(); });
   on('hrman-date', 'keydown', function(e) { allowDateKeys(e); });
   on('hrman-time', 'input', function() { maskTime(this); });
+  hrManBuildNoteOptions();
+  on('hrman-note', 'change', hrManNoteChanged);
   on('hrman-submit', 'click', hrSubmitManual);
 
   // LOGIN
