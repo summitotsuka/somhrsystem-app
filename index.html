@@ -852,6 +852,7 @@ textarea.inp{resize:vertical;min-height:60px}
       <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">จัดการบัญชี</div>
       <div style="display:grid;gap:8px">
         <button class="btn o" id="hremp-reset-device">รีเซ็ต Device (เปลี่ยนมือถือ)</button>
+        <div style="font-size:11px;color:var(--tx3);margin:-4px 0 2px;line-height:1.5">ตอนนี้ระบบปิดการตรวจอุปกรณ์อยู่ พนักงานใช้เครื่องไหนก็ล็อกอินได้ ปุ่มนี้จึงยังไม่มีผลกับการใช้งาน</div>
         <button class="btn o" id="hremp-reset-pw">รีเซ็ตรหัสผ่าน (ลงทะเบียนใหม่)</button>
         <button class="btn o" id="hremp-toggle-status">เปิด/ปิดบัญชี</button>
       </div>
@@ -2300,7 +2301,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.32.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.33.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5177,17 +5178,35 @@ function hrSaveEmployee() {
   }
 }
 
-function hrEmpAction(action, confirmMsg) {
+/**
+ * ปุ่มของการ์ด "จัดการบัญชี" — ต้องบอกว่ากำลังทำงานอยู่
+ *
+ * ⚠️ สามปุ่มนี้ใช้เวลา 3-6 วินาที (ต้องวิ่งผ่าน GAS) แต่เดิมกดแล้วนิ่งสนิท
+ *    ฝ่ายบุคคลจะคิดว่าหน้าจอค้าง แล้วกดซ้ำ — ซึ่งสำหรับปุ่มรีเซ็ตรหัสผ่าน
+ *    แปลว่ารีเซ็ตสองรอบ ปุ่มอื่นในระบบมีสถานะ "กำลังบันทึก" หมดแล้ว
+ *    สามปุ่มนี้ตกหล่นไป
+ */
+function hrBtnBusy(btn, label) {
+  if (!btn) return function () {};
+  const old = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> ' + label;
+  return function () { btn.disabled = false; btn.innerHTML = old; };
+}
+
+function hrEmpAction(action, confirmMsg, btnId, busyLabel) {
   if (confirmMsg && !confirm(confirmMsg)) return;
   const empId = document.getElementById('hremp-empid-locked').value;
   const fields = { _action: action };
+  const done = hrBtnBusy(document.getElementById(btnId), busyLabel || 'กำลังทำ...');
   gasRun('hrUpdateEmployee', { hrToken: S.hrToken, employeeId: empId, fields: fields })
     .withSuccessHandler(r => {
+      done();
       showToast(r.message, r.success);
       if (r.success) { clearEmpListCache(); hrSearchEmployeeById(empId); }  // reload
       if (r.authError) setTimeout(() => logout(), 1500);
     })
-    .withFailureHandler(e => showToast(e.message));
+    .withFailureHandler(e => { done(); showToast(e.message); });
 }
 
 function hrSearchEmployeeById(id) {
@@ -5204,13 +5223,15 @@ function hrToggleStatus() {
     ? 'ปิดบัญชีพนักงานคนนี้? (พนักงานจะ login ไม่ได้ แต่กู้คืนได้ภายหลัง)'
     : 'เปิดบัญชีพนักงานคนนี้อีกครั้ง?';
   if (!confirm(msg)) return;
+  const done = hrBtnBusy(tb, newStatus === 'INACTIVE' ? 'กำลังปิดบัญชี...' : 'กำลังเปิดบัญชี...');
   gasRun('hrUpdateEmployee', { hrToken: S.hrToken, employeeId: empId, fields: { status: newStatus } })
     .withSuccessHandler(r => {
+      done();
       showToast(r.success ? (newStatus === 'INACTIVE' ? 'ปิดบัญชีเรียบร้อย' : 'เปิดบัญชีเรียบร้อย') : r.message, r.success);
       if (r.success) { clearEmpListCache(); hrSearchEmployeeById(empId); }
       if (r.authError) setTimeout(() => logout(), 1500);
     })
-    .withFailureHandler(e => showToast(e.message));
+    .withFailureHandler(e => { done(); showToast(e.message); });
 }
 
 function hrAddNewEmployee() {
@@ -6371,10 +6392,12 @@ applyLogo();
   on('hremp-save', 'click', hrSaveEmployee);
   on('hremp-add-new', 'click', hrAddNewEmployee);
   on('hremp-reset-device', 'click', function() {
-    hrEmpAction('resetDevice', 'รีเซ็ต Device ของพนักงานคนนี้? (พนักงานจะผูกอุปกรณ์ใหม่ได้)');
+    hrEmpAction('resetDevice', 'รีเซ็ต Device ของพนักงานคนนี้? (พนักงานจะผูกอุปกรณ์ใหม่ได้)',
+      'hremp-reset-device', 'กำลังรีเซ็ต Device...');
   });
   on('hremp-reset-pw', 'click', function() {
-    hrEmpAction('resetPassword', 'รีเซ็ตรหัสผ่าน? พนักงานต้องลงทะเบียนใหม่ทั้งหมด (รหัสผ่าน + อุปกรณ์)');
+    hrEmpAction('resetPassword', 'รีเซ็ตรหัสผ่าน? พนักงานต้องลงทะเบียนใหม่ทั้งหมด (รหัสผ่าน + อุปกรณ์)',
+      'hremp-reset-pw', 'กำลังรีเซ็ตรหัสผ่าน...');
   });
   on('hremp-toggle-status', 'click', hrToggleStatus);
   // B4 Manual Entry
