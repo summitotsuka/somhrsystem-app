@@ -1981,10 +1981,18 @@ function sbCall(action, payload, timeoutMs) {
  *
  * พนักงานที่เหลือซึ่งไม่ได้เช็คอินผ่านมือถือ จบที่ Supabase อย่างเดียว — เร็วสุด
  */
+/**
+ * ⚠️ ขั้น 7: ไม่มีตาข่าย "ถามของเดิมต่อ" อีกแล้ว
+ *    ตาข่ายนั้นมีไว้ตอนชีตเป็นต้นฉบับและสำเนาตามหลังอยู่ไม่กี่นาที
+ *    ตอนนี้ Supabase คือต้นฉบับ คำตอบของมันจึงเป็นคำตอบสุดท้าย
+ *    ถ้ายังถาม GAS ต่อ จะได้ข้อความ "กรุณารีเฟรชหน้าเว็บ" มาทับ
+ *    ข้อความจริง เช่น "รหัสผ่านไม่ถูกต้อง" — สับสนกว่าเดิม
+ *    (ติดต่อ Supabase ไม่ได้จริง ๆ มีทางถอยของมันเองอยู่แล้วที่ _callAPI)
+ */
 function sbLogin(payload, timeoutMs) {
   return sbCall('login', payload, timeoutMs).then(r => {
-    if (r && r.success) { sbClearPwPending(); sbFixStatusLater(r); return r; }
-    return sbLoginFallback(r, payload);
+    if (r && r.success) sbFixStatusLater(r);
+    return r;
   });
 }
 
@@ -2013,89 +2021,8 @@ function sbFixStatusLater(r) {
     .catch(() => { /* ถามไม่ได้ก็ไม่เป็นไร ผู้ใช้เข้าระบบไปแล้ว */ });
 }
 
-/**
- * Supabase ปฏิเสธการล็อกอิน — ควรถามของเดิมต่อไหม
- *
- * ชีตคือต้นฉบับ สำเนาใน Supabase ตามหลังได้ไม่กี่นาที
- * คนที่เพิ่งลงทะเบียนหรือเพิ่งรีเซ็ตรหัสผ่านจะเจอช่องว่างตรงนี้พอดี
- * — รหัสถูกต้องตามชีต แต่สำเนายังเป็นของเก่า
- *
- * แต่จะถามของเดิมทุกครั้งที่ล็อกอินพลาดก็ไม่ได้ เพราะคนพิมพ์รหัสผิด
- * (ซึ่งเกิดบ่อยที่สุด) จะต้องรอ GAS อีกรอบโดยไม่จำเป็น
- *
- * จึงถามต่อเฉพาะ 2 กรณีที่ "น่าจะเป็นเพราะสำเนาเก่า" เท่านั้น
- */
-function sbLoginFallback(r, payload) {
-  const msg = (r && r.message) || '';
-  const notFound = /ไม่พบรหัสพนักงาน|ยังไม่ได้ตั้งรหัสผ่าน/.test(msg);
-  const justChanged = sbPwPendingFor(payload && payload.employeeId);
-  if (!notFound && !justChanged) return r;   // น่าจะพิมพ์รหัสผิดจริง — ตอบเลย ไม่ต้องรอ
 
-  return gasCallAPI('login', payload, 1, false, 60000)
-    .then(g => {
-      if (!g || !g.success) return r;        // ของเดิมก็ปฏิเสธ → ใช้ข้อความของ Supabase
-      // ของเดิมผ่าน แปลว่าสำเนาเก่าจริง — ให้เข้าได้เลย แล้วสั่งคัดลอกใหม่
-      // ตั๋วจาก GAS ใช้กับ Supabase ได้ด้วย เพราะลายเซ็นเดียวกัน
-      console.warn('[SB] สำเนาทะเบียนพนักงานยังไม่อัปเดต — ใช้ของเดิมไปก่อนและสั่งคัดลอกใหม่');
-      sbFlagDirty('login-stale-employee');
-      sbClearPwPending();
-      return g;
-    })
-    .catch(() => r);
-}
 
-// จำว่าเครื่องนี้เพิ่งลงทะเบียน/รีเซ็ตรหัสผ่านให้ใคร (หมดอายุใน 1 ชม.)
-function sbMarkPwPending(empId) {
-  try {
-    localStorage.setItem('ws6_pw_pending',
-      JSON.stringify({ id: String(empId || '').toUpperCase(), until: Date.now() + 3600000 }));
-  } catch (e) {}
-}
-function sbPwPendingFor(empId) {
-  try {
-    const v = JSON.parse(localStorage.getItem('ws6_pw_pending') || 'null');
-    if (!v || Date.now() > v.until) return false;
-    return !empId || v.id === String(empId).toUpperCase();
-  } catch (e) { return false; }
-}
-function sbClearPwPending() { try { localStorage.removeItem('ws6_pw_pending'); } catch (e) {} }
-
-/**
- * ── สำเนาทะเบียนพนักงาน "เพิ่งถูกแก้" (เฟส 5B) ────────────────
- *
- * ปัญหาที่ต้องกัน: ฝ่ายบุคคลแก้เบอร์โทรแล้วกดบันทึก หน้าจอโหลดข้อมูลซ้ำทันที
- * แต่การบันทึกลงชีต ส่วนการอ่านมาจากสำเนาใน Supabase ที่ยังตามไม่ทัน (ราว 5 นาที)
- * → ฝ่ายบุคคลจะเห็นเบอร์เดิม แล้วเข้าใจว่าบันทึกไม่สำเร็จ จึงกดบันทึกซ้ำ
- *   หรือแย่กว่านั้นคือเชื่อว่าระบบเก็บข้อมูลไม่ได้
- *
- * ยอมช้าชั่วคราวดีกว่าแสดงข้อมูลเก่าให้คนตัดสินใจ:
- * หลังแก้ข้อมูลพนักงาน ให้ 2 คำสั่งอ่านทะเบียนย้อนไปใช้ของเดิม (อ่านชีตตรง)
- * จนกว่าสำเนาจะตามทัน — ตั้ง 7 นาที ยาวกว่ารอบคัดลอก 5 นาทีเล็กน้อย
- */
-function sbMarkEmpStale() {
-  try { localStorage.setItem('ws6_emp_stale', String(Date.now() + 7 * 60 * 1000)); } catch (e) {}
-}
-function sbEmpStale() {
-  try {
-    const until = parseInt(localStorage.getItem('ws6_emp_stale') || '0', 10);
-    if (!until) return false;
-    if (Date.now() > until) { localStorage.removeItem('ws6_emp_stale'); return false; }
-    return true;
-  } catch (e) { return false; }
-}
-
-// คำสั่งที่แก้ทะเบียนพนักงาน → ทำให้สำเนาเก่าทันที
-var SB_EMP_WRITES = {
-  hrAddEmployee: 1, hrUpdateEmployee: 1, activateAccount: 1, resetPassword: 1,
-};
-// คำสั่งอ่านทะเบียนที่ต้องย้อนไปใช้ของเดิมระหว่างที่สำเนายังเก่า
-// รายชื่อทีม (เฟส 5E) อ่านจากตารางเดียวกัน จึงต้องอยู่ในรายการนี้ด้วย —
-// ฝ่ายบุคคลเพิ่งย้ายลูกน้องไปอยู่ใต้หัวหน้าคนใหม่ แล้วหัวหน้าคนนั้นเปิดหน้า
-// อนุมัติทันที ต้องเห็นชื่อ ไม่ใช่รอ 7 นาทีโดยไม่รู้ว่าทำไมยังไม่ขึ้น
-var SB_EMP_READS = {
-  hrGetEmployeeList: 1, hrFindEmployee: 1,
-  leaveGetMyTeam: 1, otGetMyTeam: 1,
-};
 
 // ── เรื่องเดียวกันกับลา/โอที (เฟส 5C) ──
 // พนักงานส่งใบลาแล้วหน้าจอเด้งไปหน้าประวัติทันที ถ้าอ่านจากสำเนาที่ยังตามไม่ทัน
@@ -2130,6 +2057,18 @@ var SB_LV_READS = { leaveGetMyRequests: 1, otGetMyRequests: 1 };
  *    ผู้ใช้จะนั่งดูปุ่มหมุนต่ออีก 2-3 วินาทีโดยไม่ได้ประโยชน์
  *    (ส่งไม่ออกจะเห็นใน Log ฝั่ง GAS)
  */
+/**
+ * คำสั่งที่ "เขียน" ทะเบียนพนักงาน
+ *
+ * ⚠️ ขั้น 7 ถอดธง "สำเนาเพิ่งถูกแก้" ออกแล้ว แต่ตารางนี้ยังต้องมีอยู่
+ *    เพราะ _callAPI ใช้มันแยกว่าคำสั่งไหนเป็น "คำสั่งเขียน" — ซึ่งคำสั่งเขียน
+ *    ไม่ต้องขึ้นป้ายบอกเหตุผลว่าทำไมถึงวิ่งผ่าน GAS (สถาปัตยกรรมเป็นแบบนั้นอยู่แล้ว)
+ *    ถ้าลบทิ้ง หน้าเว็บจะพังทันทีที่เรียก API ครั้งแรก
+ */
+var SB_EMP_WRITES = {
+  hrAddEmployee: 1, hrUpdateEmployee: 1, activateAccount: 1, resetPassword: 1,
+};
+
 var SB_REQ_NOTIFY = {
   //  คำสั่ง              → [คำสั่ง GAS ที่ส่งข้อความ, ชื่อเหตุการณ์]
   leaveSubmit:           ['lvNotify', 'SUBMIT'],
@@ -2301,7 +2240,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.33.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.34.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -2459,9 +2398,12 @@ function perfNote(action, totalMs, r, err, st) {
 }
 
 function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
-  // เพิ่งแก้ทะเบียนพนักงาน → อ่านจากของเดิมไว้ก่อน (ดูเหตุผลที่ sbMarkEmpStale)
-  const empStale = (SB_EMP_READS[action] && sbEmpStale()) ||
-                   (SB_LV_READS[action] && sbLvStale()) ||
+
+  // ⚠️ ทะเบียนพนักงานไม่อยู่ในรายการนี้แล้ว (ขั้น 7)
+  //    Supabase เป็นต้นฉบับของทะเบียนแล้ว ไม่มี "สำเนาตามไม่ทัน" อีกต่อไป
+  //    การบังคับให้อ้อมไป GAS จึงช้าเปล่า ๆ (3.4 วินาที เทียบกับ 0.8)
+  //    ส่วนใบลา · เงินเดือน · วันหยุด ยังต้องใช้ธงอยู่ จึงคงไว้
+  const empStale = (SB_LV_READS[action] && sbLvStale()) ||
                    (SB_PAY_READS[action] && sbPayStale()) ||
                    (SB_HOL_READS[action] && sbHolStale());
   // ── คำสั่งเขียนข้อมูลไปที่ GAS เป็นปกติ ไม่ต้องขึ้นป้ายบอกเหตุผล ──
@@ -2554,12 +2496,6 @@ function _callAPI(action, payload, attempt, noRetry, timeoutMs, st) {
       // → สำเนาค้างอยู่ที่ของเก่านานถึง 2 ชั่วโมง (รอรอบคัดลอกใหญ่)
       if (r && (r.success !== false || r.already)) {
         sbFlagDirty(action);
-        // ลงทะเบียน/รีเซ็ตรหัสผ่าน: จำไว้ว่าเครื่องนี้เพิ่งเปลี่ยนรหัสของใคร
-        // เผื่อเขาล็อกอินทันทีก่อนสำเนาจะตามทัน
-        if (action === 'activateAccount' || action === 'resetPassword') {
-          sbMarkPwPending((payload && payload.employeeId) || '');
-        }
-        if (SB_EMP_WRITES[action]) sbMarkEmpStale();
         if (SB_LV_WRITES[action]) sbMarkLvStale();
         if (SB_PAY_WRITES[action]) sbMarkPayStale();
         // ── วันหยุด: ตั้งธงเฉพาะเมื่อเซิร์ฟเวอร์ "ไม่ได้" คัดลอกสำเนาให้แล้ว ──
