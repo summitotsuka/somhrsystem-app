@@ -1158,7 +1158,7 @@ textarea.inp{resize:vertical;min-height:60px}
   <!-- โซนอันตราย: ลบข้อมูลคีย์มือ (manual) -->
   <div class="card" style="padding:14px;margin-top:16px;border:1px solid rgba(220,38,38,.3)">
     <div style="font-size:15px;font-weight:700;color:var(--er);margin-bottom:4px">⚠️ ลบข้อมูลคีย์มือ</div>
-    <div style="font-size:13px;color:var(--tx3);margin-bottom:12px">ลบได้เฉพาะข้อมูลที่คีย์มือ (MANUAL) เท่านั้น — ข้อมูลจากเครื่อง (GPS/สแกนนิ้ว/Kiosk) จะไม่ถูกแตะ · ข้อมูลที่ลบจะถูกเก็บใน Archive พร้อมเหตุผล</div>
+    <div style="font-size:13px;color:var(--tx3);margin-bottom:12px">ลบได้เฉพาะข้อมูลที่คีย์มือ (MANUAL) เท่านั้น — ข้อมูลจากเครื่อง (GPS/FINGER/UPLOAD/KIOSK) จะไม่ถูกแตะ · ข้อมูลที่ลบจะถูกเก็บใน Archive พร้อมเหตุผล</div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
       <div class="field" style="flex:1;min-width:130px;margin:0"><label>ตั้งแต่วันที่</label>
@@ -2240,7 +2240,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.34.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.35.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5841,9 +5841,13 @@ function histPunchRow(row, groupDate, isNewDay, chipsHtml) {
   else if (st === 'MANUAL') statusHtml = '<span class="status-late">✎ คีย์โดย HR</span>';
   else statusHtml = `<span class="status-err">✗ ${esc(st)}</span>`;
   const typeHtml = row.type === 'IN' ? '<span class="type-in">เข้า</span>' : '<span class="type-out">ออก</span>';
-  const srcMap = { FACE: 'Kiosk', KIOSK: 'Kiosk', FINGER: 'สแกนนิ้ว', GPS: 'มือถือ', MANUAL: 'คีย์มือ' };
+  // ⚠️ ต้องตรงกับ attSourceLabel_ (OT.gs) และ att_source_label (SQL ไฟล์ 48)
+  //    ใช้รหัสดิบภาษาอังกฤษ เพราะช่องนี้เป็นช่องที่ 4 จาก 4 บนจอมือถือ
+  //    คำไทยยาว ๆ ทำให้ตกบรรทัดแล้วแถวสูงขึ้นเท่าตัว
+  //    FINGER = เครื่องสแกน (อัตโนมัติ) · UPLOAD = ฝ่ายบุคคลอัปโหลดไฟล์
+  const srcMap = { FACE: 'KIOSK', KIOSK: 'KIOSK', FINGER: 'FINGER', UPLOAD: 'UPLOAD', GPS: 'GPS', MANUAL: 'MANUAL' };
   const srcLabel = srcMap[String(row.source || '').toUpperCase()] || '—';
-  const srcHtml = srcLabel === 'คีย์มือ'
+  const srcHtml = srcLabel === 'MANUAL'
     ? `<span style="font-size:14px;color:#e8590c;font-weight:700">${srcLabel}</span>`
     : `<span style="font-size:12px;color:var(--tx3)">${srcLabel}</span>`;
   const dim = row.complete === false ? 'opacity:.5' : '';
