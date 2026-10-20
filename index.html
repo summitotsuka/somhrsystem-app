@@ -845,10 +845,17 @@ textarea.inp{resize:vertical;min-height:60px}
         <div style="font-size:10px;color:var(--tx3);margin-top:4px">แก้สิทธิ์ HR ได้ที่ Google Sheet เท่านั้น (เพื่อความปลอดภัย)</div></div>
 
       <!-- ── พ้นสภาพการเป็นพนักงาน ── -->
-      <!-- ⚠️ พับเก็บไว้เป็นค่าเริ่มต้น เพราะเป็นส่วนที่ใช้นาน ๆ ครั้ง
-           ถ้ากางไว้ตลอดจะกินพื้นที่ฟอร์มที่ใช้ทุกวันโดยเปล่าประโยชน์ -->
-      <details id="hremp-end-box" style="margin-top:10px;border-top:1px solid var(--bd2);padding-top:10px">
-        <summary style="font-size:12px;color:var(--tx2);cursor:pointer;font-weight:500">พ้นสภาพการเป็นพนักงาน</summary>
+      <!-- ⚠️ พับเก็บไว้เป็นค่าเริ่มต้น เพราะใช้นาน ๆ ครั้ง
+           แต่หัวข้อต้อง "เห็นชัดว่ากดได้" — ครั้งแรกทำเป็นตัวเทาเล็ก ๆ
+           กลมกลืนไปกับฟอร์ม จนฝ่ายบุคคลหาไม่เจอ แล้วไปหาที่การ์ดจัดการบัญชีแทน
+           ซึ่งเป็นที่ที่ควรหาจริง เพราะปุ่ม "ปิดบัญชี (ลาออก)" อยู่ตรงนั้น -->
+      <details id="hremp-end-box" style="margin-top:14px;border:1px solid var(--bd2);border-radius:10px;background:var(--sf2);overflow:hidden">
+        <summary style="font-size:13px;color:#e8590c;cursor:pointer;font-weight:600;padding:12px 14px;list-style:none;display:flex;align-items:center;gap:8px">
+          <span style="font-size:15px">📋</span>
+          <span style="flex:1">พ้นสภาพการเป็นพนักงาน</span>
+          <span style="font-size:11px;color:var(--tx3);font-weight:400">แตะเพื่อกรอก ▾</span>
+        </summary>
+        <div style="padding:0 14px 14px">
         <div style="font-size:11px;color:var(--tx3);margin:8px 0 10px;line-height:1.6">
           ใส่วันสุดท้ายที่ทำงานแล้ว <b>ระบบจะหยุดนับคนนี้เองตั้งแต่วันถัดไป</b>
           ไม่ขึ้นว่าขาดงาน ไม่ส่งข้อความเตือน — ไม่ต้องรอใครมากดปิดบัญชี
@@ -871,6 +878,7 @@ textarea.inp{resize:vertical;min-height:60px}
           <div style="font-size:10px;color:#e8590c;margin-top:4px">
             ⚠️ ข้อมูลส่วนนี้ฝ่ายบุคคลเห็นเท่านั้น ไม่แสดงบนหน้าจอพนักงาน และไม่ติดไปในรายงาน
           </div></div>
+        </div>
       </details>
 
       <button class="btn p" id="hremp-save" style="margin-top:6px">บันทึกข้อมูล</button>
@@ -884,6 +892,25 @@ textarea.inp{resize:vertical;min-height:60px}
         <div style="font-size:11px;color:var(--tx3);margin:-4px 0 2px;line-height:1.5">ตอนนี้ระบบปิดการตรวจอุปกรณ์อยู่ พนักงานใช้เครื่องไหนก็ล็อกอินได้ ปุ่มนี้จึงยังไม่มีผลกับการใช้งาน</div>
         <button class="btn o" id="hremp-reset-pw">รีเซ็ตรหัสผ่าน (ลงทะเบียนใหม่)</button>
         <button class="btn o" id="hremp-toggle-status">เปิด/ปิดบัญชี</button>
+        <div id="hremp-end-missing" style="display:none;font-size:11px;line-height:1.6;
+             background:rgba(232,89,12,.08);border:1px solid rgba(232,89,12,.3);
+             border-radius:9px;padding:10px 12px;color:#e8590c">
+          คนนี้ปิดบัญชีไปแล้วแต่<b>ยังไม่ได้ระบุวันที่ลาออก</b> —
+          <button type="button" id="hremp-end-fill"
+                  style="background:none;border:none;padding:0;font:inherit;color:#e8590c;
+                         font-weight:700;cursor:pointer;text-decoration:underline">กดเติมย้อนหลัง</button>
+        </div>
+        <!-- ⚠️ ฝ่ายบุคคลมาหา "วันที่ลาออก" ตรงนี้ เพราะปุ่มปิดบัญชีอยู่ตรงนี้
+             ชี้ทางไว้ ดีกว่าปล่อยให้หาไม่เจอแล้วไปแก้ในตารางฐานข้อมูลเอง -->
+        <div style="font-size:11px;color:var(--tx3);margin-top:2px;line-height:1.6;
+                    border-top:1px dashed var(--bd2);padding-top:9px">
+          ปุ่มปิดบัญชีคือ <b>ตัดสิทธิ์ล็อกอินทันที</b><br>
+          ถ้าต้องการระบุ <b>วันที่ลาออกและสาเหตุ</b> อยู่ที่หัวข้อ
+          <button type="button" id="hremp-goto-end"
+                  style="background:none;border:none;padding:0;font:inherit;color:#e8590c;
+                         font-weight:600;cursor:pointer;text-decoration:underline">📋 พ้นสภาพการเป็นพนักงาน</button>
+          ในการ์ดข้อมูลพนักงานด้านบน
+        </div>
       </div>
     </div>
 
@@ -1425,6 +1452,54 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <!-- ═══════════════ ระบบลา: dialog ปฏิเสธ ═══════════════ -->
+<!-- ═══ พ้นสภาพการเป็นพนักงาน — เปิดจากปุ่ม "ปิดบัญชี (ลาออก)" ═══ -->
+<!-- ⚠️ ทำไมต้องรวมมาอยู่ในปุ่มเดียว:
+     เดิมปุ่มปิดบัญชีแค่เปลี่ยนสถานะทันที ส่วนวันที่ลาออกอยู่ในฟอร์มคนละที่
+     ฝ่ายบุคคลจึง "กดปิดบัญชีแล้วลืมใส่วันที่" ได้ ซึ่งคือความพลาดเดิม
+     ที่เราทำเรื่องวันสิ้นสุดขึ้นมาเพื่อแก้ — พอต้องผ่านหน้าต่างนี้เสมอ ลืมไม่ได้ -->
+<div class="overlay" id="hremp-end-overlay" style="display:none">
+  <div class="res-card" style="text-align:left;max-width:340px">
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px">พ้นสภาพการเป็นพนักงาน</div>
+    <div id="hremp-end-who" style="font-size:12px;color:var(--tx3);margin-bottom:14px">—</div>
+
+    <div class="field"><label>วันสุดท้ายที่ทำงาน</label>
+      <input class="inp" id="hremp-end-date" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10"></div>
+
+    <div class="field"><label>ประเภท</label>
+      <select class="inp" id="hremp-end-reason">
+        <option value="">— ไม่ระบุ —</option>
+        <option value="RESIGN">ลาออกเอง</option>
+        <option value="CONTRACT_END">ครบสัญญา</option>
+        <option value="TERMINATED">เลิกจ้าง</option>
+        <option value="RETIRE">เกษียณ</option>
+        <option value="OTHER">อื่น ๆ</option>
+      </select></div>
+
+    <div class="field"><label>บันทึกเพิ่มเติม</label>
+      <textarea class="inp" id="hremp-end-note" rows="2" placeholder="เว้นว่างได้"></textarea>
+      <div style="font-size:10px;color:#e8590c;margin-top:4px;line-height:1.5">
+        ⚠️ ข้อมูลส่วนนี้ฝ่ายบุคคลเห็นเท่านั้น ไม่แสดงบนหน้าจอพนักงาน และไม่ติดไปในรายงาน
+      </div></div>
+
+    <!-- ⚠️ ช่องติ๊กนี้คือหัวใจ: "หยุดนับเวลา" กับ "ตัดสิทธิ์ล็อกอิน" คนละเรื่องกัน
+         คนที่ยื่นใบลาออกล่วงหน้า ยังต้องล็อกอินได้จนถึงวันสุดท้าย
+         ระบบจะติ๊กให้เองตามวันที่ ฝ่ายบุคคลไม่ต้องคิด แต่แก้เองได้ -->
+    <label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;
+                  background:var(--sf2);border:1px solid var(--bd2);border-radius:9px;
+                  padding:11px 12px;margin:2px 0 4px">
+      <input type="checkbox" id="hremp-end-close" style="width:18px;height:18px;margin-top:1px;flex-shrink:0">
+      <span style="font-size:13px;line-height:1.5">ปิดบัญชีด้วย (ล็อกอินไม่ได้)
+        <span id="hremp-end-closehint" style="display:block;font-size:11px;color:var(--tx3);margin-top:2px"></span>
+      </span>
+    </label>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn o sm" id="hremp-end-cancel" style="flex:1">ยกเลิก</button>
+      <button class="btn sm" id="hremp-end-save" style="flex:1.4">บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="lv-reject-overlay" style="display:none">
   <div class="res-card" style="text-align:left">
     <div style="font-size:16px;font-weight:600;margin-bottom:12px">เหตุผลที่ไม่อนุมัติ</div>
@@ -2269,7 +2344,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.36.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.38.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5095,6 +5170,15 @@ function fillEmployeeForm(emp, mode) {
     const tb = document.getElementById('hremp-toggle-status');
     tb.textContent = emp.status === 'INACTIVE' ? 'เปิดบัญชีอีกครั้ง' : 'ปิดบัญชี (ลาออก)';
     tb.dataset.current = emp.status;
+
+    // ⚠️ คนที่ปิดบัญชีไปก่อนมีระบบนี้ จะไม่มีวันที่ลาออกเลยสักคน
+    //    ระบบยังคำนวณถูก (สถานะ INACTIVE ตัดออกอยู่แล้ว) แต่ประวัติไม่ครบ
+    //    และพอทำรายงานอัตราการลาออกทีหลัง จะไม่รู้ว่าใครออกเดือนไหน
+    const warn = document.getElementById('hremp-end-missing');
+    if (warn) {
+      const need = emp.status === 'INACTIVE' && !emp.endDate;
+      warn.style.display = need ? 'block' : 'none';
+    }
   }
 }
 
@@ -5191,20 +5275,125 @@ function hrSearchEmployeeById(id) {
   hrSearchEmployee();
 }
 
+// ── วันนี้ในรูปแบบ วว/ดด/ปปปป ──
+function hrTodayThai() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+}
+
+// ── แปลง วว/ดด/ปปปป → yyyy-MM-dd (คืนค่าว่างถ้ายังกรอกไม่ครบ) ──
+function hrThaiToISO(v) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v || '').trim());
+  if (!m) return '';
+  let y = Number(m[3]);
+  if (y > 2400) y -= 543;   // เผลอกรอกเป็น พ.ศ.
+  return y + '-' + m[2] + '-' + m[1];
+}
+
+/**
+ * ตั้งช่องติ๊ก "ปิดบัญชีด้วย" ให้ถูกเองตามวันที่ที่กรอก
+ *
+ * ⚠️ กติกา: วันสุดท้ายเป็นวันนี้หรือย้อนหลัง = ออกไปแล้ว → ปิดเลย
+ *          วันสุดท้ายเป็นวันในอนาคต = ยังทำงานอยู่ → ยังไม่ปิด
+ *   คนที่ยื่นใบลาออกล่วงหน้ายังต้องล็อกอินดูเวลาตัวเอง ยื่นใบลา ขอ OT ได้
+ *   ถ้าปิดบัญชีไปเลยตั้งแต่วันที่แจ้ง เขาจะใช้ระบบไม่ได้ทั้งที่ยังมาทำงาน
+ */
+function hrEndSyncClose() {
+  const iso  = hrThaiToISO(document.getElementById('hremp-end-date').value);
+  const cb   = document.getElementById('hremp-end-close');
+  const hint = document.getElementById('hremp-end-closehint');
+  if (cb.dataset.touched === '1') {   // ฝ่ายบุคคลแก้เองแล้ว อย่าไปทับ
+    hint.textContent = cb.checked ? 'ล็อกอินไม่ได้ทันทีหลังบันทึก' : 'บัญชียังเปิดอยู่ ล็อกอินได้ตามปกติ';
+    return;
+  }
+  if (!iso) { cb.checked = true;  hint.textContent = ''; return; }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const last  = new Date(iso + 'T00:00:00');
+  if (last > today) {
+    cb.checked = false;
+    hint.textContent = 'ยังทำงานถึง ' + document.getElementById('hremp-end-date').value +
+                       ' — บัญชีจะยังเปิดอยู่จนถึงวันนั้น';
+  } else {
+    cb.checked = true;
+    hint.textContent = 'ล็อกอินไม่ได้ทันทีหลังบันทึก';
+  }
+}
+
+// ── เปิดหน้าต่างพ้นสภาพ (เติมของเดิมถ้าเคยบันทึกไว้แล้ว) ──
+function hrOpenEndDialog() {
+  const d = document.getElementById('hremp-f-enddate').value.trim();
+  document.getElementById('hremp-end-date').value   = d || hrTodayThai();
+  document.getElementById('hremp-end-reason').value = document.getElementById('hremp-f-endreason').value || '';
+  document.getElementById('hremp-end-note').value   = document.getElementById('hremp-f-endnote').value || '';
+  document.getElementById('hremp-end-close').dataset.touched = '0';
+  document.getElementById('hremp-end-who').textContent =
+    document.getElementById('hremp-empid-locked').value + ' · ' +
+    (document.getElementById('hremp-f-fullname').value || '');
+  hrEndSyncClose();
+  document.getElementById('hremp-end-overlay').style.display = 'flex';
+}
+
+function hrCloseEndDialog() {
+  document.getElementById('hremp-end-overlay').style.display = 'none';
+}
+
+// ── บันทึกจากหน้าต่าง — ส่งครั้งเดียวจบ ทั้งวันที่ ประเภท บันทึก และสถานะ ──
+function hrSaveEndDialog() {
+  const empId = document.getElementById('hremp-empid-locked').value;
+  const dv    = document.getElementById('hremp-end-date').value.trim();
+  if (dv && !/^\d{2}\/\d{2}\/\d{4}$/.test(dv)) {
+    showToast('กรุณากรอกวันที่ในรูปแบบ วว/ดด/ปปปป'); return;
+  }
+  const closeToo = document.getElementById('hremp-end-close').checked;
+  const fields = {
+    endDate:   dv,
+    endReason: document.getElementById('hremp-end-reason').value,
+    endNote:   document.getElementById('hremp-end-note').value.trim(),
+  };
+  if (closeToo) fields.status = 'INACTIVE';
+
+  const btn  = document.getElementById('hremp-end-save');
+  const done = hrBtnBusy(btn, 'กำลังบันทึก...');
+  gasRun('hrUpdateEmployee', { hrToken: S.hrToken, employeeId: empId, fields: fields })
+    .withSuccessHandler(r => {
+      done();
+      showToast(r.success
+        ? (closeToo ? 'บันทึกและปิดบัญชีเรียบร้อย' : 'บันทึกเรียบร้อย — บัญชียังเปิดอยู่')
+        : r.message, r.success);
+      if (r.success) { hrCloseEndDialog(); clearEmpListCache(); hrSearchEmployeeById(empId); }
+      if (r.authError) setTimeout(() => logout(), 1500);
+    })
+    .withFailureHandler(e => { done(); showToast(e.message); });
+}
+
 function hrToggleStatus() {
   const tb = document.getElementById('hremp-toggle-status');
   const current = tb.dataset.current;
   const empId = document.getElementById('hremp-empid-locked').value;
   const newStatus = current === 'INACTIVE' ? 'ACTIVE' : 'INACTIVE';
-  const msg = newStatus === 'INACTIVE'
-    ? 'ปิดบัญชีพนักงานคนนี้? (พนักงานจะ login ไม่ได้ แต่กู้คืนได้ภายหลัง)'
-    : 'เปิดบัญชีพนักงานคนนี้อีกครั้ง?';
-  if (!confirm(msg)) return;
-  const done = hrBtnBusy(tb, newStatus === 'INACTIVE' ? 'กำลังปิดบัญชี...' : 'กำลังเปิดบัญชี...');
-  gasRun('hrUpdateEmployee', { hrToken: S.hrToken, employeeId: empId, fields: { status: newStatus } })
+
+  // ── ปิดบัญชี → ไปที่หน้าต่างกรอกข้อมูลเสมอ ไม่ปิดเงียบ ๆ อีกต่อไป ──
+  if (newStatus === 'INACTIVE') { hrOpenEndDialog(); return; }
+
+  // ── เปิดบัญชีอีกครั้ง ──
+  // ⚠️ ถ้าวันลาออกยังค้างอยู่ ระบบจะหยุดนับเขาต่อไปเรื่อย ๆ ทั้งที่กลับมาทำงานแล้ว
+  //    (ไม่ขึ้นในแดชบอร์ด ไม่โดนเตือนเวลาไม่สแกน) จึงต้องถามให้ล้างด้วย
+  const hadEnd = !!document.getElementById('hremp-f-enddate').value.trim();
+  if (!confirm('เปิดบัญชีพนักงานคนนี้อีกครั้ง?')) return;
+  const fields = { status: newStatus };
+  if (hadEnd) {
+    fields.endDate   = '';
+    fields.endReason = '';
+    fields.endNote   = '';
+  }
+  const done = hrBtnBusy(tb, 'กำลังเปิดบัญชี...');
+  gasRun('hrUpdateEmployee', { hrToken: S.hrToken, employeeId: empId, fields: fields })
     .withSuccessHandler(r => {
       done();
-      showToast(r.success ? (newStatus === 'INACTIVE' ? 'ปิดบัญชีเรียบร้อย' : 'เปิดบัญชีเรียบร้อย') : r.message, r.success);
+      showToast(r.success
+        ? (hadEnd ? 'เปิดบัญชีแล้ว และล้างวันที่ลาออกให้ด้วย' : 'เปิดบัญชีเรียบร้อย')
+        : r.message, r.success);
       if (r.success) { clearEmpListCache(); hrSearchEmployeeById(empId); }
       if (r.authError) setTimeout(() => logout(), 1500);
     })
@@ -6370,6 +6559,33 @@ applyLogo();
   on('hremp-f-empid', 'input', function() { this.value = this.value.toUpperCase(); });
   on('hremp-f-startdate', 'input', function() { maskDate(this); });
   on('hremp-f-enddate', 'input', function() { maskDate(this); });
+  // ── หน้าต่างพ้นสภาพ ──
+  on('hremp-end-date', 'input', function () { maskDate(this); hrEndSyncClose(); });
+  on('hremp-end-date', 'keydown', allowDateKeys);
+  attachDayPicker('hremp-end-date');
+  on('hremp-end-date', 'change', function () { hrEndSyncClose(); });
+  // ⚠️ พอฝ่ายบุคคลแตะช่องติ๊กเอง ระบบต้องเลิกตั้งให้อัตโนมัติ
+  //    ไม่งั้นพิมพ์วันที่ต่ออีกตัวแล้วค่าที่เขาเลือกจะถูกทับ
+  on('hremp-end-close', 'change', function () { this.dataset.touched = '1'; hrEndSyncClose(); });
+  // เติมย้อนหลังให้คนที่ปิดบัญชีไปแล้ว — เปิดหน้าต่างเดิม แต่ไม่ต้องปิดบัญชีซ้ำ
+  on('hremp-end-fill', 'click', function () {
+    hrOpenEndDialog();
+    const cb = document.getElementById('hremp-end-close');
+    cb.checked = false; cb.dataset.touched = '1';
+    document.getElementById('hremp-end-closehint').textContent = 'ปิดบัญชีไปแล้ว ไม่ต้องปิดซ้ำ';
+  });
+  on('hremp-end-cancel', 'click', hrCloseEndDialog);
+  on('hremp-end-save', 'click', hrSaveEndDialog);
+  on('hremp-end-overlay', 'click', function (e) { if (e.target === this) hrCloseEndDialog(); });
+  // กดลิงก์ในการ์ดจัดการบัญชี → กางหัวข้อพ้นสภาพแล้วเลื่อนจอไปหา
+  on('hremp-goto-end', 'click', function () {
+    const box = document.getElementById('hremp-end-box');
+    if (!box) return;
+    box.open = true;
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const f = document.getElementById('hremp-f-enddate');
+    if (f) setTimeout(function () { f.focus(); }, 350);
+  });
   on('hremp-f-enddate', 'keydown', allowDateKeys);
   attachDayPicker('hremp-f-enddate');
   on('hremp-f-startdate', 'keydown', function(e) { allowDateKeys(e); });
