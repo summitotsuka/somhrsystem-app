@@ -499,6 +499,19 @@ textarea.inp{resize:vertical;min-height:60px}
     <div class="home-grid" id="home-grid-hr"></div>
   </div>
 
+  <!-- ประกาศ — เหนือวันหยุด
+       ⚠️ ไม่เอาไว้บนสุด เพราะจะดันปุ่มเช็คอินลงทุกวัน ทั้งที่ประกาศอ่านครั้งเดียวจบ
+          ไม่เอาไว้ล่างวันหยุด เพราะปฏิทินเป็นข้อมูลอ้างอิง (อยากรู้ค่อยเปิด)
+          ส่วนประกาศเป็นของใหม่ที่ต้องสะกิดให้เห็น ถ้าอยู่ล่างสุดไม่มีใครเลื่อนไปถึง
+       ซ่อนไว้ตอนไม่มีประกาศ — การ์ดเปล่า ๆ คือความรกที่ไม่ให้อะไรเลย -->
+  <div class="hol-card" id="home-bul-card" style="display:none">
+    <div class="hol-head">
+      <div class="hol-title">ประกาศ</div>
+      <button class="hol-more" id="home-bul-more">ดูทั้งหมด ›</button>
+    </div>
+    <div id="home-bul-body"></div>
+  </div>
+
   <!-- วันหยุดเดือนนี้ — แสดงจากข้อมูลที่จำไว้ในเครื่องทันที ไม่ต้องรอ server -->
   <div class="hol-card" id="home-hol-card">
     <div class="hol-head">
@@ -506,6 +519,73 @@ textarea.inp{resize:vertical;min-height:60px}
       <button class="hol-more" id="home-hol-more">ดูปฏิทินทั้งหมด ›</button>
     </div>
     <div id="home-hol-body"><div class="hol-empty">กำลังโหลด…</div></div>
+  </div>
+</div>
+
+<!-- ══ ประกาศทั้งหมด (พนักงาน — ดูอย่างเดียว) ══ -->
+<div class="page" id="page-bulletin">
+  <button class="btn o sm" id="bul-back" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ หน้าหลัก</button>
+  <div style="font-size:19px;font-weight:600;margin-bottom:4px">ประกาศ</div>
+  <div style="font-size:12px;color:var(--tx3);margin-bottom:14px" id="bul-sub">—</div>
+  <div id="bul-list"><div class="hol-empty">กำลังโหลด…</div></div>
+</div>
+
+<!-- ══ จัดการประกาศ (ฝ่ายบุคคล) ══ -->
+<div class="page" id="page-hr-bulletin">
+  <button class="btn o sm" id="hrbul-back" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ เมนูงานบุคคล</button>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:12px">
+    <div style="font-size:19px;font-weight:600">จัดการประกาศ</div>
+    <select id="hrbul-year" style="padding:7px 12px;border:1px solid var(--bd2);border-radius:9px;font-family:var(--fn);font-size:14px;background:var(--sf)"></select>
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+    <button class="btn p sm" id="hrbul-new" style="flex:1">＋ เขียนประกาศใหม่</button>
+  </div>
+  <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--tx2);margin-bottom:14px;cursor:pointer">
+    <input type="checkbox" id="hrbul-showdel" style="width:16px;height:16px">
+    แสดงรายการที่ลบแล้ว
+  </label>
+
+  <div id="hrbul-loading" style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+  <div id="hrbul-list"></div>
+</div>
+
+<!-- ══ เขียน/แก้ประกาศ ══ -->
+<div class="page" id="page-hr-bulletin-edit">
+  <button class="btn o sm" id="hrbule-back" style="width:auto;padding:6px 12px;margin-bottom:12px">‹ กลับ</button>
+  <div style="font-size:19px;font-weight:600;margin-bottom:14px" id="hrbule-title">เขียนประกาศใหม่</div>
+
+  <div class="card" style="padding:18px">
+    <div class="field"><label>หัวข้อ</label>
+      <input class="inp" id="hrbule-f-title" placeholder="เช่น แจ้งวันหยุดพิเศษ" maxlength="200"></div>
+
+    <div class="field"><label>เนื้อหา</label>
+      <textarea class="inp" id="hrbule-f-body" rows="7" placeholder="รายละเอียดประกาศ"></textarea></div>
+
+    <div class="field"><label>ให้ใครเห็น</label>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">
+        ไม่เลือกแผนกไหนเลย = ทั้งบริษัทเห็น · เลือกได้หลายแผนก
+      </div>
+      <div id="hrbule-depts" style="display:flex;flex-wrap:wrap;gap:7px"></div></div>
+
+    <div class="field"><label>แสดงถึงวันที่</label>
+      <input class="inp" id="hrbule-f-expire" placeholder="วว/ดด/ปปปป (เว้นว่าง = ไม่มีวันหมดอายุ)"
+             inputmode="numeric" maxlength="10">
+      <div style="font-size:11px;color:var(--tx3);margin-top:4px;line-height:1.5">
+        ใส่ให้อัตโนมัติ 30 วันนับจากวันนี้ — แก้ได้
+        เช่นประกาศประชุมวันที่ 25 ก็ใส่วันที่ 25 ให้หายเองหลังประชุม
+      </div></div>
+
+    <div class="field"><label>ไฟล์แนบ (รูป หรือ PDF · สูงสุด 5 ไฟล์)</label>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">
+        รูปจะถูกย่อให้เล็กลงอัตโนมัติก่อนอัปโหลด เพื่อประหยัดพื้นที่
+      </div>
+      <input type="file" id="hrbule-f-files" accept="image/*,application/pdf" multiple
+             style="font-size:13px;width:100%">
+      <div id="hrbule-filelist" style="margin-top:10px;display:grid;gap:6px"></div></div>
+
+    <button class="btn p" id="hrbule-save" style="margin-top:8px">บันทึกประกาศ</button>
   </div>
 </div>
 
@@ -727,6 +807,10 @@ textarea.inp{resize:vertical;min-height:60px}
       <button class="home-item" id="hr-menu-holiday" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(236,72,153,.15);color:#db2777">◷</div></div>
         <div class="home-lb">จัดการวันหยุด</div>
+      </button>
+      <button class="home-item" id="hr-menu-bulletin" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(232,89,12,.15);color:#e8590c">📋</div></div>
+        <div class="home-lb">จัดการประกาศ</div>
       </button>
       <button class="home-item" id="hr-menu-broadcast" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(37,99,235,.15);color:#2563eb">✉</div></div>
@@ -2321,7 +2405,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.39.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.40.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3129,7 +3213,7 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
+  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
@@ -3275,6 +3359,10 @@ function renderHomeMenu() {
   // วันหยุดเดือนนี้ — วาดจากที่จำไว้ทันที (ถ้ามี) แล้วเช็คของใหม่เบื้องหลัง
   holLoad(renderHomeHolidays);
 
+  // ประกาศ — โหลดเบื้องหลัง ไม่หน่วงหน้าแรก
+  // ⚠️ การ์ดซ่อนอยู่จนกว่าจะรู้ว่ามีประกาศจริง จอจึงไม่กระพริบ
+  bulLoad();
+
   // ตรวจว่าสำเนาข้อมูลยังสดอยู่ไหม — ไม่หน่วงหน้าจอ ทำเบื้องหลัง
   sbCheckFresh();
 
@@ -3312,12 +3400,338 @@ function renderHomeMenu() {
       { p: 'hr-dashboard', t: 'ภาพรวมประจำวัน', ic: '▦', bg: 'rgba(59,130,246,.15)',  fg: '#2563eb' },
       { p: 'hr-report',    t: 'รายงานลงเวลา',   ic: '▤', bg: 'rgba(245,158,11,.15)',  fg: '#d97706' },
       { p: 'hr-employees', t: 'จัดการพนักงาน',  ic: '☷', bg: 'rgba(16,185,129,.15)',  fg: '#059669' },
+      { p: 'hr-bulletin',  t: 'จัดการประกาศ',   ic: '📋', bg: 'rgba(232,89,12,.15)',  fg: '#e8590c' },
       { p: 'hr-dash',      t: 'เมนูงานบุคคล',   ic: '★', bg: 'rgba(124,58,237,.15)',  fg: '#7c3aed' },
     ]);
     if (hrSec) hrSec.style.display = '';
   } else if (hrSec) {
     hrSec.style.display = 'none';
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  กระดานประกาศ
+// ══════════════════════════════════════════════════════════════
+var BUL = { rows: [], total: 0, loaded: false };
+var HRBUL = { rows: [], years: [], depts: [], editing: null, files: [] };
+
+/** กว้างสุดของรูปหลังย่อ — ชัดพอให้ซูมอ่านตารางกะได้ แต่ไฟล์เล็กลงสิบเท่า */
+var BUL_IMG_MAX = 1600;
+var BUL_MAX_FILES_UI = 5;
+
+// ── วาดรายการประกาศ (ใช้ร่วมกันทั้งการ์ดหน้าแรกและหน้ารายการทั้งหมด) ──
+// ⚠️ ที่เดียว ไม่เขียนสองแบบ ไม่งั้นสองจอจะหน้าตาไม่เหมือนกันแล้วไล่แก้สองที่
+function bulRowHtml(b, full) {
+  const files = Array.isArray(b.files) ? b.files : [];
+  const body = String(b.body || '');
+  const shown = full ? body : (body.length > 90 ? body.slice(0, 90) + '…' : body);
+  let h = '<div style="padding:11px 0;border-top:1px solid var(--bd2)">';
+  h += '<div style="display:flex;gap:8px;align-items:flex-start">';
+  if (b.isNew) {
+    h += '<span style="flex-shrink:0;font-size:10px;font-weight:700;color:#fff;background:#e8590c;'
+       + 'border-radius:5px;padding:2px 6px;margin-top:2px">ใหม่</span>';
+  }
+  h += '<div style="flex:1;min-width:0">';
+  h += '<div style="font-size:14px;font-weight:600;line-height:1.5">' + esc(b.title || '') + '</div>';
+  if (shown) {
+    h += '<div style="font-size:12px;color:var(--tx2);line-height:1.6;margin-top:3px;white-space:pre-line">'
+       + esc(shown) + '</div>';
+  }
+  if (full && files.length) {
+    h += '<div style="display:grid;gap:6px;margin-top:9px">';
+    files.forEach(function (f) {
+      const isImg = String(f.type || '').indexOf('image/') === 0;
+      h += '<a href="' + esc(f.url) + '" target="_blank" rel="noopener"'
+         + ' style="display:flex;gap:7px;align-items:center;font-size:12px;color:var(--ac);'
+         + 'text-decoration:none;background:var(--sf2);border:1px solid var(--bd2);'
+         + 'border-radius:8px;padding:8px 10px">'
+         + '<span>' + (isImg ? '🖼' : '📄') + '</span>'
+         + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+         + esc(f.name || 'ไฟล์แนบ') + '</span><span style="color:var(--tx3)">เปิด ›</span></a>';
+    });
+    h += '</div>';
+  } else if (files.length) {
+    h += '<div style="font-size:11px;color:var(--tx3);margin-top:4px">📎 ไฟล์แนบ ' + files.length + ' ไฟล์</div>';
+  }
+  h += '<div style="font-size:11px;color:var(--tx3);margin-top:5px">' + esc(b.createdAt || '') + '</div>';
+  h += '</div></div></div>';
+  return h;
+}
+
+// ── โหลดประกาศของคนที่ล็อกอินอยู่ ──
+function bulLoad(cb) {
+  gasRun('bulGetMine', { hrToken: S.hrToken, limit: 0 })
+    .withSuccessHandler(function (r) {
+      if (r && r.success) { BUL.rows = r.rows || []; BUL.total = r.total || 0; BUL.loaded = true; }
+      bulRenderHome();
+      if (cb) cb();
+    })
+    .withFailureHandler(function () { if (cb) cb(); });
+}
+
+function bulRenderHome() {
+  const card = document.getElementById('home-bul-card');
+  const body = document.getElementById('home-bul-body');
+  if (!card || !body) return;
+  const rows = BUL.rows || [];
+  // ⚠️ ไม่มีประกาศ = ซ่อนการ์ดทั้งใบ ไม่ขึ้น "ไม่มีประกาศ"
+  //    การ์ดเปล่ากินที่หน้าจอทุกวันโดยไม่ให้ข้อมูลอะไรเลย
+  if (!rows.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const top = rows.slice(0, 3);
+  body.innerHTML = top.map(function (b) { return bulRowHtml(b, false); }).join('');
+  const more = document.getElementById('home-bul-more');
+  if (more) more.textContent = rows.length > 3 ? ('ดูทั้งหมด ' + rows.length + ' รายการ ›') : 'ดูทั้งหมด ›';
+}
+
+function bulOpenAll() {
+  go('bulletin');
+  const list = document.getElementById('bul-list');
+  const sub  = document.getElementById('bul-sub');
+  const draw = function () {
+    const rows = BUL.rows || [];
+    if (sub) sub.textContent = rows.length ? ('ทั้งหมด ' + rows.length + ' รายการ') : '';
+    list.innerHTML = rows.length
+      ? rows.map(function (b) { return bulRowHtml(b, true); }).join('')
+      : '<div class="hol-empty">ยังไม่มีประกาศ</div>';
+  };
+  if (BUL.loaded) draw(); else bulLoad(draw);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ฝั่งฝ่ายบุคคล
+// ══════════════════════════════════════════════════════════════
+function hrBulOpen() {
+  go('hr-bulletin');
+  hrBulLoad();
+}
+
+function hrBulLoad() {
+  const sel = document.getElementById('hrbul-year');
+  const year = sel && sel.value ? parseInt(sel.value, 10) : null;
+  document.getElementById('hrbul-loading').style.display = '';
+  document.getElementById('hrbul-list').innerHTML = '';
+  gasRun('bulListHr', {
+    hrToken: S.hrToken, year: year,
+    withDeleted: document.getElementById('hrbul-showdel').checked,
+  })
+    .withSuccessHandler(function (r) {
+      document.getElementById('hrbul-loading').style.display = 'none';
+      if (!r || !r.success) { showToast((r && r.message) || 'โหลดไม่สำเร็จ'); return; }
+      HRBUL.rows  = r.rows  || [];
+      HRBUL.years = r.years || [];
+      HRBUL.depts = r.depts || [];
+      hrBulFillYears();
+      hrBulRender();
+    })
+    .withFailureHandler(function (e) {
+      document.getElementById('hrbul-loading').style.display = 'none';
+      showToast(e.message);
+    });
+}
+
+function hrBulFillYears() {
+  const sel = document.getElementById('hrbul-year');
+  if (!sel || sel.dataset.filled === '1') return;
+  const nowY = new Date().getFullYear();
+  const ys = HRBUL.years.slice();
+  if (ys.indexOf(nowY) === -1) ys.unshift(nowY);
+  sel.innerHTML = '<option value="">ทุกปี</option>' +
+    ys.map(function (y) { return '<option value="' + y + '">' + (y + 543) + '</option>'; }).join('');
+  sel.dataset.filled = '1';
+}
+
+function hrBulRender() {
+  const box = document.getElementById('hrbul-list');
+  const rows = HRBUL.rows || [];
+  if (!rows.length) { box.innerHTML = '<div class="hol-empty">ยังไม่มีประกาศ</div>'; return; }
+  box.innerHTML = rows.map(function (b) {
+    const dim = b.deleted ? 'opacity:.55;' : '';
+    const files = Array.isArray(b.files) ? b.files : [];
+    const depts = Array.isArray(b.depts) ? b.depts : [];
+    let tags = '';
+    if (b.deleted) tags += '<span style="font-size:10px;font-weight:700;color:#fff;background:var(--er);border-radius:5px;padding:2px 6px">ลบแล้ว</span>';
+    else if (b.expired) tags += '<span style="font-size:10px;font-weight:600;color:var(--tx3);background:var(--sf2);border:1px solid var(--bd2);border-radius:5px;padding:2px 6px">หมดอายุ</span>';
+    let h = '<div class="card" style="padding:14px;margin-bottom:10px;' + dim + '">';
+    h += '<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px">';
+    if (tags) h += '<div style="flex-shrink:0;margin-top:2px">' + tags + '</div>';
+    h += '<div style="flex:1;font-size:14px;font-weight:600;line-height:1.5">' + esc(b.title || '') + '</div></div>';
+    h += '<div style="font-size:11px;color:var(--tx3);line-height:1.7">';
+    h += 'ถึงใคร: ' + (depts.length ? esc(depts.join(' · ')) : 'ทั้งบริษัท');
+    h += '<br>แสดงถึง: ' + (b.expireOn ? esc(thaiDateDisplay(b.expireOn)) : 'ไม่มีวันหมดอายุ');
+    if (files.length) h += '<br>📎 ไฟล์แนบ ' + files.length + ' ไฟล์';
+    h += '<br>โพสต์ ' + esc(b.createdAt || '') + ' โดย ' + esc(b.createdBy || '-');
+    h += '</div>';
+    h += '<div style="display:flex;gap:7px;margin-top:11px">';
+    if (b.deleted) {
+      h += '<button class="btn o sm" data-bulrestore="' + b.id + '" style="flex:1">กู้คืน</button>';
+    } else {
+      h += '<button class="btn o sm" data-buledit="' + b.id + '" style="flex:1">แก้ไข</button>';
+      h += '<button class="btn o sm" data-buldel="' + b.id + '" style="flex:1;color:var(--er);border-color:var(--er)">ลบ</button>';
+    }
+    h += '</div></div>';
+    return h;
+  }).join('');
+}
+
+// ── เขียน / แก้ ──
+function hrBulEdit(id) {
+  const b = id ? (HRBUL.rows || []).filter(function (x) { return String(x.id) === String(id); })[0] : null;
+  HRBUL.editing = b ? b.id : null;
+  HRBUL.files = b && Array.isArray(b.files) ? b.files.slice() : [];
+  document.getElementById('hrbule-title').textContent = b ? 'แก้ไขประกาศ' : 'เขียนประกาศใหม่';
+  document.getElementById('hrbule-f-title').value = b ? (b.title || '') : '';
+  document.getElementById('hrbule-f-body').value  = b ? (b.body || '') : '';
+  // เติมวันหมดอายุให้ +30 วันเมื่อเขียนใหม่
+  let exp = b ? (b.expireOn ? thaiDateDisplay(b.expireOn) : '') : '';
+  if (!b) {
+    const d = new Date(Date.now() + 30 * 864e5), pp = function (n) { return String(n).padStart(2, '0'); };
+    exp = pp(d.getDate()) + '/' + pp(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+  document.getElementById('hrbule-f-expire').value = exp;
+  document.getElementById('hrbule-f-files').value = '';
+  hrBulRenderDepts(b ? (b.depts || []) : []);
+  hrBulRenderFiles();
+  go('hr-bulletin-edit');
+}
+
+function hrBulRenderDepts(sel) {
+  const box = document.getElementById('hrbule-depts');
+  const chosen = {};
+  (sel || []).forEach(function (d) { chosen[d] = true; });
+  box.innerHTML = (HRBUL.depts || []).map(function (d) {
+    const on = !!chosen[d];
+    return '<button type="button" class="bul-dept" data-dept="' + esc(d) + '" data-on="' + (on ? '1' : '0') + '"'
+      + ' style="font-size:12px;padding:7px 12px;border-radius:999px;cursor:pointer;font-family:var(--fn);'
+      + 'border:1px solid ' + (on ? '#e8590c' : 'var(--bd2)') + ';'
+      + 'background:' + (on ? 'rgba(232,89,12,.12)' : 'var(--sf2)') + ';'
+      + 'color:' + (on ? '#e8590c' : 'var(--tx2)') + ';font-weight:' + (on ? '600' : '400') + '">'
+      + esc(d) + '</button>';
+  }).join('') || '<div style="font-size:12px;color:var(--tx3)">ไม่พบรายชื่อแผนก</div>';
+}
+
+function hrBulChosenDepts() {
+  return Array.prototype.slice.call(document.querySelectorAll('#hrbule-depts .bul-dept'))
+    .filter(function (b) { return b.dataset.on === '1'; })
+    .map(function (b) { return b.dataset.dept; });
+}
+
+function hrBulRenderFiles() {
+  const box = document.getElementById('hrbule-filelist');
+  box.innerHTML = (HRBUL.files || []).map(function (f, i) {
+    const isImg = String(f.type || '').indexOf('image/') === 0;
+    return '<div style="display:flex;gap:7px;align-items:center;font-size:12px;background:var(--sf2);'
+      + 'border:1px solid var(--bd2);border-radius:8px;padding:8px 10px">'
+      + '<span>' + (isImg ? '🖼' : '📄') + '</span>'
+      + '<a href="' + esc(f.url) + '" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow:hidden;'
+      + 'text-overflow:ellipsis;white-space:nowrap;color:var(--ac);text-decoration:none">' + esc(f.name || '') + '</a>'
+      + '<button type="button" data-bulrmfile="' + i + '" style="background:none;border:none;color:var(--er);'
+      + 'cursor:pointer;font-size:16px;padding:0 2px;line-height:1">×</button></div>';
+  }).join('');
+}
+
+/**
+ * ย่อรูปก่อนอัปโหลด
+ * ⚠️ กล้องมือถือถ่ายมา 3–5 MB ต่อรูป ถ้าส่งดิบ ๆ ไดรฟ์เต็มเร็วมาก
+ *    และพนักงานเปิดดูบนเน็ตมือถือก็ช้า
+ *    ย่อเหลือกว้างสุด 1600 จุด ยังซูมอ่านตารางกะได้ แต่ไฟล์เหลือราว 1 ใน 10
+ *    PDF ไม่ย่อ ส่งตามเดิม
+ */
+function bulShrinkImage(file) {
+  return new Promise(function (resolve, reject) {
+    if (file.type === 'application/pdf') {
+      const fr = new FileReader();
+      fr.onload = function () { resolve({ data: fr.result, type: file.type }); };
+      fr.onerror = function () { reject(new Error('อ่านไฟล์ไม่ได้')); };
+      fr.readAsDataURL(file);
+      return;
+    }
+    const fr = new FileReader();
+    fr.onload = function () {
+      const img = new Image();
+      img.onload = function () {
+        let w = img.width, h = img.height;
+        if (w > BUL_IMG_MAX) { h = Math.round(h * BUL_IMG_MAX / w); w = BUL_IMG_MAX; }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve({ data: cv.toDataURL('image/jpeg', 0.82), type: 'image/jpeg' });
+      };
+      img.onerror = function () { reject(new Error('ไฟล์รูปเสียหรือเปิดไม่ได้')); };
+      img.src = fr.result;
+    };
+    fr.onerror = function () { reject(new Error('อ่านไฟล์ไม่ได้')); };
+    fr.readAsDataURL(file);
+  });
+}
+
+function hrBulPickFiles(ev) {
+  const files = Array.prototype.slice.call(ev.target.files || []);
+  if (!files.length) return;
+  if ((HRBUL.files || []).length + files.length > BUL_MAX_FILES_UI) {
+    showToast('แนบได้สูงสุด ' + BUL_MAX_FILES_UI + ' ไฟล์ (ตอนนี้มี ' + HRBUL.files.length + ' แล้ว)');
+    ev.target.value = ''; return;
+  }
+  const btn = document.getElementById('hrbule-save');
+  const done = hrBtnBusy(btn, 'กำลังอัปโหลด...');
+  let i = 0;
+  const next = function () {
+    if (i >= files.length) { done(); ev.target.value = ''; hrBulRenderFiles(); return; }
+    const f = files[i++];
+    bulShrinkImage(f).then(function (out) {
+      gasRun('bulUploadFile', {
+        hrToken: S.hrToken, fileData: out.data,
+        fileName: f.name, mimeType: out.type,
+      })
+        .withSuccessHandler(function (r) {
+          if (r && r.success && r.file) { HRBUL.files.push(r.file); hrBulRenderFiles(); }
+          else showToast((r && r.message) || 'อัปโหลดไม่สำเร็จ: ' + f.name);
+          next();
+        })
+        .withFailureHandler(function (e) { showToast(e.message); next(); });
+    }).catch(function (e) { showToast(f.name + ': ' + e.message); next(); });
+  };
+  next();
+}
+
+function hrBulSave() {
+  const title = document.getElementById('hrbule-f-title').value.trim();
+  if (!title) { showToast('กรุณาใส่หัวข้อประกาศ'); return; }
+  const exp = document.getElementById('hrbule-f-expire').value.trim();
+  if (exp && !/^\d{2}\/\d{2}\/\d{4}$/.test(exp)) {
+    showToast('กรุณากรอกวันที่ในรูปแบบ วว/ดด/ปปปป'); return;
+  }
+  const btn = document.getElementById('hrbule-save');
+  const done = hrBtnBusy(btn, 'กำลังบันทึก...');
+  gasRun('bulSave', {
+    hrToken: S.hrToken,
+    id: HRBUL.editing,
+    fields: {
+      title: title,
+      body: document.getElementById('hrbule-f-body').value,
+      depts: hrBulChosenDepts(),
+      files: HRBUL.files || [],
+      expireOn: exp,
+    },
+  })
+    .withSuccessHandler(function (r) {
+      done();
+      showToast((r && r.message) || (r && r.success ? 'บันทึกแล้ว' : 'บันทึกไม่สำเร็จ'), r && r.success);
+      if (r && r.success) { BUL.loaded = false; go('hr-bulletin'); hrBulLoad(); }
+      if (r && r.authError) setTimeout(function () { logout(); }, 1500);
+    })
+    .withFailureHandler(function (e) { done(); showToast(e.message); });
+}
+
+function hrBulAction(action, id, msg) {
+  if (!confirm(msg)) return;
+  gasRun(action, { hrToken: S.hrToken, id: id })
+    .withSuccessHandler(function (r) {
+      showToast((r && r.message) || 'ทำรายการแล้ว', r && r.success);
+      if (r && r.success) { BUL.loaded = false; hrBulLoad(); }
+    })
+    .withFailureHandler(function (e) { showToast(e.message); });
 }
 
 // ========== วันหยุด (ใช้ร่วมกันระหว่างหน้าแรกกับหน้าปฏิทิน) ==========
@@ -3579,7 +3993,12 @@ function homeFillGrid(gridId, items) {
     lb.textContent = it.t;
     b.appendChild(wrap);
     b.appendChild(lb);
-    b.addEventListener('click', function() { go(it.p); });
+    // ⚠️ บางหน้าต้องโหลดข้อมูลก่อนแสดง ไม่ใช่แค่สลับหน้า
+    //    ถ้าเรียก go() เฉย ๆ จอจะขึ้นว่า "กำลังโหลด..." ค้างไปตลอด
+    b.addEventListener('click', function() {
+      if (it.p === 'hr-bulletin') { hrBulOpen(); return; }
+      go(it.p);
+    });
     g.appendChild(b);
   });
 }
@@ -6462,6 +6881,43 @@ applyLogo();
   on('hrdash-home', 'click', function() { go('home'); });
   on('hrraw-back', 'click', function() { go('hr-dash'); });
   on('home-hol-more', 'click', function() { go('holiday'); });
+  // ── กระดานประกาศ ──
+  on('home-bul-more', 'click', bulOpenAll);
+  on('bul-back',   'click', function () { go('home'); });
+  on('hrbul-back', 'click', function () { go('hr-dash'); });
+  on('hrbule-back','click', function () { go('hr-bulletin'); });
+  on('hrbul-new',  'click', function () { hrBulEdit(null); });
+  on('hrbul-year', 'change', hrBulLoad);
+  on('hrbul-showdel', 'change', hrBulLoad);
+  on('hrbule-save', 'click', hrBulSave);
+  on('hrbule-f-files', 'change', hrBulPickFiles);
+  on('hrbule-f-expire', 'input', function () { maskDate(this); });
+  on('hrbule-f-expire', 'keydown', allowDateKeys);
+  attachDayPicker('hrbule-f-expire');
+  // ปุ่มในรายการถูกสร้างทีหลัง จึงดักที่กล่องแม่แทนการผูกทีละปุ่ม
+  on('hrbule-depts', 'click', function (e) {
+    const b = e.target.closest('.bul-dept'); if (!b) return;
+    const on = b.dataset.on !== '1';
+    b.dataset.on = on ? '1' : '0';
+    b.style.borderColor = on ? '#e8590c' : 'var(--bd2)';
+    b.style.background  = on ? 'rgba(232,89,12,.12)' : 'var(--sf2)';
+    b.style.color       = on ? '#e8590c' : 'var(--tx2)';
+    b.style.fontWeight  = on ? '600' : '400';
+  });
+  on('hrbule-filelist', 'click', function (e) {
+    const b = e.target.closest('[data-bulrmfile]'); if (!b) return;
+    HRBUL.files.splice(parseInt(b.dataset.bulrmfile, 10), 1);
+    hrBulRenderFiles();
+  });
+  on('hrbul-list', 'click', function (e) {
+    let b = e.target.closest('[data-buledit]');
+    if (b) { hrBulEdit(b.dataset.buledit); return; }
+    b = e.target.closest('[data-buldel]');
+    if (b) { hrBulAction('bulDelete', b.dataset.buldel,
+      'ลบประกาศนี้? (ซ่อนจากพนักงาน แต่กู้คืนได้ภายหลัง)'); return; }
+    b = e.target.closest('[data-bulrestore]');
+    if (b) { hrBulAction('bulRestore', b.dataset.bulrestore, 'กู้คืนประกาศนี้?'); }
+  });
   on('tab-in',   'click', function() { tab('checkin',  document.getElementById('tab-in')); });
   on('tab-out',  'click', function() { tab('checkout', document.getElementById('tab-out')); });
   on('tab-hist', 'click', function() { tab('history',  document.getElementById('tab-hist')); });
@@ -6513,6 +6969,7 @@ applyLogo();
   });
   on('hr-menu-export',    'click', function() { go('hr-export'); });
   on('hr-menu-datamgmt',  'click', function() { go('hr-datamgmt'); });
+  on('hr-menu-bulletin',  'click', hrBulOpen);
   on('hr-menu-broadcast', 'click', function() { go('hr-broadcast'); });
   on('hr-menu-holiday',   'click', function() { go('hr-holiday'); });
   on('hr-menu-face',      'click', function() { go('hr-face'); });
