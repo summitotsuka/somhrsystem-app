@@ -844,6 +844,35 @@ textarea.inp{resize:vertical;min-height:60px}
         <input class="inp" id="hremp-f-role" disabled style="opacity:.6">
         <div style="font-size:10px;color:var(--tx3);margin-top:4px">แก้สิทธิ์ HR ได้ที่ Google Sheet เท่านั้น (เพื่อความปลอดภัย)</div></div>
 
+      <!-- ── พ้นสภาพการเป็นพนักงาน ── -->
+      <!-- ⚠️ พับเก็บไว้เป็นค่าเริ่มต้น เพราะเป็นส่วนที่ใช้นาน ๆ ครั้ง
+           ถ้ากางไว้ตลอดจะกินพื้นที่ฟอร์มที่ใช้ทุกวันโดยเปล่าประโยชน์ -->
+      <details id="hremp-end-box" style="margin-top:10px;border-top:1px solid var(--bd2);padding-top:10px">
+        <summary style="font-size:12px;color:var(--tx2);cursor:pointer;font-weight:500">พ้นสภาพการเป็นพนักงาน</summary>
+        <div style="font-size:11px;color:var(--tx3);margin:8px 0 10px;line-height:1.6">
+          ใส่วันสุดท้ายที่ทำงานแล้ว <b>ระบบจะหยุดนับคนนี้เองตั้งแต่วันถัดไป</b>
+          ไม่ขึ้นว่าขาดงาน ไม่ส่งข้อความเตือน — ไม่ต้องรอใครมากดปิดบัญชี
+        </div>
+        <div class="field"><label>วันสุดท้ายที่ทำงาน</label>
+          <input class="inp" id="hremp-f-enddate" placeholder="วว/ดด/ปปปป (เว้นว่าง = ยังทำงานอยู่)"
+                 inputmode="numeric" maxlength="10"></div>
+        <div class="field"><label>ประเภท</label>
+          <select class="inp" id="hremp-f-endreason">
+            <option value="">— ไม่ระบุ —</option>
+            <option value="RESIGN">ลาออกเอง</option>
+            <option value="CONTRACT_END">ครบสัญญา</option>
+            <option value="TERMINATED">เลิกจ้าง</option>
+            <option value="RETIRE">เกษียณ</option>
+            <option value="OTHER">อื่น ๆ</option>
+          </select></div>
+        <div class="field"><label>บันทึกเพิ่มเติม</label>
+          <textarea class="inp" id="hremp-f-endnote" rows="2"
+                    placeholder="เว้นว่างได้"></textarea>
+          <div style="font-size:10px;color:#e8590c;margin-top:4px">
+            ⚠️ ข้อมูลส่วนนี้ฝ่ายบุคคลเห็นเท่านั้น ไม่แสดงบนหน้าจอพนักงาน และไม่ติดไปในรายงาน
+          </div></div>
+      </details>
+
       <button class="btn p" id="hremp-save" style="margin-top:6px">บันทึกข้อมูล</button>
     </div>
 
@@ -2240,7 +2269,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.35.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.36.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5053,6 +5082,13 @@ function fillEmployeeForm(emp, mode) {
   document.getElementById('hremp-f-approverl2').value = emp.approverL2 || '';
   document.getElementById('hremp-f-telegramid').value = emp.telegramId || '';
   document.getElementById('hremp-f-role').value       = emp.role || 'EMPLOYEE';
+  // ── พ้นสภาพ ──
+  document.getElementById('hremp-f-enddate').value    = emp.endDate ? thaiDateDisplay(emp.endDate) : '';
+  document.getElementById('hremp-f-endreason').value  = emp.endReason || '';
+  document.getElementById('hremp-f-endnote').value    = emp.endNote || '';
+  // กางส่วนพ้นสภาพให้เองถ้ามีข้อมูลอยู่แล้ว — ไม่งั้นฝ่ายบุคคลจะไม่เห็นว่ามีคนนี้ลาออกแล้ว
+  { const eb = document.getElementById('hremp-end-box');
+    if (eb) eb.open = !!(emp.endDate || emp.endReason || emp.endNote); }
 
   // toggle status button label
   if (mode === 'edit') {
@@ -5082,6 +5118,11 @@ function hrCollectFields() {
     approverL1: document.getElementById('hremp-f-approverl1').value.trim(),
     approverL2: document.getElementById('hremp-f-approverl2').value.trim(),
     telegramId: document.getElementById('hremp-f-telegramid').value.trim(),
+    // ⚠️ ส่งทั้งสามช่องเสมอแม้ค่าว่าง เพื่อให้ "ล้างค่า" ทำงานได้
+    //    (ฝ่ายบุคคลคีย์วันลาออกผิดแล้วต้องลบออกได้)
+    endDate:    document.getElementById('hremp-f-enddate').value.trim(),
+    endReason:  document.getElementById('hremp-f-endreason').value,
+    endNote:    document.getElementById('hremp-f-endnote').value.trim(),
   };
 }
 
@@ -6328,6 +6369,9 @@ applyLogo();
   on('hremp-search', 'keydown', function(e) { if (e.key === 'Enter') hrSearchEmployee(); });
   on('hremp-f-empid', 'input', function() { this.value = this.value.toUpperCase(); });
   on('hremp-f-startdate', 'input', function() { maskDate(this); });
+  on('hremp-f-enddate', 'input', function() { maskDate(this); });
+  on('hremp-f-enddate', 'keydown', allowDateKeys);
+  attachDayPicker('hremp-f-enddate');
   on('hremp-f-startdate', 'keydown', function(e) { allowDateKeys(e); });
   on('hremp-save', 'click', hrSaveEmployee);
   on('hremp-add-new', 'click', hrAddNewEmployee);
