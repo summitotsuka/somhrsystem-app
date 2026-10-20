@@ -844,42 +844,23 @@ textarea.inp{resize:vertical;min-height:60px}
         <input class="inp" id="hremp-f-role" disabled style="opacity:.6">
         <div style="font-size:10px;color:var(--tx3);margin-top:4px">แก้สิทธิ์ HR ได้ที่ Google Sheet เท่านั้น (เพื่อความปลอดภัย)</div></div>
 
-      <!-- ── พ้นสภาพการเป็นพนักงาน ── -->
-      <!-- ⚠️ พับเก็บไว้เป็นค่าเริ่มต้น เพราะใช้นาน ๆ ครั้ง
-           แต่หัวข้อต้อง "เห็นชัดว่ากดได้" — ครั้งแรกทำเป็นตัวเทาเล็ก ๆ
-           กลมกลืนไปกับฟอร์ม จนฝ่ายบุคคลหาไม่เจอ แล้วไปหาที่การ์ดจัดการบัญชีแทน
-           ซึ่งเป็นที่ที่ควรหาจริง เพราะปุ่ม "ปิดบัญชี (ลาออก)" อยู่ตรงนั้น -->
-      <details id="hremp-end-box" style="margin-top:14px;border:1px solid var(--bd2);border-radius:10px;background:var(--sf2);overflow:hidden">
-        <summary style="font-size:13px;color:#e8590c;cursor:pointer;font-weight:600;padding:12px 14px;list-style:none;display:flex;align-items:center;gap:8px">
+      <!-- ── สรุปการพ้นสภาพ — อ่านอย่างเดียว ── -->
+      <!-- ⚠️ เดิมตรงนี้เป็นฟอร์มให้กรอกได้ ซึ่งซ้ำกับหน้าต่างที่เปิดจากปุ่ม
+           "ปิดบัญชี (ลาออก)" — สองทางทำเรื่องเดียวกันทำให้ฝ่ายบุคคลสับสน
+           และอันตรายด้วย เพราะปุ่ม "บันทึกข้อมูล" จะส่งสามช่องนั้นไปทุกครั้ง
+           ถ้าวันหลังแก้ฟอร์มแล้วลืมจุดใดจุดหนึ่ง การแก้เบอร์โทรเฉย ๆ
+           อาจไปล้างวันลาออกทิ้งได้ — ตอนนี้เหลือทางเดียวคือหน้าต่างนั้น -->
+      <div id="hremp-end-summary" style="display:none;margin-top:14px;border:1px solid rgba(232,89,12,.3);
+           border-radius:10px;background:rgba(232,89,12,.06);padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <span style="font-size:15px">📋</span>
-          <span style="flex:1">พ้นสภาพการเป็นพนักงาน</span>
-          <span style="font-size:11px;color:var(--tx3);font-weight:400">แตะเพื่อกรอก ▾</span>
-        </summary>
-        <div style="padding:0 14px 14px">
-        <div style="font-size:11px;color:var(--tx3);margin:8px 0 10px;line-height:1.6">
-          ใส่วันสุดท้ายที่ทำงานแล้ว <b>ระบบจะหยุดนับคนนี้เองตั้งแต่วันถัดไป</b>
-          ไม่ขึ้นว่าขาดงาน ไม่ส่งข้อความเตือน — ไม่ต้องรอใครมากดปิดบัญชี
+          <span style="font-size:13px;font-weight:600;color:#e8590c;flex:1">พ้นสภาพการเป็นพนักงาน</span>
+          <button type="button" id="hremp-end-edit"
+                  style="background:none;border:none;padding:0;font:inherit;font-size:12px;
+                         color:#e8590c;font-weight:600;cursor:pointer;text-decoration:underline">แก้ไข</button>
         </div>
-        <div class="field"><label>วันสุดท้ายที่ทำงาน</label>
-          <input class="inp" id="hremp-f-enddate" placeholder="วว/ดด/ปปปป (เว้นว่าง = ยังทำงานอยู่)"
-                 inputmode="numeric" maxlength="10"></div>
-        <div class="field"><label>ประเภท</label>
-          <select class="inp" id="hremp-f-endreason">
-            <option value="">— ไม่ระบุ —</option>
-            <option value="RESIGN">ลาออกเอง</option>
-            <option value="CONTRACT_END">ครบสัญญา</option>
-            <option value="TERMINATED">เลิกจ้าง</option>
-            <option value="RETIRE">เกษียณ</option>
-            <option value="OTHER">อื่น ๆ</option>
-          </select></div>
-        <div class="field"><label>บันทึกเพิ่มเติม</label>
-          <textarea class="inp" id="hremp-f-endnote" rows="2"
-                    placeholder="เว้นว่างได้"></textarea>
-          <div style="font-size:10px;color:#e8590c;margin-top:4px">
-            ⚠️ ข้อมูลส่วนนี้ฝ่ายบุคคลเห็นเท่านั้น ไม่แสดงบนหน้าจอพนักงาน และไม่ติดไปในรายงาน
-          </div></div>
-        </div>
-      </details>
+        <div id="hremp-end-summary-text" style="font-size:12px;color:var(--tx2);line-height:1.7"></div>
+      </div>
 
       <button class="btn p" id="hremp-save" style="margin-top:6px">บันทึกข้อมูล</button>
     </div>
@@ -904,12 +885,8 @@ textarea.inp{resize:vertical;min-height:60px}
              ชี้ทางไว้ ดีกว่าปล่อยให้หาไม่เจอแล้วไปแก้ในตารางฐานข้อมูลเอง -->
         <div style="font-size:11px;color:var(--tx3);margin-top:2px;line-height:1.6;
                     border-top:1px dashed var(--bd2);padding-top:9px">
-          ปุ่มปิดบัญชีคือ <b>ตัดสิทธิ์ล็อกอินทันที</b><br>
-          ถ้าต้องการระบุ <b>วันที่ลาออกและสาเหตุ</b> อยู่ที่หัวข้อ
-          <button type="button" id="hremp-goto-end"
-                  style="background:none;border:none;padding:0;font:inherit;color:#e8590c;
-                         font-weight:600;cursor:pointer;text-decoration:underline">📋 พ้นสภาพการเป็นพนักงาน</button>
-          ในการ์ดข้อมูลพนักงานด้านบน
+          กด <b>ปิดบัญชี (ลาออก)</b> แล้วระบบจะให้กรอกวันสุดท้ายที่ทำงานและสาเหตุ —
+          ทำที่เดียวจบ ไม่ต้องไปกรอกที่อื่นอีก
         </div>
       </div>
     </div>
@@ -2344,7 +2321,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.38.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.39.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5158,12 +5135,15 @@ function fillEmployeeForm(emp, mode) {
   document.getElementById('hremp-f-telegramid').value = emp.telegramId || '';
   document.getElementById('hremp-f-role').value       = emp.role || 'EMPLOYEE';
   // ── พ้นสภาพ ──
-  document.getElementById('hremp-f-enddate').value    = emp.endDate ? thaiDateDisplay(emp.endDate) : '';
-  document.getElementById('hremp-f-endreason').value  = emp.endReason || '';
-  document.getElementById('hremp-f-endnote').value    = emp.endNote || '';
-  // กางส่วนพ้นสภาพให้เองถ้ามีข้อมูลอยู่แล้ว — ไม่งั้นฝ่ายบุคคลจะไม่เห็นว่ามีคนนี้ลาออกแล้ว
-  { const eb = document.getElementById('hremp-end-box');
-    if (eb) eb.open = !!(emp.endDate || emp.endReason || emp.endNote); }
+  // ⚠️ เก็บไว้ในตัวแปร ไม่ฝากไว้ในช่องฟอร์ม
+  //    เพราะถ้าอยู่ในฟอร์ม ปุ่ม "บันทึกข้อมูล" จะส่งค่าพวกนี้กลับไปทุกครั้ง
+  //    ซึ่งเป็นช่องให้เผลอล้างข้อมูลลาออกโดยไม่ตั้งใจ
+  hremp_end = {
+    date:   emp.endDate ? thaiDateDisplay(emp.endDate) : '',
+    reason: emp.endReason || '',
+    note:   emp.endNote || '',
+  };
+  hrRenderEndSummary();
 
   // toggle status button label
   if (mode === 'edit') {
@@ -5202,11 +5182,9 @@ function hrCollectFields() {
     approverL1: document.getElementById('hremp-f-approverl1').value.trim(),
     approverL2: document.getElementById('hremp-f-approverl2').value.trim(),
     telegramId: document.getElementById('hremp-f-telegramid').value.trim(),
-    // ⚠️ ส่งทั้งสามช่องเสมอแม้ค่าว่าง เพื่อให้ "ล้างค่า" ทำงานได้
-    //    (ฝ่ายบุคคลคีย์วันลาออกผิดแล้วต้องลบออกได้)
-    endDate:    document.getElementById('hremp-f-enddate').value.trim(),
-    endReason:  document.getElementById('hremp-f-endreason').value,
-    endNote:    document.getElementById('hremp-f-endnote').value.trim(),
+    // ⚠️ ไม่ส่ง endDate/endReason/endNote ตรงนี้โดยเจตนา
+    //    ข้อมูลพ้นสภาพแก้ได้ทางเดียวคือหน้าต่างที่เปิดจากปุ่ม "ปิดบัญชี (ลาออก)"
+    //    ถ้าส่งมาด้วย ปุ่ม "บันทึกข้อมูล" จะทับข้อมูลลาออกทุกครั้งที่กด
   };
 }
 
@@ -5275,6 +5253,34 @@ function hrSearchEmployeeById(id) {
   hrSearchEmployee();
 }
 
+// ── ข้อมูลพ้นสภาพของคนที่กำลังเปิดดูอยู่ ──
+// ⚠️ ไม่เก็บในช่องฟอร์ม เพราะปุ่ม "บันทึกข้อมูล" จะกวาดทุกช่องส่งไปด้วย
+var hremp_end = { date: '', reason: '', note: '' };
+
+// ── คำไทยของประเภทการพ้นสภาพ — ต้นฉบับอยู่ที่ <select> ในหน้าต่าง ──
+// ⚠️ อ่านจาก <option> จริง ไม่พิมพ์คำไทยซ้ำที่สอง
+//    (แก้คำในที่เดียวแล้วทุกที่เปลี่ยนตาม)
+function hrEndReasonLabel(code) {
+  if (!code) return '';
+  const o = document.querySelector('#hremp-end-reason option[value="' + code + '"]');
+  return o ? o.textContent.trim() : code;
+}
+
+// ── วาดบรรทัดสรุป (โผล่เฉพาะตอนมีข้อมูล) ──
+function hrRenderEndSummary() {
+  const box = document.getElementById('hremp-end-summary');
+  if (!box) return;
+  const e = hremp_end;
+  const has = !!(e.date || e.reason || e.note);
+  box.style.display = has ? 'block' : 'none';
+  if (!has) return;
+  const bits = [];
+  if (e.date)   bits.push('<b>วันสุดท้ายที่ทำงาน</b> ' + esc(e.date));
+  if (e.reason) bits.push('<b>ประเภท</b> ' + esc(hrEndReasonLabel(e.reason)));
+  if (e.note)   bits.push('<b>บันทึก</b> ' + esc(e.note));
+  document.getElementById('hremp-end-summary-text').innerHTML = bits.join('<br>');
+}
+
 // ── วันนี้ในรูปแบบ วว/ดด/ปปปป ──
 function hrTodayThai() {
   const d = new Date();
@@ -5322,10 +5328,9 @@ function hrEndSyncClose() {
 
 // ── เปิดหน้าต่างพ้นสภาพ (เติมของเดิมถ้าเคยบันทึกไว้แล้ว) ──
 function hrOpenEndDialog() {
-  const d = document.getElementById('hremp-f-enddate').value.trim();
-  document.getElementById('hremp-end-date').value   = d || hrTodayThai();
-  document.getElementById('hremp-end-reason').value = document.getElementById('hremp-f-endreason').value || '';
-  document.getElementById('hremp-end-note').value   = document.getElementById('hremp-f-endnote').value || '';
+  document.getElementById('hremp-end-date').value   = hremp_end.date || hrTodayThai();
+  document.getElementById('hremp-end-reason').value = hremp_end.reason || '';
+  document.getElementById('hremp-end-note').value   = hremp_end.note || '';
   document.getElementById('hremp-end-close').dataset.touched = '0';
   document.getElementById('hremp-end-who').textContent =
     document.getElementById('hremp-empid-locked').value + ' · ' +
@@ -5379,7 +5384,7 @@ function hrToggleStatus() {
   // ── เปิดบัญชีอีกครั้ง ──
   // ⚠️ ถ้าวันลาออกยังค้างอยู่ ระบบจะหยุดนับเขาต่อไปเรื่อย ๆ ทั้งที่กลับมาทำงานแล้ว
   //    (ไม่ขึ้นในแดชบอร์ด ไม่โดนเตือนเวลาไม่สแกน) จึงต้องถามให้ล้างด้วย
-  const hadEnd = !!document.getElementById('hremp-f-enddate').value.trim();
+  const hadEnd = !!hremp_end.date;
   if (!confirm('เปิดบัญชีพนักงานคนนี้อีกครั้ง?')) return;
   const fields = { status: newStatus };
   if (hadEnd) {
@@ -6558,7 +6563,6 @@ applyLogo();
   on('hremp-search', 'keydown', function(e) { if (e.key === 'Enter') hrSearchEmployee(); });
   on('hremp-f-empid', 'input', function() { this.value = this.value.toUpperCase(); });
   on('hremp-f-startdate', 'input', function() { maskDate(this); });
-  on('hremp-f-enddate', 'input', function() { maskDate(this); });
   // ── หน้าต่างพ้นสภาพ ──
   on('hremp-end-date', 'input', function () { maskDate(this); hrEndSyncClose(); });
   on('hremp-end-date', 'keydown', allowDateKeys);
@@ -6574,20 +6578,10 @@ applyLogo();
     cb.checked = false; cb.dataset.touched = '1';
     document.getElementById('hremp-end-closehint').textContent = 'ปิดบัญชีไปแล้ว ไม่ต้องปิดซ้ำ';
   });
+  on('hremp-end-edit', 'click', hrOpenEndDialog);
   on('hremp-end-cancel', 'click', hrCloseEndDialog);
   on('hremp-end-save', 'click', hrSaveEndDialog);
   on('hremp-end-overlay', 'click', function (e) { if (e.target === this) hrCloseEndDialog(); });
-  // กดลิงก์ในการ์ดจัดการบัญชี → กางหัวข้อพ้นสภาพแล้วเลื่อนจอไปหา
-  on('hremp-goto-end', 'click', function () {
-    const box = document.getElementById('hremp-end-box');
-    if (!box) return;
-    box.open = true;
-    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const f = document.getElementById('hremp-f-enddate');
-    if (f) setTimeout(function () { f.focus(); }, 350);
-  });
-  on('hremp-f-enddate', 'keydown', allowDateKeys);
-  attachDayPicker('hremp-f-enddate');
   on('hremp-f-startdate', 'keydown', function(e) { allowDateKeys(e); });
   on('hremp-save', 'click', hrSaveEmployee);
   on('hremp-add-new', 'click', hrAddNewEmployee);
