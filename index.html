@@ -2433,7 +2433,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.42.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.43.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3101,14 +3101,9 @@ function attachDayPicker(id) {
 
   btn.addEventListener('click', function() {
     // เปิดปฏิทินค้างที่วันที่ที่พิมพ์ไว้แล้ว (ถ้ามี) ไม่งั้นเปิดที่วันนี้
-    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(el.value || '').trim());
-    if (m) {
-      // รองรับ พ.ศ. ด้วย — ฝั่ง GAS ก็แปลงให้อยู่แล้ว ที่นี่แปลงเพื่อเปิดปฏิทินให้ถูกปี
-      const y = +m[3] > 2400 ? +m[3] - 543 : +m[3];
-      nat.value = y + '-' + m[2] + '-' + m[1];
-    } else {
-      nat.value = '';
-    }
+    // ⚠️ ใช้ thaiDateToISO ตัวเดียวกับตอนส่งข้อมูล ไม่เขียนการแปลงซ้ำที่นี่
+    //    (เดิมเขียนซ้ำไว้ตรงนี้ พอแก้ที่เดียวอีกที่ไม่ตาม)
+    nat.value = thaiDateToISO(el.value);
     try {
       if (typeof nat.showPicker === 'function') { nat.showPicker(); return; }
     } catch (err) { /* บางเบราว์เซอร์ห้ามเรียกนอก user gesture — ตกไปทางสำรอง */ }
@@ -3741,7 +3736,15 @@ function hrBulSave() {
   const title = document.getElementById('hrbule-f-title').value.trim();
   if (!title) { showToast('กรุณาใส่หัวข้อประกาศ'); return; }
   const exp = document.getElementById('hrbule-f-expire').value.trim();
-  if (exp && !/^\d{2}\/\d{2}\/\d{4}$/.test(exp)) {
+  // ⚠️ ต้องแปลงเป็น yyyy-MM-dd ก่อนส่ง เพราะยิงตรงเข้าฐานข้อมูลแล้ว
+  //    เดิมส่ง วว/ดด/ปปปป ดิบ ๆ ไปให้ GAS แปลงให้ระหว่างทาง
+  //    พอข้าม GAS ฐานข้อมูลอ่านวันที่ไม่ออก แล้วบันทึกไม่ลงโดยไม่มีใครรู้
+  //
+  // ⚠️ ด่านตรวจรูปแบบอยู่ที่นี่ที่เดียว — thaiDateToISO คืนค่าว่างถ้าอ่านไม่ออก
+  //    เดิมมีด่าน regex ซ้ำอยู่บรรทัดบน ซึ่งทำให้ด่านนี้ไม่มีวันทำงาน
+  //    (ด่านพิสูจน์จับได้: ลบด่านนี้ทิ้งแล้วพฤติกรรมไม่เปลี่ยน = โค้ดตาย)
+  const expISO = thaiDateToISO(exp);
+  if (exp && !expISO) {
     showToast('กรุณากรอกวันที่ในรูปแบบ วว/ดด/ปปปป'); return;
   }
   const btn = document.getElementById('hrbule-save');
@@ -3754,7 +3757,7 @@ function hrBulSave() {
       body: document.getElementById('hrbule-f-body').value,
       depts: hrBulChosenDepts(),
       files: HRBUL.files || [],
-      expireOn: exp,
+      expireOn: expISO,
     },
   })
     .withSuccessHandler(function (r) {
@@ -5628,6 +5631,27 @@ function thaiDateDisplay(isoDate) {
   if (!isoDate || isoDate.indexOf('-') === -1) return isoDate || '';
   const [y, m, d] = isoDate.split('-');
   return `${d}/${m}/${y}`;
+}
+
+/**
+ * แปลงกลับ dd/MM/yyyy → yyyy-MM-dd  (ตรงข้ามกับ thaiDateDisplay)
+ * รองรับปี พ.ศ. ด้วย เพราะช่องกรอกเขียนว่า วว/ดด/ปปปป คนพิมพ์ 2569 ได้
+ *
+ * ⚠️ ทำไมต้องมี — ฐานข้อมูลรับเฉพาะ yyyy-MM-dd
+ *    เดิม GAS แปลงให้ด้วย normalizeDate_ ระหว่างทาง
+ *    พอย้ายมายิง Supabase ตรง ตัวแปลงหายไปด้วย แล้วบันทึกไม่ลงเงียบ ๆ
+ *    (เจอจริงหลังย้ายล็อตสอง — ฝ่ายบุคคลกดบันทึกแล้วไม่มีอะไรเข้าตาราง)
+ *
+ * ⚠️ ที่นี่คือที่เดียวที่แปลงรูปวันที่ของหน้าจอเป็นรูปของฐานข้อมูล
+ *    ห้ามเขียนซ้ำที่อื่น — ตัวเปิดปฏิทินก็เรียกตัวนี้
+ *
+ * คืนค่าว่างถ้ารูปแบบไม่ถูก ให้ปลายทางเป็นคนบอกว่าผิดตรงไหน
+ */
+function thaiDateToISO(s) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim());
+  if (!m) return '';
+  const y = +m[3] > 2400 ? +m[3] - 543 : +m[3];   // 2569 (พ.ศ.) → 2026 (ค.ศ.)
+  return y + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
 }
 
 function hrCollectFields() {
