@@ -2043,6 +2043,22 @@ const SB = {
               //    ข้างในฐานข้อมูลจากรหัสในตั๋ว ไม่มีช่องรับชื่อแผนกเลย
               //    (ทางเดิม bulList รับแผนกเป็นค่าตรง ๆ จึงต้องพึ่ง GAS กรอกให้ถูก)
               bulMine: 1,
+              // ── ล็อตสอง: จอจัดการประกาศของฝ่ายบุคคล ──
+              //
+              // bulHrPage รวมสามอย่างไว้ในรอบเดียว (รายการ + ปี + รายชื่อแผนก)
+              // เดิมถาม 3 รอบผ่าน GAS รวม 4.4-5.2 วินาที และเคยหลุด TIMEOUT 45.8
+              //
+              // ⚠️ ด่าน "เป็นฝ่ายบุคคลจริงไหม" ย้ายไปอยู่ที่ Edge Function
+              //    (is_hr อ่านจากคอลัมน์ role ในฐานข้อมูล) ไม่ใช่ที่หน้าเว็บ
+              //    รูปแบบเดียวกับที่หน้าวันหยุดใช้มาตั้งแต่เฟส 5P
+              //
+              // ⚠️ bulSave/bulDelete/bulRestore เป็นคำสั่งเขียน — ทางตรงปลอดภัยกว่า
+              //    เพราะ sbCall ไม่ยิงซ้ำเอง ส่วนทาง GAS ยิงซ้ำได้เมื่อคำตอบหาย
+              //    ซึ่งเคยเป็นต้นเหตุของรายการซ้ำในเมนูอื่นมาแล้ว
+              //
+              // ⚠️ bulUploadFile ไม่อยู่ในรายการนี้และจะไม่มีวันอยู่
+              //    มีแต่ GAS ที่เขียน Google Drive ได้
+              bulHrPage: 1, bulSave: 1, bulDelete: 1, bulRestore: 1,
               // ── เฟส 5X ── สถานะเช็คอินตอนเปิดแอปซ้ำ (restoreSession)
               //
               // เลื่อนไว้ตั้งแต่เฟส 5S เพราะ att_active_session เพิ่งซ่อมเสร็จ
@@ -2417,7 +2433,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.41.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.42.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3530,7 +3546,11 @@ function hrBulLoad() {
   const year = sel && sel.value ? parseInt(sel.value, 10) : null;
   document.getElementById('hrbul-loading').style.display = '';
   document.getElementById('hrbul-list').innerHTML = '';
-  gasRun('bulListHr', {
+  // ⚠️ ยิง 'bulHrPage' ไม่ใช่ 'bulListHr' — ตัวใหม่ได้ครบทั้งสามอย่าง
+  //    (รายการ + ปี + รายชื่อแผนก) ในรอบเดียว และวิ่งตรงไป Supabase
+  //    ถ้า Supabase ล่ม _callAPI ถอยไป GAS ด้วยชื่อเดิมให้เอง
+  //    ซึ่ง Code.gs ลงทะเบียน bulHrPage ชี้ไปที่ bulListHr ไว้แล้ว
+  gasRun('bulHrPage', {
     hrToken: S.hrToken, year: year,
     withDeleted: document.getElementById('hrbul-showdel').checked,
   })
@@ -3581,12 +3601,16 @@ function hrBulRender() {
     if (files.length) h += '<br>📎 ไฟล์แนบ ' + files.length + ' ไฟล์';
     h += '<br>โพสต์ ' + esc(b.createdAt || '') + ' โดย ' + esc(b.createdBy || '-');
     h += '</div>';
-    h += '<div style="display:flex;gap:7px;margin-top:11px">';
+    // ⚠️ ห้ามใส่ flex:1 ให้ปุ่มพวกนี้ — เดิมใส่ไว้ ปุ่มจึงยืดเต็มความกว้างการ์ด
+    //    ปุ่ม "ลบ" ตัวเบ้อเริ่มเป็นสิ่งที่กดพลาดง่ายที่สุดบนมือถือ
+    //    .btn.sm เป็น width:auto อยู่แล้ว ปล่อยให้พอดีตัวหนังสือ
+    //    แล้วดันไปชิดขวาแบบเดียวกับปุ่มลบในหน้าจัดการวันหยุด
+    h += '<div style="display:flex;gap:7px;margin-top:11px;justify-content:flex-end">';
     if (b.deleted) {
-      h += '<button class="btn o sm" data-bulrestore="' + b.id + '" style="flex:1">กู้คืน</button>';
+      h += '<button class="btn o sm" data-bulrestore="' + b.id + '">กู้คืน</button>';
     } else {
-      h += '<button class="btn o sm" data-buledit="' + b.id + '" style="flex:1">แก้ไข</button>';
-      h += '<button class="btn o sm" data-buldel="' + b.id + '" style="flex:1;color:var(--er);border-color:var(--er)">ลบ</button>';
+      h += '<button class="btn o sm" data-buledit="' + b.id + '">แก้ไข</button>';
+      h += '<button class="btn o sm" data-buldel="' + b.id + '" style="color:var(--er);border-color:var(--er)">ลบ</button>';
     }
     h += '</div></div>';
     return h;
