@@ -833,7 +833,10 @@ textarea.inp{resize:vertical;min-height:60px}
 
   <div style="margin-bottom:14px">
     <div style="font-size:17px;font-weight:600">ภาพรวมประจำวัน</div>
-    <div style="font-size:12px;color:var(--tx3);margin-top:2px" id="hrdash-datelabel">—</div>
+    <!-- ⚠️ ป้ายวันที่ต้องอ่านง่าย — หน้านี้ไม่ได้แสดง "วันนี้" ตามนาฬิกาเสมอไป
+         วันทำงานเปลี่ยนตอน 06:00 ถ้าป้ายจางจนมองข้าม จะเข้าใจผิดว่ากำลังดูวันนี้ -->
+    <div style="font-size:15px;font-weight:600;color:var(--tx);margin-top:4px"
+         id="hrdash-datelabel">—</div>
   </div>
 
   <!-- การ์ดสรุป 4 ตัว (คลิกเพื่อกรองรายชื่อ) -->
@@ -4055,11 +4058,18 @@ let hrDashFilter = 'present'; // การ์ดที่เลือกอย�
 function loadHrDashboard() {
   document.getElementById('hrdash-loading').style.display = 'block';
   document.getElementById('hrdash-list').innerHTML = '';
-  // วันปัจจุบันเสมอ (ไม่ต้องเลือกวัน)
-  const today = new Date().toISOString().slice(0, 10);
+  // ⚠️ ไม่ส่งวันที่ไป — ให้หลังบ้านตัดสินตามกติกา "วันทำงาน" (dashWorkDate_)
+  //
+  //    เดิมบรรทัดนี้คำนวณเองด้วย new Date().toISOString() ซึ่งเป็น "เวลาสากล"
+  //    ไทยเร็วกว่า 7 ชั่วโมง วันจึงเปลี่ยนตอน 07:00 โดยไม่มีใครตั้งใจ
+  //    และกลายเป็นว่าหน้าเว็บกับหลังบ้านคิดเรื่อง "วันนี้" ไม่ตรงกัน
+  //
+  //    ตอนนี้กติกาอยู่ที่หลังบ้านที่เดียว ปรับเลขได้ด้วย ตั้งเวลาเริ่มวันทำงาน()
+  //    โดยไม่ต้องแก้ไฟล์นี้และไม่ต้อง deploy ใหม่
+  //
   // ใช้ callAPI ตรง ๆ พร้อม timeout ยาว 60 วิ (dashboard บางครั้งใช้ >15 วิ ตามข้อมูลที่โต)
   // ไม่ retry (คิวรี read อย่างเดียว ปลอดภัย) กันการค้างหมุนจาก timeout 15 วิ เดิม
-  callAPI('hrGetDashboard', { hrToken: S.hrToken, date: today }, 1, true, 60000)
+  callAPI('hrGetDashboard', { hrToken: S.hrToken }, 1, true, 60000)
     .then(r => renderHrDashboard(r))
     .catch(e => {
       document.getElementById('hrdash-loading').style.display = 'none';
@@ -4081,7 +4091,11 @@ function renderHrDashboard(r) {
   if (dlabel && r.date) {
     const [y, m, d] = r.date.split('-');
     const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-    dlabel.textContent = `${parseInt(d)} ${thMonths[parseInt(m)-1]} ${parseInt(y)+543}`;
+    // ⚠️ บอกให้ชัดว่านี่คือ "วันทำงาน" ไม่ใช่วันตามนาฬิกาเสมอไป
+    //    ระหว่างเที่ยงคืนถึง 06:00 หน้านี้ยังแสดงวันก่อนหน้าอยู่
+    //    ถ้าไม่บอก ฝ่ายบุคคลที่เปิดดูตี 3 จะนึกว่ากำลังดูวันนี้
+    dlabel.textContent =
+      `วันทำงาน ${parseInt(d)} ${thMonths[parseInt(m)-1]} ${parseInt(y)+543}`;
   }
 
   // อัปเดตตัวเลขการ์ด
@@ -6596,7 +6610,21 @@ function startWT(inStr, inDate) {
     document.getElementById('work-prog').style.width = Math.min(100, Math.round((d / (8 * 3600)) * 100)) + '%';
   }, 1000);
 }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+/**
+ * วันที่ "ตามเวลาไทย" สำหรับนาฬิกาจับเวลาทำงาน
+ *
+ * ⚠️ เดิมใช้ toISOString() ซึ่งเป็นเวลาสากล ช้ากว่าไทย 7 ชั่วโมง
+ *    ถ้าพนักงานเปิดแอประหว่างเที่ยงคืนถึง 07:00 แล้วไม่มีวันเช็คอินส่งมา
+ *    มันจะไปหยิบ "เมื่อวาน" มาเป็นจุดเริ่ม แล้วนาฬิกาโชว์เกินจริงไป 24 ชั่วโมง
+ *
+ * ⚠️ ตัวนี้ต้องเป็นวันที่ปฏิทินไทยปกติ — คนละเรื่องกับกติกา "วันทำงาน"
+ *    ของหน้าภาพรวมฝ่ายบุคคล อย่าเอามารวมกัน
+ */
+function todayStr() {
+  const t = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate());
+}
 
 // ========== CHECK-IN / CHECK-OUT (no selfie required) ==========
 function doCheckin() {
