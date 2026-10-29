@@ -478,6 +478,9 @@ textarea.inp{resize:vertical;min-height:60px}
     <div class="home-hero-name" id="home-name">—</div>
     <div class="home-hero-sub" id="home-sub">—</div>
     <div class="home-hero-date" id="home-date">—</div>
+    <!-- ⚠️ ป้ายรุ่นโค้ดหลังบ้าน — ทุกสิทธิ์เห็นได้ตั้งแต่หน้าแรก
+         ผู้บริหารที่เข้าหน้ารายงานไม่ได้ ก็ยังตรวจได้ว่าโค้ดขึ้นหรือยัง -->
+    <div id="home-codever" style="font-size:10px;opacity:.55;margin-top:3px"></div>
   </div>
 
   <!-- เตือนเมื่อสะพานคัดลอกข้อมูลหยุดเดิน — ซ่อนไว้ ขึ้นเฉพาะตอนมีปัญหาจริง
@@ -2984,6 +2987,7 @@ function saveSession(loginResult) {
       name:    loginResult.name,
       role:    loginResult.role || 'EMPLOYEE',
       isApprover: !!loginResult.isApprover,
+      codeVersion: loginResult.codeVersion || '',   // ป้ายรุ่นหลังบ้าน ณ ตอนล็อกอิน
       shift:   loginResult.shift || 'A',
       shiftLabel: loginResult.shiftLabel || '',
       hrToken: loginResult.hrToken || null,
@@ -3005,6 +3009,7 @@ function restoreSession() {
   // กู้ state — แต่ยังไม่แสดง strip/เมนู จนกว่าจะรู้หน้าจริง (กันแวบ strip บนหน้า splash)
   S.empId = sess.empId; S.name = sess.name; S.role = sess.role;
   S.isApprover = !!sess.isApprover;
+  S.codeVersion = sess.codeVersion || '';
   S.shift = sess.shift; S.skipGps = (sess.shift === 'DRIVER');
   S.hrToken = sess.hrToken;
 
@@ -3397,6 +3402,16 @@ function renderHomeMenu() {
       thM[d.getMonth()] + ' ' + (d.getFullYear() + 543);
   }
 
+  // ป้ายรุ่นโค้ดหลังบ้าน
+  // ⚠️ หลังบ้านรุ่นเก่าไม่ส่ง codeVersion มา — ต้องขึ้นคำเตือน ไม่ใช่ปล่อยว่าง
+  //    ช่องว่างแปลได้สองทาง (ยังไม่ขึ้น / ขึ้นแล้วแต่ไม่โชว์) ซึ่งไม่ช่วยอะไร
+  //    ⚠️ ค่านี้มาจากตอนล็อกอิน ถ้าเพิ่ง Deploy ต้องออกจากระบบแล้วเข้าใหม่
+  if (el('home-codever')) {
+    el('home-codever').textContent = S.codeVersion
+      ? ('หลังบ้านรุ่น ' + S.codeVersion)
+      : '⚠️ หลังบ้านยังเป็นรุ่นเก่า — ออกจากระบบแล้วเข้าใหม่อีกครั้ง';
+  }
+
   // วันหยุดเดือนนี้ — วาดจากที่จำไว้ทันที (ถ้ามี) แล้วเช็คของใหม่เบื้องหลัง
   holLoad(renderHomeHolidays);
 
@@ -3424,9 +3439,15 @@ function renderHomeMenu() {
   // ⚠️ ผู้บริหารไม่ต้องเช็คเวลา ไม่ต้องขอลา ไม่ต้องขอโอที → ไม่สร้างปุ่มเลย
   //    เคยทำเป็น "สร้างแล้วซ่อน" — ปุ่มยังอยู่ในหน้า แค่มองไม่เห็น
   //    ไม่สร้างเลยสะอาดกว่า และไม่ต้องมานั่งเดาว่าอะไรซ่อนอยู่บ้าง
+  //
+  //    ⚠️ ยกเว้นสลิปเงินเดือน — เป็นของส่วนตัวของผู้บริหารเอง ไม่ใช่งานบริหาร
+  //       (ปฏิทินวันหยุดไม่ต้องมี เพราะการ์ดวันหยุดหน้าแรกมีลิงก์ดูทั้งหมดอยู่แล้ว)
   const meSec = el('home-sec-me');
   if (isExec) {
-    if (meSec) meSec.style.display = 'none';
+    homeFillGrid('home-grid-me', [
+      { p: 'my-payslip', t: 'สลิปเงินเดือน', ic: '฿', bg: 'rgba(168,85,247,.14)', fg: '#a855f7' },
+    ]);
+    if (meSec) meSec.style.display = '';
   } else {
     homeFillGrid('home-grid-me', me);
     if (meSec) meSec.style.display = '';
