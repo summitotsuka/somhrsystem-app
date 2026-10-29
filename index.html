@@ -3369,6 +3369,21 @@ function defaultLandingPage() {
 
 // ========== หน้าเมนูหลัก (HOME) ==========
 // สร้างปุ่มเมนูตามสิทธิ์ — ไม่ยิง API ใด ๆ แสดงผลทันที
+// ── จะเด้งออกหน้าล็อกอิน หรือแค่บอกเหตุผล ──
+//
+//  ⚠️ เดิมเจอ authError อะไรก็เด้งออกหมด ซึ่งผิดและทำให้แก้ปัญหายากมาก
+//     ผู้บริหารกดเมนูรายงานแล้วถูกเด้งออก โดยไม่ทันเห็นว่าระบบบอกอะไร
+//     กว่าจะรู้ว่าเป็นเรื่องสิทธิ์ไม่ใช่เรื่องตั๋วหมดอายุ ก็ไล่ผิดทางไปหลายรอบ
+//
+//     ตั๋วมีปัญหา (TOKEN_INVALID) → ล็อกอินใหม่ช่วยได้ → เด้งออกถูกแล้ว
+//     สิทธิ์ไม่พอ (NOT_HR / NOT_ALLOWED) → ล็อกอินใหม่ไม่ช่วยอะไรเลย
+//                                          ค้างไว้ให้อ่านข้อความดีกว่า
+function authBounce(r) {
+  if (!r || !r.authError) return false;
+  if (r.authError === 'TOKEN_INVALID') { setTimeout(function () { logout(); }, 1500); return true; }
+  return false;   // สิทธิ์ไม่พอ — ไม่เด้ง ให้ข้อความค้างอยู่บนจอ
+}
+
 function renderHomeMenu() {
   const isHR = S.role === 'HR';
   // ⚠️ ผู้บริหาร (EXEC) — ดูรายงานได้ แต่แก้อะไรไม่ได้เลย
@@ -3829,7 +3844,7 @@ function hrBulSave() {
       done();
       showToast((r && r.message) || (r && r.success ? 'บันทึกแล้ว' : 'บันทึกไม่สำเร็จ'), r && r.success);
       if (r && r.success) { BUL.loaded = false; go('hr-bulletin'); hrBulLoad(); }
-      if (r && r.authError) setTimeout(function () { logout(); }, 1500);
+      if (r && r.authError) authBounce(r);
     })
     .withFailureHandler(function (e) { done(); showToast(e.message); });
 }
@@ -4143,7 +4158,7 @@ function renderHrDashboard(r) {
   document.getElementById('hrdash-loading').style.display = 'none';
   if (!r || !r.success) {
     showToast((r && r.message) || 'โหลดข้อมูลไม่สำเร็จ');
-    if (r && r.authError) { setTimeout(() => logout(), 1500); }
+    if (r && r.authError) { authBounce(r); }
     return;
   }
   hrDashData = r;
@@ -4278,7 +4293,7 @@ function loadExportPage() {
   fetchEmployeeList(r => {
     if (!r || !r.success) {
       showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ');
-      if (r && r.authError) setTimeout(() => logout(), 1500);
+      if (r && r.authError) authBounce(r);
       return;
     }
     hrExpEmployees = r.employees || [];
@@ -4373,7 +4388,7 @@ function hrExpGenerate() {
       btn.disabled = false; btn.textContent = 'สร้างไฟล์ Export';
       if (!r || !r.success) {
         showToast((r && r.message) || 'สร้างไฟล์ไม่สำเร็จ');
-        if (r && r.authError) setTimeout(() => logout(), 1500);
+        if (r && r.authError) authBounce(r);
         return;
       }
       if (r.lineCount === 0) { showToast('ไม่มีข้อมูลในช่วงที่เลือก'); return; }
@@ -4423,7 +4438,7 @@ function loadReportPage() {
 
   document.getElementById('hrrep-emplist').innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
   fetchEmployeeList(r => {
-    if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+    if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) authBounce(r); return; }
     hrRepEmployees = r.employees || [];
     renderRepList('');
   }, e => showToast(e.message));
@@ -4476,7 +4491,7 @@ function hrRepGenerate() {
   gasRun('hrGetReport', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids, statusFilter: hrRepStatus }, 90000)
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'สร้างรายงาน';
-      if (!r || !r.success) { showToast((r && r.message) || 'สร้างรายงานไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+      if (!r || !r.success) { showToast((r && r.message) || 'สร้างรายงานไม่สำเร็จ'); if (r && r.authError) authBounce(r); return; }
       hrRepData = r;
       renderReport(r);
     })
@@ -4499,7 +4514,7 @@ function loadRawlogPage() {
   document.getElementById('hrraw-to').value   = fmtISO(now);
   document.getElementById('hrraw-emplist').innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
   fetchEmployeeList(r => {
-    if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+    if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) authBounce(r); return; }
     hrRawEmployees = r.employees || [];
     renderRawList('');
   }, e => showToast(e.message));
@@ -4551,7 +4566,7 @@ function hrRawGenerate() {
   gasRun('hrGetRawLog', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids }, 90000)
     .withSuccessHandler(r => {
       btn.disabled = false; btn.textContent = 'สร้างรายงาน';
-      if (!r || !r.success) { showToast((r && r.message) || 'สร้างรายงานไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+      if (!r || !r.success) { showToast((r && r.message) || 'สร้างรายงานไม่สำเร็จ'); if (r && r.authError) authBounce(r); return; }
       hrRawData = r;
       renderRawlog(r);
     })
@@ -5087,7 +5102,7 @@ function renderHolidays(r) {
   document.getElementById('hrhol-loading').style.display = 'none';
   if (!r || !r.success) {
     showToast((r && r.message) || 'โหลดวันหยุดไม่สำเร็จ');
-    if (r && r.authError) setTimeout(() => logout(), 1500);
+    if (r && r.authError) authBounce(r);
     return;
   }
   // เรียงตามวันที่ (เก่า→ใหม่)
@@ -5175,7 +5190,7 @@ function hrAddHoliday() {
       showToast(r.message, r.success);
       // already = ชีตมีวันหยุดนี้อยู่แล้ว → หน้าจอยังไม่ตรงกับชีต ต้องโหลดใหม่
       if (r.success || r.already) loadHolidayPage();
-      else if (r.authError) setTimeout(() => logout(), 1500);
+      else if (r.authError) authBounce(r);
     })
     .withFailureHandler(e => {
       btn.disabled = false; btn.textContent = '+ เพิ่มวันหยุด';
@@ -5192,7 +5207,7 @@ function hrDeleteHoliday(date) {
     .withSuccessHandler(r => {
       showToast(r.message, r.success);
       if (r.success || r.already) loadHolidayPage();
-      else if (r.authError) setTimeout(() => logout(), 1500);
+      else if (r.authError) authBounce(r);
     })
     .withFailureHandler(e => { showToast(e.message); loadHolidayPage(); });
 }
@@ -5287,7 +5302,7 @@ function loadFacePage() {
   gasRun('hrGetFaceList', { hrToken: S.hrToken })
     .withSuccessHandler(r => {
       document.getElementById('hrface-loading').style.display = 'none';
-      if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) setTimeout(() => logout(), 1500); return; }
+      if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) authBounce(r); return; }
       hrFaceEmployees = r.employees || [];
       document.getElementById('hrface-count').textContent = `ลงทะเบียนแล้ว ${r.registered}/${r.total}`;
       renderFaceList('');
@@ -5389,7 +5404,7 @@ async function captureFace() {
           const done = hrFaceEmployees.filter(e => e.hasFace).length;
           document.getElementById('hrface-count').textContent = `ลงทะเบียนแล้ว ${done}/${hrFaceEmployees.length}`;
           renderFaceList(document.getElementById('hrface-search').value);
-        } else if (r.authError) setTimeout(() => logout(), 1500);
+        } else if (r.authError) authBounce(r);
       })
       .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'ถ่าย + ลงทะเบียน'; showToast(e.message); document.getElementById('hrface-status').textContent = ''; });
   } catch (e) {
@@ -5572,7 +5587,7 @@ function kioskRecord(emp) {
     .withSuccessHandler(r => {
       kioskBusy = false;
       if (!r) return;
-      if (r.authError) { setTimeout(() => logout(), 1500); return; }
+      if (r.authError) { authBounce(r); return; }
       showKioskResult(r);
     })
     .withFailureHandler(e => { kioskBusy = false; /* เงียบไว้ ไม่รบกวนจอ */ });
@@ -5623,10 +5638,10 @@ function hrSearchEmployee() {
       } else if (r && r.notFound) {
         document.getElementById('hremp-notfound-msg').textContent = 'ไม่พบรหัส ' + id + ' ในระบบ';
         document.getElementById('hremp-notfound').style.display = 'block';
-        if (r.authError) setTimeout(() => logout(), 1500);
+        if (r.authError) authBounce(r);
       } else {
         showToast((r && r.message) || 'ค้นหาไม่สำเร็จ');
-        if (r && r.authError) setTimeout(() => logout(), 1500);
+        if (r && r.authError) authBounce(r);
       }
     })
     .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'ค้นหา'; showToast(e.message); });
@@ -5776,7 +5791,7 @@ function hrSaveEmployee() {
         btn.disabled = false; btn.textContent = 'บันทึกข้อมูล';
         showToast(r.message, r.success);
         if (r.success) { clearEmpListCache(); document.getElementById('hremp-result').style.display = 'none'; document.getElementById('hremp-search').value = ''; }
-        if (r.authError) setTimeout(() => logout(), 1500);
+        if (r.authError) authBounce(r);
       })
       .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'บันทึกข้อมูล'; showToast(e.message); });
   } else {
@@ -5786,7 +5801,7 @@ function hrSaveEmployee() {
         btn.disabled = false; btn.textContent = 'บันทึกข้อมูล';
         showToast(r.message, r.success);
         if (r.success) clearEmpListCache();
-        if (r.authError) setTimeout(() => logout(), 1500);
+        if (r.authError) authBounce(r);
       })
       .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'บันทึกข้อมูล'; showToast(e.message); });
   }
@@ -5818,7 +5833,7 @@ function hrEmpAction(action, confirmMsg, btnId, busyLabel) {
       done();
       showToast(r.message, r.success);
       if (r.success) { clearEmpListCache(); hrSearchEmployeeById(empId); }  // reload
-      if (r.authError) setTimeout(() => logout(), 1500);
+      if (r.authError) authBounce(r);
     })
     .withFailureHandler(e => { done(); showToast(e.message); });
 }
@@ -5942,7 +5957,7 @@ function hrSaveEndDialog() {
         ? (closeToo ? 'บันทึกและปิดบัญชีเรียบร้อย' : 'บันทึกเรียบร้อย — บัญชียังเปิดอยู่')
         : r.message, r.success);
       if (r.success) { hrCloseEndDialog(); clearEmpListCache(); hrSearchEmployeeById(empId); }
-      if (r.authError) setTimeout(() => logout(), 1500);
+      if (r.authError) authBounce(r);
     })
     .withFailureHandler(e => { done(); showToast(e.message); });
 }
@@ -5975,7 +5990,7 @@ function hrToggleStatus() {
         ? (hadEnd ? 'เปิดบัญชีแล้ว และล้างวันที่ลาออกให้ด้วย' : 'เปิดบัญชีเรียบร้อย')
         : r.message, r.success);
       if (r.success) { clearEmpListCache(); hrSearchEmployeeById(empId); }
-      if (r.authError) setTimeout(() => logout(), 1500);
+      if (r.authError) authBounce(r);
     })
     .withFailureHandler(e => { done(); showToast(e.message); });
 }
@@ -6121,7 +6136,7 @@ function hrSubmitManual() {
       }
       // ทั้งสำเร็จและโดนบล็อกซ้ำ ต่างต้องเห็นของที่มีอยู่จริงในวันนั้น
       hrManLoadDay();
-      if (r.authError) setTimeout(() => logout(), 1500);
+      if (r.authError) authBounce(r);
     })
     .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'บันทึกเวลาย้อนหลัง'; showToast(e.message); });
 }
