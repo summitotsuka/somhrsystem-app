@@ -478,9 +478,10 @@ textarea.inp{resize:vertical;min-height:60px}
     <div class="home-hero-name" id="home-name">—</div>
     <div class="home-hero-sub" id="home-sub">—</div>
     <div class="home-hero-date" id="home-date">—</div>
-    <!-- ⚠️ ป้ายรุ่นโค้ดหลังบ้าน — ทุกสิทธิ์เห็นได้ตั้งแต่หน้าแรก
-         ผู้บริหารที่เข้าหน้ารายงานไม่ได้ ก็ยังตรวจได้ว่าโค้ดขึ้นหรือยัง -->
-    <div id="home-codever" style="font-size:10px;opacity:.55;margin-top:3px"></div>
+    <!-- ⚠️ เคยมีป้ายรุ่นหลังบ้านตรงนี้ — เอาออกแล้วโดยตั้งใจ
+         ค่าที่นี่อ่านตอนล็อกอิน ส่วนหน้าภาพรวมอ่านสด สองที่จึงไม่ตรงกันได้
+         พนักงานทั่วไปไม่มีอะไรต้องทำกับเลขนี้ มีแต่จะสับสน
+         ป้ายที่เหลืออยู่ในหน้าภาพรวม (ฝ่ายบุคคล/ผู้บริหารเท่านั้น) อ่านสดเสมอ -->
   </div>
 
   <!-- เตือนเมื่อสะพานคัดลอกข้อมูลหยุดเดิน — ซ่อนไว้ ขึ้นเฉพาะตอนมีปัญหาจริง
@@ -3428,15 +3429,6 @@ function renderHomeMenu() {
       thM[d.getMonth()] + ' ' + (d.getFullYear() + 543);
   }
 
-  // ป้ายรุ่นโค้ดหลังบ้าน
-  // ⚠️ หลังบ้านรุ่นเก่าไม่ส่ง codeVersion มา — ต้องขึ้นคำเตือน ไม่ใช่ปล่อยว่าง
-  //    ช่องว่างแปลได้สองทาง (ยังไม่ขึ้น / ขึ้นแล้วแต่ไม่โชว์) ซึ่งไม่ช่วยอะไร
-  //    ⚠️ ค่านี้มาจากตอนล็อกอิน ถ้าเพิ่ง Deploy ต้องออกจากระบบแล้วเข้าใหม่
-  if (el('home-codever')) {
-    el('home-codever').textContent = S.codeVersion
-      ? ('หลังบ้านรุ่น ' + S.codeVersion)
-      : '⚠️ หลังบ้านยังเป็นรุ่นเก่า — ออกจากระบบแล้วเข้าใหม่อีกครั้ง';
-  }
 
   // วันหยุดเดือนนี้ — วาดจากที่จำไว้ทันที (ถ้ามี) แล้วเช็คของใหม่เบื้องหลัง
   holLoad(renderHomeHolidays);
@@ -4272,8 +4264,14 @@ function applyDashFilter(filter) {
     const lateTxt = (e.inStatus && String(e.inStatus).indexOf('LATE') === 0)
       ? String(e.inStatus).replace('LATE ', 'สาย ')
       : '';
+    // ⚠️ คนที่สายแล้วยังไม่กดออก ถูกจัดเป็นกลุ่ม no_checkout (สีแดง)
+    //    แต่สิ่งที่ฝ่ายบุคคลต้องตามคือ "มาสาย" ไม่ใช่ "ยังไม่ออก"
+    //    เพราะตอนเย็นทุกคนยังไม่ออกกันหมด สีแดงจึงไม่ได้บอกอะไร
+    //    ใช้สีเหลืองของกลุ่มมาสายแทน ให้สายตาจับได้ตรงกับความหมาย
+    //    ⚠️ เปลี่ยนแค่สี ไม่เปลี่ยนกลุ่ม — การจัดกลุ่มกับการเรียงยังเหมือนเดิมทุกอย่าง
+    const badgeCls = (e.status === 'no_checkout' && lateTxt) ? 'hd-b-late' : b.cls;
     html += `<div class="hd-row">
-      <span class="hd-badge ${b.cls}">${b.txt}${lateTxt ? ' ' + lateTxt : ''}</span>
+      <span class="hd-badge ${badgeCls}">${b.txt}${lateTxt ? ' ' + lateTxt : ''}</span>
       <div style="flex:1;min-width:0">
         <div class="hd-name">${e.name}</div>
         <div class="hd-meta">${e.empId} · ${e.department} · กะ ${e.shift}</div>
