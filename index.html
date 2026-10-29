@@ -495,7 +495,8 @@ textarea.inp{resize:vertical;min-height:60px}
   </div>
 
   <div id="home-sec-hr" style="display:none">
-    <div class="home-sec">งานฝ่ายบุคคล</div>
+    <!-- หัวข้อเปลี่ยนตามสิทธิ์: ฝ่ายบุคคล → "งานฝ่ายบุคคล" · ผู้บริหาร → "รายงาน" -->
+    <div class="home-sec" id="home-sec-hr-title">งานฝ่ายบุคคล</div>
     <div class="home-grid" id="home-grid-hr"></div>
   </div>
 
@@ -3357,6 +3358,11 @@ function defaultLandingPage() {
 // สร้างปุ่มเมนูตามสิทธิ์ — ไม่ยิง API ใด ๆ แสดงผลทันที
 function renderHomeMenu() {
   const isHR = S.role === 'HR';
+  // ⚠️ ผู้บริหาร (EXEC) — ดูรายงานได้ แต่แก้อะไรไม่ได้เลย
+  //    ไม่เอาเมนู "จัดการพนักงาน" มาด้วย เพราะหน้านั้นเพิ่ม/แก้/ตั้งผู้อนุมัติได้
+  //    ชื่อพนักงานเห็นได้จากรายงานอยู่แล้ว ไม่ต้องเปิดหน้าจัดการ
+  //    ⚠️ การซ่อนเมนูเป็นแค่ชั้นแรก ด่านจริงอยู่ที่ requireHR_ ฝั่งเซิร์ฟเวอร์
+  const isExec = S.role === 'EXEC';
   const canCheckin = checkinAllowedForShift(S.shift);
 
   // หัวข้อต้อนรับ
@@ -3372,6 +3378,7 @@ function renderHomeMenu() {
     if (S.empId) bits.push('รหัส ' + S.empId);
     if (S.shift) bits.push('กะ ' + S.shift);
     if (isHR) bits.push('ฝ่ายบุคคล');
+    if (isExec) bits.push('ผู้บริหาร');
     el('home-sub').textContent = bits.join(' · ');
   }
   if (el('home-date')) {
@@ -3409,7 +3416,8 @@ function renderHomeMenu() {
 
   // ── งานอนุมัติ (หัวหน้า/ผู้จัดการที่ไม่ใช่ HR) ──
   const apprSec = el('home-sec-appr');
-  if (!isHR && S.isApprover) {
+  // ⚠️ ผู้บริหารมีปุ่มอนุมัติอยู่ในกลุ่ม "รายงาน" แล้ว ไม่ต้องขึ้นซ้ำอีกกลุ่ม
+  if (!isHR && !isExec && S.isApprover) {
     homeFillGrid('home-grid-appr', [
       { p: 'leave-approve', t: 'อนุมัติลา',   ic: '✓', bg: 'rgba(16,185,129,.14)', fg: '#059669' },
       { p: 'ot-approve',    t: 'อนุมัติโอที', ic: '✓', bg: 'rgba(245,158,11,.16)', fg: '#d97706' },
@@ -3429,6 +3437,27 @@ function renderHomeMenu() {
       { p: 'hr-bulletin',  t: 'จัดการประกาศ',   ic: '📋', bg: 'rgba(232,89,12,.15)',  fg: '#e8590c' },
       { p: 'hr-dash',      t: 'เมนูงานบุคคล',   ic: '★', bg: 'rgba(124,58,237,.15)',  fg: '#7c3aed' },
     ]);
+    if (hrSec) hrSec.style.display = '';
+  } else if (isExec) {
+    // ── ผู้บริหาร: ใช้หน้าจอชุดเดียวกับฝ่ายบุคคล แต่เฉพาะที่อ่านอย่างเดียว ──
+    // ⚠️ ไม่มี จัดการพนักงาน · จัดการประกาศ · เมนูงานบุคคล · เงินเดือน
+    // เรียงตามที่ฝ่ายบริหารขอ: ภาพรวม → ลงเวลา → อนุมัติลา → อนุมัติโอที → รายงานลา → รายงานโอที
+    // ⚠️ อนุมัติลา/โอที ขึ้นเฉพาะคนที่ถูกตั้งเป็น ApproverL1/L2 ของใครสักคน
+    //    ไม่ได้ผูกกับ Role — ผู้บริหารที่ไม่ได้เป็นผู้อนุมัติของใคร จะไม่เห็นสองเมนูนี้
+    //    (ถูกต้องแล้ว เพราะกดเข้าไปก็ไม่มีรายการให้อนุมัติ)
+    const execMenu = [
+      { p: 'hr-dashboard',  t: 'ภาพรวมประจำวัน', ic: '▦', bg: 'rgba(59,130,246,.15)', fg: '#2563eb' },
+      { p: 'hr-report',     t: 'รายงานลงเวลา',   ic: '▤', bg: 'rgba(245,158,11,.15)', fg: '#d97706' },
+    ];
+    if (S.isApprover) {
+      execMenu.push({ p: 'leave-approve', t: 'อนุมัติลา',   ic: '✓', bg: 'rgba(16,185,129,.14)', fg: '#059669' });
+      execMenu.push({ p: 'ot-approve',    t: 'อนุมัติโอที', ic: '✓', bg: 'rgba(245,158,11,.16)', fg: '#d97706' });
+    }
+    execMenu.push({ p: 'leave-report', t: 'รายงานการลา', ic: '✈', bg: 'rgba(16,185,129,.15)', fg: '#059669' });
+    execMenu.push({ p: 'ot-report',    t: 'รายงานโอที',  ic: '＋', bg: 'rgba(245,158,11,.12)', fg: '#d97706' });
+    homeFillGrid('home-grid-hr', execMenu);
+    const hd = document.getElementById('home-sec-hr-title');
+    if (hd) hd.textContent = 'รายงาน';
     if (hrSec) hrSec.style.display = '';
   } else if (hrSec) {
     hrSec.style.display = 'none';
@@ -4167,8 +4196,14 @@ function applyDashFilter(filter) {
     const times = (e.inTime || e.outTime)
       ? `${e.inTime || '—'}${e.outTime ? ' → ' + e.outTime : ''}`
       : '';
+    // ⚠️ มาสายกี่นาที — ใช้รูปแบบเดียวกับหน้า "เช็คเวลา" ของพนักงาน
+    //    ('LATE +15m' → 'สาย +15m') จะได้ไม่มีคำใหม่ให้ต้องดูแลสองที่
+    //    ถ้าหลังบ้านยังไม่ส่ง inStatus มา (ยังไม่ได้ deploy) ก็แค่ไม่ขึ้น ไม่พัง
+    const lateTxt = (e.inStatus && String(e.inStatus).indexOf('LATE') === 0)
+      ? String(e.inStatus).replace('LATE ', 'สาย ')
+      : '';
     html += `<div class="hd-row">
-      <span class="hd-badge ${b.cls}">${b.txt}</span>
+      <span class="hd-badge ${b.cls}">${b.txt}${lateTxt ? ' ' + lateTxt : ''}</span>
       <div style="flex:1;min-width:0">
         <div class="hd-name">${e.name}</div>
         <div class="hd-meta">${e.empId} · ${e.department} · กะ ${e.shift}</div>
