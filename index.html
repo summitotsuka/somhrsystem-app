@@ -3268,6 +3268,17 @@ function go(id) {
   if (id === 'checkout' && S.inTime) {
     const ref = document.getElementById('co-inref'); if(ref) ref.textContent = S.inTime;
   }
+  // ⚠️ ปุ่มย้อนกลับของสองหน้านี้ต้องดูว่าใครเปิด
+  //    ฝ่ายบุคคล  → กลับไป "เมนูงานบุคคล" ซึ่งเป็นที่ที่เขากดเข้ามา
+  //    ผู้บริหาร  → กลับไปหน้าหลัก เพราะเมนูงานบุคคลไม่ใช่ของเขา
+  //                 (กดแล้วจะเจอหน้าที่เต็มไปด้วยปุ่มที่กดไม่ได้)
+  //    ตั้งตอนเปิดหน้า ไม่ใช่ตอนล็อกอิน — รีเฟรชกลางคันก็ยังถูก
+  if (id === 'hr-dashboard' || id === 'hr-report') {
+    const toHome = (S.role === 'EXEC');
+    const btn = document.getElementById(id === 'hr-dashboard' ? 'hrdash-back' : 'hrrep-back');
+    if (btn) btn.textContent = toHome ? '← หน้าหลัก' : '← เมนูงานบุคคล';
+  }
+
   if (id === 'home') renderHomeMenu();
   if (id === 'holiday') loadHolidayViewPage();
   if (id === 'history') loadHistory();
@@ -7117,7 +7128,7 @@ applyLogo();
   on('hr-menu-rawlog',    'click', function() { go('hr-rawlog'); });
 
   // HR รายงาน
-  on('hrrep-back', 'click', function() { go('hr-dash'); });
+  on('hrrep-back', 'click', function() { go(S.role === 'EXEC' ? 'home' : 'hr-dash'); });
   on('hrrep-search', 'input', function() { renderRepList(this.value); });
   on('hrrep-all', 'click', hrRepSelectAll);
   on('hrrep-none', 'click', hrRepClearAll);
@@ -7192,7 +7203,7 @@ applyLogo();
   on('hrexp-download', 'click', hrExpDownload);
 
   // HR Dashboard
-  on('hrdash-back', 'click', function() { go('hr-dash'); });
+  on('hrdash-back', 'click', function() { go(S.role === 'EXEC' ? 'home' : 'hr-dash'); });
   // คลิกการ์ดเพื่อกรองรายชื่อ
   document.querySelectorAll('.hd-card').forEach(function(card) {
     card.addEventListener('click', function() { applyDashFilter(card.dataset.filter); });
