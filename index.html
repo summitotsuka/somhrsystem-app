@@ -486,8 +486,11 @@ textarea.inp{resize:vertical;min-height:60px}
        background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);
        color:#b45309;font-size:13px;line-height:1.5"></div>
 
-  <div class="home-sec">เมนูของฉัน</div>
-  <div class="home-grid" id="home-grid-me"></div>
+  <!-- ⚠️ ห่อไว้เพื่อให้ซ่อนทั้งก้อนได้ — ผู้บริหารไม่ต้องเช็คเวลา ไม่ต้องขอลา ไม่ต้องขอโอที -->
+  <div id="home-sec-me">
+    <div class="home-sec">เมนูของฉัน</div>
+    <div class="home-grid" id="home-grid-me"></div>
+  </div>
 
   <div id="home-sec-appr" style="display:none">
     <div class="home-sec">งานอนุมัติ</div>
@@ -838,6 +841,11 @@ textarea.inp{resize:vertical;min-height:60px}
          วันทำงานเปลี่ยนตอน 06:00 ถ้าป้ายจางจนมองข้าม จะเข้าใจผิดว่ากำลังดูวันนี้ -->
     <div style="font-size:15px;font-weight:600;color:var(--tx);margin-top:4px"
          id="hrdash-datelabel">—</div>
+    <!-- ⚠️ ป้ายรุ่นของโค้ดหลังบ้าน — ตอบคำถาม "โค้ดที่วางไปขึ้นใช้งานจริงหรือยัง"
+         Apps Script ตรึงเว็บแอปไว้กับเวอร์ชัน วางโค้ดแล้วกด Save ยังไม่พอ
+         ถ้าเลขนี้ไม่ตรงกับไฟล์ที่เพิ่งวาง แปลว่ายังไม่ได้ Deploy แบบ New version -->
+    <div style="font-size:10px;color:var(--mu);margin-top:2px;opacity:.65"
+         id="hrdash-codever"></div>
   </div>
 
   <!-- การ์ดสรุป 4 ตัว (คลิกเพื่อกรองรายชื่อ) -->
@@ -3412,12 +3420,24 @@ function renderHomeMenu() {
   me.push({ p: 'holiday',    t: 'ปฏิทินวันหยุด', ic: '◷', bg: 'rgba(236,72,153,.14)', fg: '#db2777' });
   me.push({ p: 'leave-history', t: 'ประวัติการลา', ic: '☰', bg: 'rgba(16,185,129,.10)', fg: '#059669' });
   me.push({ p: 'ot-history', t: 'ประวัติโอที', ic: '☰', bg: 'rgba(245,158,11,.10)', fg: '#d97706' });
-  homeFillGrid('home-grid-me', me);
 
-  // ── งานอนุมัติ (หัวหน้า/ผู้จัดการที่ไม่ใช่ HR) ──
+  // ⚠️ ผู้บริหารไม่ต้องเช็คเวลา ไม่ต้องขอลา ไม่ต้องขอโอที → ไม่สร้างปุ่มเลย
+  //    เคยทำเป็น "สร้างแล้วซ่อน" — ปุ่มยังอยู่ในหน้า แค่มองไม่เห็น
+  //    ไม่สร้างเลยสะอาดกว่า และไม่ต้องมานั่งเดาว่าอะไรซ่อนอยู่บ้าง
+  const meSec = el('home-sec-me');
+  if (isExec) {
+    if (meSec) meSec.style.display = 'none';
+  } else {
+    homeFillGrid('home-grid-me', me);
+    if (meSec) meSec.style.display = '';
+  }
+
+  // ── งานอนุมัติ (หัวหน้า/ผู้จัดการที่ไม่ใช่ HR รวมถึงผู้บริหาร) ──
+  // ⚠️ ขึ้นเฉพาะคนที่ถูกตั้งเป็น ApproverL1/L2 ของใครสักคนในชีตพนักงาน
+  //    ไม่ได้ผูกกับ Role — ตั้ง Role เป็น EXEC อย่างเดียวยังไม่พอ
+  //    ถ้าไม่ขึ้น ให้ไปตั้งช่อง ApproverL1 ของลูกน้องให้เป็นรหัสผู้บริหารคนนั้น
   const apprSec = el('home-sec-appr');
-  // ⚠️ ผู้บริหารมีปุ่มอนุมัติอยู่ในกลุ่ม "รายงาน" แล้ว ไม่ต้องขึ้นซ้ำอีกกลุ่ม
-  if (!isHR && !isExec && S.isApprover) {
+  if (!isHR && S.isApprover) {
     homeFillGrid('home-grid-appr', [
       { p: 'leave-approve', t: 'อนุมัติลา',   ic: '✓', bg: 'rgba(16,185,129,.14)', fg: '#059669' },
       { p: 'ot-approve',    t: 'อนุมัติโอที', ic: '✓', bg: 'rgba(245,158,11,.16)', fg: '#d97706' },
@@ -3439,23 +3459,15 @@ function renderHomeMenu() {
     ]);
     if (hrSec) hrSec.style.display = '';
   } else if (isExec) {
-    // ── ผู้บริหาร: ใช้หน้าจอชุดเดียวกับฝ่ายบุคคล แต่เฉพาะที่อ่านอย่างเดียว ──
+    // ── ผู้บริหาร: กลุ่ม "รายงาน" — อ่านอย่างเดียวล้วน ──
     // ⚠️ ไม่มี จัดการพนักงาน · จัดการประกาศ · เมนูงานบุคคล · เงินเดือน
-    // เรียงตามที่ฝ่ายบริหารขอ: ภาพรวม → ลงเวลา → อนุมัติลา → อนุมัติโอที → รายงานลา → รายงานโอที
-    // ⚠️ อนุมัติลา/โอที ขึ้นเฉพาะคนที่ถูกตั้งเป็น ApproverL1/L2 ของใครสักคน
-    //    ไม่ได้ผูกกับ Role — ผู้บริหารที่ไม่ได้เป็นผู้อนุมัติของใคร จะไม่เห็นสองเมนูนี้
-    //    (ถูกต้องแล้ว เพราะกดเข้าไปก็ไม่มีรายการให้อนุมัติ)
-    const execMenu = [
+    //    อนุมัติลา/โอที ไปอยู่กลุ่ม "งานอนุมัติ" ข้างบนแล้ว ไม่ซ้ำที่นี่
+    homeFillGrid('home-grid-hr', [
       { p: 'hr-dashboard',  t: 'ภาพรวมประจำวัน', ic: '▦', bg: 'rgba(59,130,246,.15)', fg: '#2563eb' },
       { p: 'hr-report',     t: 'รายงานลงเวลา',   ic: '▤', bg: 'rgba(245,158,11,.15)', fg: '#d97706' },
-    ];
-    if (S.isApprover) {
-      execMenu.push({ p: 'leave-approve', t: 'อนุมัติลา',   ic: '✓', bg: 'rgba(16,185,129,.14)', fg: '#059669' });
-      execMenu.push({ p: 'ot-approve',    t: 'อนุมัติโอที', ic: '✓', bg: 'rgba(245,158,11,.16)', fg: '#d97706' });
-    }
-    execMenu.push({ p: 'leave-report', t: 'รายงานการลา', ic: '✈', bg: 'rgba(16,185,129,.15)', fg: '#059669' });
-    execMenu.push({ p: 'ot-report',    t: 'รายงานโอที',  ic: '＋', bg: 'rgba(245,158,11,.12)', fg: '#d97706' });
-    homeFillGrid('home-grid-hr', execMenu);
+      { p: 'leave-report',  t: 'รายงานการลา',    ic: '✈', bg: 'rgba(16,185,129,.15)', fg: '#059669' },
+      { p: 'ot-report',     t: 'รายงานโอที',     ic: '＋', bg: 'rgba(245,158,11,.12)', fg: '#d97706' },
+    ]);
     const hd = document.getElementById('home-sec-hr-title');
     if (hd) hd.textContent = 'รายงาน';
     if (hrSec) hrSec.style.display = '';
@@ -4126,6 +4138,14 @@ function renderHrDashboard(r) {
     dlabel.textContent =
       `วันทำงาน ${parseInt(d)} ${thMonths[parseInt(m)-1]} ${parseInt(y)+543}`;
   }
+
+  // ป้ายรุ่นโค้ดหลังบ้าน
+  // ⚠️ หลังบ้านรุ่นเก่าไม่ส่ง codeVersion มา — ขึ้นว่า "รุ่นเก่า" ให้เห็นชัด
+  //    ไม่ปล่อยว่าง เพราะช่องว่างแปลได้สองทาง (ยังไม่ขึ้น หรือ ขึ้นแล้วแต่ไม่โชว์)
+  const cv = document.getElementById('hrdash-codever');
+  if (cv) cv.textContent = r.codeVersion
+    ? ('หลังบ้านรุ่น ' + r.codeVersion)
+    : '⚠️ หลังบ้านยังเป็นรุ่นเก่า (ยังไม่ได้ Deploy แบบ New version)';
 
   // อัปเดตตัวเลขการ์ด
   const s = r.summary || {};
