@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.27.0';
+window.LEAVE_JS_VERSION = '8.28.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -67,7 +67,7 @@ function loadLeaveForm() {
   document.getElementById('lv-hourly-wrap').style.display = 'none';
 
   // โหลดประเภท (ถ้ายังไม่มี cache)
-  if (LV.types.length > 0) { lvFillTypes(); return; }
+  if (LV.types.length > 0) { lvFillTypes(); lvOnTypeChange(); return; }
   const sel = document.getElementById('lv-type');
   sel.innerHTML = '<option>กำลังโหลด...</option>';
   gasRun('leaveGetTypes', { hrToken: S.hrToken })
@@ -75,6 +75,7 @@ function loadLeaveForm() {
       if (!r || !r.success) { showToast((r && r.message) || 'โหลดประเภทการลาไม่สำเร็จ'); return; }
       LV.types = r.types || [];
       lvFillTypes();
+      lvOnTypeChange();   // ปิดช่องรูปแบบไว้จนกว่าจะเลือกประเภท
     })
     .withFailureHandler(e => showToast('เกิดข้อผิดพลาด: ' + (e && e.message ? e.message : e)));
 }
@@ -84,6 +85,72 @@ function lvFillTypes() {
   if (!LV.types.length) { sel.innerHTML = '<option value="">— ไม่มีประเภทการลา —</option>'; return; }
   sel.innerHTML = '<option value="">— เลือกประเภท —</option>' +
     LV.types.map(t => `<option value="${lvEsc(t.id)}">${lvEsc(t.name)}${t.maxDays ? ` (สิทธิ์ ${t.maxDays} วัน)` : ''}</option>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  เลือกประเภทก่อน → เปิดเฉพาะรูปแบบที่ประเภทนั้นลาได้
+//
+//  ⚠️ นี่เป็นแค่ความสะดวก ด่านจริงอยู่ที่ leave_submit ฝั่งเซิร์ฟเวอร์
+//     ซ่อนตัวเลือกไม่ใช่การกันจริง ใครก็ยิงค่าอื่นเข้ามาได้
+//
+//  ⚠️ allowedModes ไม่มี/เป็น null = ไม่จำกัด → แสดงครบทุกแบบ
+//     หลังบ้านรุ่นเก่ายังไม่ส่งค่านี้มา ต้องทำงานได้เหมือนเดิม ไม่ใช่ว่างเปล่า
+// ════════════════════════════════════════════════════════════════
+const LV_MODE_ORDER = ['FULL', 'HALF_AM', 'HALF_PM', 'HOURLY'];
+
+// ป้ายในฟอร์ม (ยาวกว่า LV_MODE เพราะบอกจำนวนชั่วโมงด้วย)
+const LV_MODE_FORM = {
+  FULL:    'เต็มวัน',
+  HALF_AM: 'ครึ่งวันเช้า (3.5 ชม.)',
+  HALF_PM: 'ครึ่งวันบ่าย (5 ชม.)',
+  HOURLY:  'ลาเป็นชั่วโมง',
+};
+
+/** รูปแบบที่ประเภทนี้ลาได้ — null/ไม่มี = ทุกแบบ */
+function lvModesFor(typeId) {
+  const t = LV.types.find(x => x.id === typeId);
+  const a = t && t.allowedModes;
+  if (!Array.isArray(a) || !a.length) return LV_MODE_ORDER.slice();
+  // เรียงตามลำดับมาตรฐาน ไม่ใช่ตามที่กรอกในชีต จะได้เหมือนกันทุกประเภท
+  const set = {};
+  a.forEach(m => { set[String(m).toUpperCase()] = 1; });
+  const out = LV_MODE_ORDER.filter(m => set[m]);
+  // ⚠️ กรอกมาแต่ไม่ตรงสักตัว → ถือว่าไม่จำกัด ดีกว่าปล่อยให้ว่างจนลาไม่ได้
+  return out.length ? out : LV_MODE_ORDER.slice();
+}
+
+function lvOnTypeChange() {
+  const typeId = document.getElementById('lv-type').value;
+  const sel = document.getElementById('lv-mode');
+  const hint = document.getElementById('lv-mode-hint');
+  if (!sel) return;
+
+  // ยังไม่เลือกประเภท → ปิดช่องรูปแบบไว้ก่อน
+  if (!typeId) {
+    sel.innerHTML = '<option value="">— เลือกประเภทการลาก่อน —</option>';
+    sel.disabled = true;
+    sel.value = '';
+    if (hint) hint.textContent = '';
+    lvOnModeChange();
+    return;
+  }
+
+  const allowed = lvModesFor(typeId);
+  const เดิม = sel.value;
+  sel.disabled = false;
+  sel.innerHTML = '<option value="">— เลือกรูปแบบ —</option>' +
+    allowed.map(m => `<option value="${m}">${lvEsc(LV_MODE_FORM[m] || m)}</option>`).join('');
+
+  // ⚠️ ถ้าเคยเลือกไว้แล้วรูปแบบนั้นยังใช้ได้ ให้คงไว้ ไม่ต้องบังคับเลือกใหม่
+  //    (พนักงานเปลี่ยนประเภทไปมา ไม่ควรโดนล้างค่าทุกครั้ง)
+  sel.value = (เดิม && allowed.indexOf(เดิม) >= 0) ? เดิม : '';
+
+  if (hint) {
+    hint.textContent = (allowed.length < LV_MODE_ORDER.length)
+      ? ('ประเภทนี้ลาได้เฉพาะ: ' + allowed.map(m => LV_MODE[m] || m).join(' · '))
+      : '';
+  }
+  lvOnModeChange();
 }
 
 // ── อัปโหลดไฟล์แนบ (รูป/PDF) ──
@@ -253,6 +320,13 @@ function submitLeave() {
   if (!leaveType) { showToast('กรุณาเลือกประเภทการลา'); return; }
   if (!dateFrom)  { showToast('กรุณาเลือกวันที่ลา'); return; }
   if (!mode)      { showToast('กรุณาเลือกรูปแบบการลา'); return; }
+  // ⚠️ ด่านซ้ำฝั่งหน้าเว็บ — กันกรณีเลือกรูปแบบไว้ก่อนแล้วไปเปลี่ยนประเภททีหลัง
+  //    ด่านจริงยังอยู่ที่ leave_submit เสมอ ตรงนี้แค่ให้รู้ตัวเร็วขึ้น
+  if (lvModesFor(leaveType).indexOf(mode) < 0) {
+    showToast(lvTypeName(leaveType) + ' ลาได้เฉพาะ: ' +
+              lvModesFor(leaveType).map(m => LV_MODE[m] || m).join(' · '));
+    return;
+  }
   if (!reason)    { showToast('กรุณากรอกเหตุผลการลา'); return; }
   if (mode === 'HOURLY' && (!timeFrom || !timeTo)) {
     showToast('กรุณาเลือกเวลาเริ่มและสิ้นสุด'); return;
@@ -899,6 +973,7 @@ function initLeaveBindings() {
   on('menu-leave-history', 'click', () => go('leave-history'));
 
   // หน้าขอลา
+  on('lv-type', 'change', lvOnTypeChange);
   on('lv-mode', 'change', lvOnModeChange);
   on('lv-date-from', 'change', lvUpdatePreview);
   on('lv-date-to', 'change', lvUpdatePreview);

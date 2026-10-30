@@ -1446,13 +1446,13 @@ textarea.inp{resize:vertical;min-height:60px}
 
     <div style="margin-bottom:12px">
       <label class="lbl">รูปแบบการลา</label>
-      <select id="lv-mode" class="inp">
-        <option value="">— เลือกรูปแบบ —</option>
-        <option value="FULL">เต็มวัน</option>
-        <option value="HALF_AM">ครึ่งวันเช้า (3.5 ชม.)</option>
-        <option value="HALF_PM">ครึ่งวันบ่าย (5 ชม.)</option>
-        <option value="HOURLY">ลาเป็นชั่วโมง</option>
+      <!-- ⚠️ ตัวเลือกถูกสร้างใหม่โดย lvOnTypeChange() ตามประเภทที่เลือก
+           ที่เขียนไว้ตรงนี้เป็นแค่สภาพตอนยังไม่เลือกประเภท
+           อย่าใส่รายการรูปแบบกลับมาที่นี่ ไม่งั้นจะมีสองที่ที่ต้องดูแล -->
+      <select id="lv-mode" class="inp" disabled>
+        <option value="">— เลือกประเภทการลาก่อน —</option>
       </select>
+      <div id="lv-mode-hint" style="font-size:11px;color:var(--tx3);margin-top:4px"></div>
     </div>
 
     <div style="display:flex;gap:10px;margin-bottom:12px">
@@ -1989,29 +1989,39 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzuvXxNdLc18QdRL8NdKM1P
 //  ปิดกลับได้ทันที: ตั้ง ON: false แล้วอัปโหลดไฟล์ → กลับไปใช้ GAS 100%
 //  โค้ดเดิมไม่ได้ถูกลบ แค่ไม่ถูกเรียก
 //
-//  ── ย้ายอะไรบ้าง ──────────────────────────────────────────
-//  ย้าย: login · getMyAttendance · payGetMySlips (การ์ดสลิป)
-//        hrGetEmployeeList · hrFindEmployee (หน้าจอข้อมูลพนักงานของ HR)
-//        leaveGetMyRequests · otGetMyRequests (ประวัติลา/โอทีของพนักงาน)
-//        leaveGetTypes · otGetTypes (รายการประเภทในฟอร์ม)
-//        leaveGetMyTeam · otGetMyTeam (รายชื่อทีมของหัวหน้า)
-//        leaveGetPendingApprovals · otGetPendingApprovals (หน้ารออนุมัติ)
-//        leaveGetReport · otGetReport (รายงานลา/โอที)
-//        payGetPeriods · payGetReportMeta · payGetReport (หน้าจอเงินเดือนของ HR)
-//        getHolidays · hrGetHolidays · payGetPeriodData (เฟส 5M)
-//        hrGetReport (รายงานลงเวลา — เฟส 5Q)
-//  ย้ายแล้วทั้ง "อ่านและเขียน": วันหยุด (เฟส 5P) — Supabase เป็นต้นฉบับ
-//  ไม่ย้าย: การ "เขียน" ที่เหลือ (ยื่น/อนุมัติ/เช็คอิน/อัปโหลด)
+//  ── 🚫 ก่อนแก้อะไรก็ตาม ให้ดู SB.ACTIONS ข้างล่างก่อนเสมอ 🚫 ───
 //
-//  คำสั่งที่ย้ายมาแล้วจะไม่วิ่งผ่าน GAS เลย จึงไม่ต้องรอคิว —
-//  นี่คือเหตุผลที่เมนูเช็คเวลาเร็ว 1-2 วินาที ขณะที่เมนูอื่นยัง 10-20 วินาที
+//  ⚠️⚠️ อย่าเชื่อคำบรรยายใด ๆ รวมทั้งที่เขียนไว้ตรงนี้ — ให้ดูรายการจริง
 //
-//  ── ทำไมไม่ย้าย "เช็คอิน" ทั้งที่ Supabase ทำได้แล้ว ─────────
-//  เพราะการ "เขียน" ข้อมูลลงเวลาตัวจริงยังอยู่ที่ GAS ทั้งหมด
-//  (HR อัปโหลดไฟล์สแกนนิ้ว · คีย์มือ · ตู้คีออส)
-//  ถ้าแยกให้บางส่วนเขียนลง Supabase บางส่วนเขียนลงชีต จะมีข้อมูลสองที่ไม่ตรงกัน
-//  → เฟสนี้ใช้กติกา "เขียนที่เดียวคือชีต · อ่านจาก Supabase"
-//    แล้วมีสะพาน (ไฟล์ที่ 17) คัดลอกชีต → Supabase ทุก 10 นาที
+//     ชื่อคำสั่งที่อยู่ใน SB.ACTIONS = วิ่งไป Supabase · ไม่วิ่งผ่าน GAS เลย
+//     แก้โค้ดฝั่ง GAS ของคำสั่งพวกนั้น หน้าจอจะไม่เปลี่ยนอะไรเลยสักนิด
+//     (GAS เหลือเป็นแค่ทางสำรองตอน Supabase ติดต่อไม่ได้)
+//
+//     เคยหลงมาแล้วสองครั้งในวันเดียว เพราะคอมเมนต์ตรงนี้เขียนไว้ว่า
+//     "ไม่ย้าย: การเขียนที่เหลือ (ยื่น/อนุมัติ/เช็คอิน/อัปโหลด)"
+//     ซึ่ง ณ ตอนนี้ไม่จริงแล้ว — ทั้ง leaveSubmit · otSubmit · leaveApprove
+//     checkIn · checkOut · hrAddEmployee · payUploadExcel ฯลฯ อยู่ใน ACTIONS หมด
+//     ข้อความที่ล้าสมัยแย่กว่าไม่มีข้อความ เพราะมันทำให้มั่นใจผิด ๆ
+//
+//  ── วิธีหาว่าต้องแก้ที่ไหน (3 ชั้น) ───────────────────────
+//     1. ชื่อคำสั่งอยู่ใน SB.ACTIONS ไหม
+//          ไม่อยู่ → แก้ที่ไฟล์ .gs อย่างเดียวจบ
+//          อยู่    → ไปข้อ 2
+//     2. เปิด Edge Function (16-phase3-function.ts) หา action === "<ชื่อ>"
+//          ตรรกะอยู่ในนั้นเลย → แก้ที่นั่น
+//          มันเรียก sb.rpc("<ชื่อฟังก์ชัน>") → ไปข้อ 3
+//     3. ตรรกะจริงอยู่ในฟังก์ชัน SQL บน Supabase
+//          ขอ pg_get_functiondef มาดูก่อนแก้ อย่าเขียนใหม่จากความจำ
+//
+//     และไม่ว่าแก้ชั้นไหน ถ้าฝั่ง GAS มีกติกาเดียวกันอยู่ด้วย ต้องแก้ให้ตรงกัน
+//     เพราะมันคือทางสำรอง ถ้าไม่ตรง วันที่ Supabase ล่มหน้าจอจะเปลี่ยนพฤติกรรมเอง
+//
+//  ── สวิตช์ต้นฉบับ ────────────────────────────────────────
+//     ตาราง sync_flag.source_of_truth บอกว่าต้นฉบับอยู่ที่ไหน
+//     Edge Function อ่านค่านี้ ถ้าไม่ใช่ SUPABASE จะถอยไปใช้ชีต
+//     ตอนนี้ = SUPABASE (ตรวจเมื่อ 29/10/2026)
+//
+//  ปิดกลับไปใช้ GAS ทั้งหมดได้ทันที: ตั้ง ON: false แล้วอัปโหลดไฟล์
 // ════════════════════════════════════════════════════════════════
 const SB = {
   ON:  true,
@@ -7438,7 +7448,7 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.27.0"></script>
+<script src="leave.js?v=8.28.0"></script>
 <script src="ot.js?v=8.15.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
 <script>
