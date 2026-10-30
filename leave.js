@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.28.0';
+window.LEAVE_JS_VERSION = '8.29.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -119,6 +119,53 @@ function lvModesFor(typeId) {
   return out.length ? out : LV_MODE_ORDER.slice();
 }
 
+/** ตารางเวลาของประเภทนี้ — null/ไม่มี = ให้คีย์เวลาเอง */
+function lvGridFor(typeId) {
+  const t = LV.types.find(x => x.id === typeId);
+  const g = t && t.grid;
+  return (Array.isArray(g) && g.length) ? g : null;
+}
+
+/**
+ * ── ช่องเลือกเวลาของลารายชั่วโมง ─────────────────────────
+ *
+ *  ⚠️ มีตารางเวลา → เปลี่ยนจากช่องคีย์เวลาเป็นรายการให้เลือก
+ *     ไม่มี → คงช่องคีย์เวลาไว้เหมือนเดิม (ถอยอย่างปลอดภัย ไม่ใช่บล็อก)
+ *     หลังบ้านรุ่นเก่ายังไม่ส่ง grid มา ต้องใช้งานได้เหมือนเดิม
+ *
+ *  ⚠️ สลับชนิดช่อง (time ↔ select) แทนการสร้าง element ใหม่
+ *     เพราะที่อื่นอ้างถึง id นี้อยู่ (lvUpdatePreview · submitLeave)
+ *     ถ้าสร้างใหม่แล้ว id ซ้ำหรือหาย จะพังเงียบ ๆ
+ */
+function lvFillTimeChoices(typeId) {
+  const grid = lvGridFor(typeId);
+  ['lv-time-from', 'lv-time-to'].forEach(function (id) {
+    const old = document.getElementById(id);
+    if (!old) return;
+    const เดิม = old.value;
+    const อยากได้ = grid ? 'select' : 'input';
+    const เป็นอยู่ = old.tagName.toLowerCase();
+    let el = old;
+    if (เป็นอยู่ !== อยากได้) {
+      el = document.createElement(อยากได้);
+      el.id = id;
+      el.className = 'inp';
+      if (อยากได้ === 'input') el.type = 'time';
+      old.parentNode.replaceChild(el, old);
+      // ⚠️ ต้องผูก event ใหม่ เพราะเป็นคนละ element แล้ว
+      el.addEventListener('change', lvUpdatePreview);
+    }
+    if (grid) {
+      el.innerHTML = '<option value="">— เลือกเวลา —</option>' +
+        grid.map(function (t) { return '<option value="' + lvEsc(t) + '">' + lvEsc(t) + '</option>'; }).join('');
+      // คงค่าเดิมไว้ถ้ายังอยู่ในตาราง
+      el.value = (เดิม && grid.indexOf(เดิม) >= 0) ? เดิม : '';
+    } else if (เป็นอยู่ !== อยากได้) {
+      el.value = (id === 'lv-time-from') ? '09:00' : '11:00';
+    }
+  });
+}
+
 function lvOnTypeChange() {
   const typeId = document.getElementById('lv-type').value;
   const sel = document.getElementById('lv-mode');
@@ -150,6 +197,7 @@ function lvOnTypeChange() {
       ? ('ประเภทนี้ลาได้เฉพาะ: ' + allowed.map(m => LV_MODE[m] || m).join(' · '))
       : '';
   }
+  lvFillTimeChoices(typeId);
   lvOnModeChange();
 }
 
@@ -330,6 +378,14 @@ function submitLeave() {
   if (!reason)    { showToast('กรุณากรอกเหตุผลการลา'); return; }
   if (mode === 'HOURLY' && (!timeFrom || !timeTo)) {
     showToast('กรุณาเลือกเวลาเริ่มและสิ้นสุด'); return;
+  }
+  // ⚠️ ด่านซ้ำฝั่งหน้าเว็บ — กันกรณีเลือกเวลาไว้ก่อนแล้วไปเปลี่ยนประเภททีหลัง
+  //    ถ้าไม่มีตารางเวลา (หลังบ้านรุ่นเก่า) ข้ามด่านนี้ไป ไม่ใช่ปฏิเสธ
+  if (mode === 'HOURLY') {
+    const grid = lvGridFor(leaveType);
+    if (grid && (grid.indexOf(timeFrom) < 0 || grid.indexOf(timeTo) < 0)) {
+      showToast('เวลาที่เลือกไม่อยู่ในช่วงที่กำหนด กรุณาเลือกใหม่'); return;
+    }
   }
   // ครึ่งวัน/รายชั่วโมง = วันเดียว (บังคับ dateTo = dateFrom)
   const singleDay = (mode === 'HALF_AM' || mode === 'HALF_PM' || mode === 'HOURLY');

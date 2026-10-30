@@ -265,8 +265,12 @@ select.inp option{background:var(--sf2)}
 .s-lbl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
 .s-val{font-size:13px;font-weight:600;font-family:var(--mo)}
 
-.toast{position:fixed;bottom:calc(16px + var(--sab));left:16px;right:16px;background:var(--sf);border:1px solid var(--er);border-radius:10px;padding:11px 14px;color:var(--er);font-size:13px;z-index:300;transform:translateY(100px);opacity:0;transition:all .3s;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+/* ⚠️ ข้อความแจ้งเตือนอยู่ "ด้านบน" ไม่ใช่ด้านล่าง
+   ของเดิมอยู่ล่างจอซึ่งบนมือถือไปชนแถบนำทางของเบราว์เซอร์ คนมองไม่ทัน
+   และข้อความที่พลาดไปคือข้อความที่สำคัญที่สุด (บอกว่าทำไมส่งไม่สำเร็จ) */
+.toast{position:fixed;top:calc(12px + var(--sat,0px));left:16px;right:16px;background:var(--sf);border:1px solid var(--er);border-radius:10px;padding:12px 14px;color:var(--er);font-size:13px;line-height:1.5;z-index:300;transform:translateY(-120px);opacity:0;transition:all .25s;display:flex;align-items:flex-start;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.16)}
 .toast.show{transform:translateY(0);opacity:1}
+.toast-x{margin-left:auto;flex-shrink:0;background:none;border:none;color:inherit;opacity:.65;font-size:18px;line-height:1;cursor:pointer;padding:0 2px;font-family:var(--fn)}
 .toast.ok{border-color:var(--ok);color:var(--ok)}
 .spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
 .spin.dk{border-color:rgba(0,0,0,.12);border-top-color:var(--ac)}
@@ -1973,7 +1977,7 @@ textarea.inp{resize:vertical;min-height:60px}
   </div>
 </div>
 
-<div class="toast" id="toast"><span id="tmsg"></span></div>
+<div class="toast" id="toast"><span id="tmsg"></span><button class="toast-x" id="toast-x" aria-label="ปิด">×</button></div>
 
 <script>
 // ============================================================
@@ -6826,13 +6830,42 @@ function showRes(o) {
 }
 function closeOv() { document.getElementById('overlay').classList.remove('show'); }
 let _tt;
+/**
+ * ── ข้อความแจ้งเตือน ──────────────────────────────────────
+ *
+ *  ⚠️ ข้อความ "สำเร็จ" กับ "ไม่สำเร็จ" ไม่ควรหายไปเหมือนกัน
+ *
+ *     สำเร็จ  = คำยืนยัน พลาดไปก็ไม่เสียหาย เพราะผลลัพธ์เห็นได้จากหน้าจออยู่แล้ว
+ *               → หายเองใน 3 วินาที ไม่รบกวน
+ *     ไม่สำเร็จ = บอกว่าทำไมถึงไม่ได้ และต้องทำอะไรต่อ พลาดไปแล้วงง
+ *               → ค้างไว้จนกว่าจะกดปิด หรือจนกว่าจะมีข้อความใหม่มาแทน
+ *
+ *  ⚠️ ของเดิมหายเองทั้งคู่ใน 4 วินาที และอยู่ล่างจอซึ่งบนมือถือมองไม่ทัน
+ *     ผู้ใช้รายงานว่า "เตือนแค่ประมาณ 1 วินาที" — ความรู้สึกนั้นบอกว่า
+ *     ตำแหน่งต่างหากที่เป็นปัญหา ไม่ใช่ตัวเลขวินาที
+ *
+ *  ⚠️ ปลายทางที่เรียกใช้ทั้งหมดไม่ต้องแก้เลย — รูปแบบ showToast(msg, ok) เหมือนเดิม
+ */
+var TOAST_OK_MS = 3000;   // ข้อความสำเร็จอยู่กี่มิลลิวินาที
+
+function hideToast() {
+  const el = document.getElementById('toast');
+  if (el) el.classList.remove('show');
+  clearTimeout(_tt);
+}
+
 function showToast(msg, ok) {
   const el = document.getElementById('toast');
   document.getElementById('tmsg').textContent = msg;
   el.style.borderColor = ok ? 'var(--ok)' : 'var(--er)';
   el.style.color = ok ? 'var(--ok)' : 'var(--er)';
-  el.classList.add('show'); clearTimeout(_tt);
-  _tt = setTimeout(() => el.classList.remove('show'), 4000);
+  // ปุ่มปิดมีความหมายเฉพาะข้อความที่ค้างไว้
+  const x = document.getElementById('toast-x');
+  if (x) x.style.display = ok ? 'none' : '';
+  el.classList.add('show');
+  clearTimeout(_tt);
+  // ⚠️ เฉพาะข้อความสำเร็จที่หายเอง ข้อความผิดพลาดค้างไว้ให้อ่าน
+  if (ok) _tt = setTimeout(() => el.classList.remove('show'), TOAST_OK_MS);
 }
 
 /**
@@ -7077,6 +7110,9 @@ applyLogo();
     var el = document.getElementById(id);
     if (el) el.addEventListener(evt, fn);
   }
+
+  // ปุ่มปิดข้อความแจ้งเตือน (ข้อความผิดพลาดค้างไว้จนกว่าจะกดปิด)
+  on('toast-x', 'click', hideToast);
 
   // NAV TABS
   on('tab-home', 'click', function() { tab('home',     document.getElementById('tab-home')); });
@@ -7448,7 +7484,7 @@ applyLogo();
      ⚠️ ทุกครั้งที่แก้ leave.js / ot.js / payroll.js ให้เปลี่ยนเลขนี้ทั้ง 3 บรรทัด
         และเปลี่ยน APP_VERSION ให้ตรงกันด้วย (ดูใกล้ ๆ บรรทัด "const APP_VERSION")
 -->
-<script src="leave.js?v=8.28.0"></script>
+<script src="leave.js?v=8.29.0"></script>
 <script src="ot.js?v=8.15.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
 <script>
