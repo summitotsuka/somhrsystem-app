@@ -524,6 +524,17 @@ textarea.inp{resize:vertical;min-height:60px}
     <div id="home-bul-body"></div>
   </div>
 
+  <!-- ข้อมูลลงเวลาไม่สมบูรณ์ที่ยังค้างอยู่ — ฝ่ายบุคคลกับหัวหน้างานเท่านั้น
+       ⚠️ ซ่อนไว้จนกว่าจะรู้ว่ามีของค้างจริง จอจะได้ไม่กระพริบเป็นการ์ดเปล่า
+       ⚠️ การซ่อนเป็นแค่ความสะดวก ขอบเขตจริงตัดสินที่ att_incomplete ในฐานข้อมูล -->
+  <div class="hol-card" id="home-inc-card" style="display:none">
+    <div class="hol-head">
+      <div class="hol-title" id="home-inc-title">ข้อมูลลงเวลาไม่สมบูรณ์</div>
+      <button class="hol-more" id="home-inc-more">ดูทั้งหมด ›</button>
+    </div>
+    <div id="home-inc-body"></div>
+  </div>
+
   <!-- วันหยุดเดือนนี้ — แสดงจากข้อมูลที่จำไว้ในเครื่องทันที ไม่ต้องรอ server -->
   <div class="hol-card" id="home-hol-card">
     <div class="hol-head">
@@ -1435,6 +1446,19 @@ textarea.inp{resize:vertical;min-height:60px}
   </div>
 </div>
 
+<!-- ═══════════════ ข้อมูลลงเวลาไม่สมบูรณ์ ═══════════════ -->
+<div class="page" id="page-att-incomplete">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+    <button class="btn o sm" id="inc-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
+    <h2 style="margin:0;font-size:18px">ข้อมูลลงเวลาไม่สมบูรณ์</h2>
+  </div>
+  <!-- ⚠️ บอกช่วงที่ดูได้จริง ไม่ใช่ปล่อยให้เข้าใจว่าครบทั้งปี
+       ข้อมูลใน Supabase เริ่มจากกลางปี การไม่บอกจะทำให้คิดว่าก่อนหน้านั้นไม่มีปัญหา -->
+  <div id="inc-range" style="font-size:12px;color:var(--tx3);margin-bottom:12px"></div>
+  <div id="inc-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
+  <div id="inc-list"></div>
+</div>
+
 <!-- ═══════════════ ระบบลา: หน้าขอลา ═══════════════ -->
 <div class="page" id="page-leave-form">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -2048,6 +2072,8 @@ const SB = {
               // ── เฟส 5R ── ใช้กติกาจับคู่เข้า/ออกชุดเดียวกับ hrGetReport
               // (att_rawlog / att_dashboard) จึงถูกคุมด้วยชุดเทียบผลเดียวกัน
               hrGetRawLog: 1, hrGetDashboard: 1,
+              // ⚠️ ขอบเขตตัดสินใน att_incomplete (emp_scope) ไม่ใช่ที่หน้าเว็บ
+              hrGetIncomplete: 1,
               // ── เฟส 5P: วันหยุดเขียนที่ Supabase ตรง ไม่ผ่าน GAS ──
               // เป็นคำสั่ง "เขียน" คู่แรกที่ไม่ผ่าน GAS เลย
               // เพราะคิวของ GAS คือต้นเหตุที่วัดได้: เพิ่มวันหยุดใช้ 20-65 วินาที
@@ -3268,7 +3294,7 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip'];
+  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
@@ -3295,6 +3321,7 @@ function go(id) {
   }
 
   if (id === 'home') renderHomeMenu();
+  if (id === 'att-incomplete') loadIncompletePage();
   if (id === 'holiday') loadHolidayViewPage();
   if (id === 'history') loadHistory();
   if (id === 'hr-dashboard') {
@@ -3454,6 +3481,9 @@ function renderHomeMenu() {
   // ตรวจว่าสำเนาข้อมูลยังสดอยู่ไหม — ไม่หน่วงหน้าจอ ทำเบื้องหลัง
   sbCheckFresh();
 
+  // รายการลงเวลาไม่สมบูรณ์ — โหลดเบื้องหลัง การ์ดซ่อนไว้จนกว่าจะรู้ว่ามีของค้าง
+  renderHomeIncomplete();
+
   // ── เมนูของฉัน ──
   const me = [];
   if (canCheckin) {
@@ -3500,6 +3530,18 @@ function renderHomeMenu() {
     apprSec.style.display = 'none';
   }
 
+  // ── รายงาน (หัวหน้างานที่ไม่ใช่ HR/ผู้บริหาร) ──
+  //
+  //  ⚠️ ไม่ให้พนักงานทั่วไป เพราะเขาเห็นของตัวเองที่หน้าประวัติอยู่แล้ว
+  //     เพิ่มเมนูให้ทุกคนเพื่อประโยชน์ของไม่กี่คน = รกเปล่า ๆ
+  //
+  //  ⚠️ ไม่มี "ภาพรวมประจำวัน" เพราะเป็นมุมมองทั้งบริษัท (ด่าน is_viewer)
+  //     หัวหน้ากดเข้าไปจะถูกปฏิเสธ ไม่ควรโชว์ปุ่มที่กดไม่ได้
+  //
+  //  ⚠️ ขอบเขตข้อมูลตัดสินที่ emp_scope ในฐานข้อมูล ไม่ใช่การซ่อนเมนู
+  //     หัวหน้าเห็นเฉพาะลูกทีมเพราะฐานข้อมูลกรองให้ ไม่ใช่เพราะหน้าเว็บขอแบบนั้น
+  const isApprover = !isHR && !isExec && !!S.isApprover;
+
   // ── งานฝ่ายบุคคล ──
   const hrSec = el('home-sec-hr');
   if (isHR) {
@@ -3523,6 +3565,16 @@ function renderHomeMenu() {
     ]);
     const hd = document.getElementById('home-sec-hr-title');
     if (hd) hd.textContent = 'รายงาน';
+    if (hrSec) hrSec.style.display = '';
+  } else if (isApprover) {
+    // หัวหน้างาน — รายงานสามตัว เห็นเฉพาะลูกทีม (ฐานข้อมูลเป็นคนจำกัด)
+    homeFillGrid('home-grid-hr', [
+      { p: 'hr-report',     t: 'รายงานลงเวลา',  ic: '▤', bg: 'rgba(245,158,11,.15)', fg: '#d97706' },
+      { p: 'leave-report',  t: 'รายงานการลา',   ic: '✈', bg: 'rgba(16,185,129,.15)', fg: '#059669' },
+      { p: 'ot-report',     t: 'รายงานโอที',    ic: '＋', bg: 'rgba(245,158,11,.12)', fg: '#d97706' },
+    ]);
+    const hd2 = document.getElementById('home-sec-hr-title');
+    if (hd2) hd2.textContent = 'รายงานทีมของฉัน';
     if (hrSec) hrSec.style.display = '';
   } else if (hrSec) {
     hrSec.style.display = 'none';
@@ -4294,6 +4346,120 @@ function applyDashFilter(filter) {
     </div>`;
   });
   list.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  ข้อมูลลงเวลาไม่สมบูรณ์
+//
+//  ⚠️ รายการส่วนใหญ่ที่คาดว่าจะเจอคือ "รออนุมัติใบลา" ซึ่งไม่ใช่ปัญหาข้อมูล
+//     แต่เป็นงานค้างของผู้อนุมัติ จึงต้องแยกให้เห็นว่าอันไหนเป็นงานของใคร
+//     ถ้ากองรวมกัน ฝ่ายบุคคลจะเห็นกองใหญ่ที่ตัวเองแก้ไม่ได้ปนกับที่ต้องแก้จริง
+//
+//  ⚠️ ไม่มีปุ่ม "ปิดเรื่อง" โดยเจตนา
+//     รายการหายเมื่อข้อมูลถูกแก้ให้ครบเท่านั้น
+//     ถ้ามีทางลัดให้รายการหายโดยไม่ต้องทำอะไร มันจะถูกใช้แบบนั้น
+// ════════════════════════════════════════════════════════════════
+var INC = { rows: [], counts: {}, from: '', to: '' };
+
+// ⚠️ ใช้คำเดียวกับหน้าประวัติการลา จะได้ไม่มีศัพท์ใหม่ให้ต้องเรียนรู้
+var INC_KIND = {
+  NO_SCAN:           { t: 'ไม่มีการลงเวลา', cls: 'hd-b-absent' },
+  NO_IN:             { t: 'ไม่มีเวลาเข้า',   cls: 'hd-b-noout' },
+  NO_OUT:            { t: 'ไม่มีเวลาออก',    cls: 'hd-b-noout' },
+  LEAVE_PENDING_L1:  { t: 'รออนุมัติ (หัวหน้าแผนก)', cls: 'hd-b-late' },
+  LEAVE_PENDING_L2:  { t: 'รออนุมัติ (ผู้จัดการ)',   cls: 'hd-b-late' },
+  LEAVE_PENDING_HR:  { t: 'รออนุมัติ (ฝ่ายบุคคล)',   cls: 'hd-b-late' },
+};
+
+function incThaiDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = String(iso).split('-');
+  const th = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return parseInt(d) + ' ' + th[parseInt(m) - 1] + ' ' + (parseInt(y) + 543);
+}
+
+function incRow(r) {
+  const k = INC_KIND[r.kind] || { t: r.kind, cls: 'hd-b-absent' };
+  const เวลา = (r.inTime || r.outTime)
+    ? `เข้า ${r.inTime || '—'} → ออก ${r.outTime || '—'}` : '';
+  return `<div class="hd-row">
+    <span class="hd-badge ${k.cls}">${esc(k.t)}</span>
+    <div style="flex:1;min-width:0">
+      <div class="hd-name">${esc(r.name)}</div>
+      <div class="hd-meta">${esc(r.empId)} · ${esc(r.dept)} · ${esc(incThaiDate(r.date))}</div>
+    </div>
+    ${เวลา ? `<div class="hd-times">${esc(เวลา)}</div>` : ''}
+  </div>`;
+}
+
+/** โหลดรายการค้าง — ใช้ทั้งการ์ดหน้าแรกและหน้ารวม */
+function incLoad(onDone) {
+  gasRun('hrGetIncomplete', { hrToken: S.hrToken })
+    .withSuccessHandler(r => {
+      if (!r || !r.success) { if (onDone) onDone(false, r); return; }
+      INC = { rows: r.rows || [], counts: r.counts || {}, from: r.from || '', to: r.to || '' };
+      if (onDone) onDone(true, r);
+    })
+    .withFailureHandler(() => { if (onDone) onDone(false, null); });
+}
+
+/** การ์ดบนหน้าแรก — โชว์ 3 รายการแรก */
+function renderHomeIncomplete() {
+  const card = document.getElementById('home-inc-card');
+  if (!card) return;
+  // ⚠️ เห็นเฉพาะฝ่ายบุคคลกับหัวหน้างาน — พนักงานทั่วไปไม่ต้องรก
+  //    (เขาเห็นของตัวเองที่หน้าเช็คเวลาอยู่แล้ว)
+  const ดูได้ = (S.role === 'HR') || !!S.isApprover;
+  if (!ดูได้) { card.style.display = 'none'; return; }
+
+  incLoad(function (ok) {
+    if (!ok || !INC.rows.length) { card.style.display = 'none'; return; }
+    const t = document.getElementById('home-inc-title');
+    if (t) t.textContent = 'ข้อมูลลงเวลาไม่สมบูรณ์ ' + INC.rows.length + ' รายการ';
+    const body = document.getElementById('home-inc-body');
+    if (body) {
+      body.innerHTML = INC.rows.slice(0, 3).map(incRow).join('') +
+        (INC.rows.length > 3
+          ? `<div style="font-size:12px;color:var(--tx3);padding:8px 0 0">และอีก ${INC.rows.length - 3} รายการ</div>`
+          : '');
+    }
+    card.style.display = '';
+  });
+}
+
+/** หน้ารวม */
+function loadIncompletePage() {
+  const list = document.getElementById('inc-list');
+  const sum = document.getElementById('inc-summary');
+  const rng = document.getElementById('inc-range');
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด…</div>';
+  if (sum) sum.innerHTML = '';
+  if (rng) rng.textContent = '';
+
+  incLoad(function (ok, r) {
+    if (!ok) {
+      list.innerHTML = '<div style="padding:20px;color:var(--er)">' +
+        esc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>';
+      return;
+    }
+    if (rng) {
+      rng.textContent = INC.from
+        ? ('ดูย้อนหลังได้ถึง ' + incThaiDate(INC.from) + ' — เท่าที่มีข้อมูลในระบบ')
+        : '';
+    }
+    const c = INC.counts || {};
+    if (sum) {
+      const การ์ด = (ป้าย, n, สี) => `<div class="hd-card" style="cursor:default">
+        <div style="font-size:12px;color:var(--tx3)">${ป้าย}</div>
+        <div style="font-size:22px;font-weight:700;color:${สี}">${n || 0}</div></div>`;
+      sum.innerHTML =
+        การ์ด('ต้องแก้ข้อมูล', (c.noScan || 0) + (c.noIn || 0) + (c.noOut || 0), 'var(--er)') +
+        การ์ด('รออนุมัติใบลา', c.waitLeave, '#d97706');
+    }
+    list.innerHTML = INC.rows.length
+      ? INC.rows.map(incRow).join('')
+      : '<div style="text-align:center;padding:30px;color:var(--ok)">ไม่มีรายการค้าง ✓</div>';
+  });
 }
 
 // ========== HR — EXPORT เงินเดือน ==========
@@ -7113,6 +7279,10 @@ applyLogo();
 
   // ปุ่มปิดข้อความแจ้งเตือน (ข้อความผิดพลาดค้างไว้จนกว่าจะกดปิด)
   on('toast-x', 'click', hideToast);
+
+  // ข้อมูลลงเวลาไม่สมบูรณ์
+  on('home-inc-more', 'click', function() { go('att-incomplete'); });
+  on('inc-back', 'click', function() { go('home'); });
 
   // NAV TABS
   on('tab-home', 'click', function() { tab('home',     document.getElementById('tab-home')); });
