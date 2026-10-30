@@ -3276,6 +3276,17 @@ function hideEmpStrip() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('with-strip'));
 }
 
+// ── ปุ่มย้อนกลับของ "ภาพรวมประจำวัน" กับ "รายงานลงเวลา" ควรไปไหน ──
+// สองหน้านี้มีคนเปิดได้สามแบบ และกลับคนละทางกัน
+//   ฝ่ายบุคคล          → "เมนูงานบุคคล" ซึ่งเป็นที่ที่เขากดเข้ามาจริงๆ
+//   ผู้บริหาร·หัวหน้างาน → หน้าหลัก เพราะเมนูงานบุคคลไม่ใช่ของเขา
+//                        (กดแล้วจะเจอหน้าที่เต็มไปด้วยปุ่มที่กดไม่ได้)
+//
+// ⚠️ เงื่อนไขอยู่ที่นี่ที่เดียว ห้ามเขียนซ้ำที่อื่น
+//    ของเดิมเขียน S.role === 'EXEC' ไว้สามที่ พอเปิดให้หัวหน้างานเข้าด้วย
+//    ก็ต้องตามแก้สามที่ และตกไปจุดหนึ่ง — หัวหน้างานเลยถูกส่งไปเมนูงานบุคคล
+function backFromHrPage() { return S.role === 'HR' ? 'hr-dash' : 'home'; }
+
 function go(id) {
   // ปิดกล้องเมื่อออกจากหน้าที่ใช้กล้อง (เผื่อ navigate โดยไม่กดปุ่มออก)
   // หุ้ม try-catch กันกรณีเรียกตอนเริ่มแอป (ตัวแปร kiosk ยังไม่ init — temporal dead zone)
@@ -3309,15 +3320,11 @@ function go(id) {
   if (id === 'checkout' && S.inTime) {
     const ref = document.getElementById('co-inref'); if(ref) ref.textContent = S.inTime;
   }
-  // ⚠️ ปุ่มย้อนกลับของสองหน้านี้ต้องดูว่าใครเปิด
-  //    ฝ่ายบุคคล  → กลับไป "เมนูงานบุคคล" ซึ่งเป็นที่ที่เขากดเข้ามา
-  //    ผู้บริหาร  → กลับไปหน้าหลัก เพราะเมนูงานบุคคลไม่ใช่ของเขา
-  //                 (กดแล้วจะเจอหน้าที่เต็มไปด้วยปุ่มที่กดไม่ได้)
+  // ⚠️ ปุ่มย้อนกลับของสองหน้านี้ต้องดูว่าใครเปิด (ดู backFromHrPage)
   //    ตั้งตอนเปิดหน้า ไม่ใช่ตอนล็อกอิน — รีเฟรชกลางคันก็ยังถูก
   if (id === 'hr-dashboard' || id === 'hr-report') {
-    const toHome = (S.role === 'EXEC');
     const btn = document.getElementById(id === 'hr-dashboard' ? 'hrdash-back' : 'hrrep-back');
-    if (btn) btn.textContent = toHome ? '← หน้าหลัก' : '← เมนูงานบุคคล';
+    if (btn) btn.textContent = backFromHrPage() === 'home' ? '← หน้าหลัก' : '← เมนูงานบุคคล';
   }
 
   if (id === 'home') renderHomeMenu();
@@ -7345,7 +7352,7 @@ applyLogo();
   on('hr-menu-rawlog',    'click', function() { go('hr-rawlog'); });
 
   // HR รายงาน
-  on('hrrep-back', 'click', function() { go(S.role === 'EXEC' ? 'home' : 'hr-dash'); });
+  on('hrrep-back', 'click', function() { go(backFromHrPage()); });
   on('hrrep-search', 'input', function() { renderRepList(this.value); });
   on('hrrep-all', 'click', hrRepSelectAll);
   on('hrrep-none', 'click', hrRepClearAll);
@@ -7420,7 +7427,7 @@ applyLogo();
   on('hrexp-download', 'click', hrExpDownload);
 
   // HR Dashboard
-  on('hrdash-back', 'click', function() { go(S.role === 'EXEC' ? 'home' : 'hr-dash'); });
+  on('hrdash-back', 'click', function() { go(backFromHrPage()); });
   // คลิกการ์ดเพื่อกรองรายชื่อ
   document.querySelectorAll('.hd-card').forEach(function(card) {
     card.addEventListener('click', function() { applyDashFilter(card.dataset.filter); });
