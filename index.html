@@ -5175,6 +5175,22 @@ function hrDmDeleteRow(item, btnEl) {
     .withFailureHandler(e => { if (btnEl) { btnEl.disabled = false; btnEl.textContent = '🗑'; } showToast(e.message); });
 }
 
+// ── บรรทัดใบลาใต้ป้ายสถานะในรายงานลงเวลา ──
+// ⚠️ "คำอธิบาย" ไม่ใช่ "คำตัดสิน" — ป้ายสถานะไม่เปลี่ยน ตัวเลขสรุปไม่เปลี่ยน
+//    รายงานบอกความจริงถูกแล้ว แต่บอกไม่หมด สองเคสที่เจอจริง:
+//      สแกนเข้าแล้วกลับเพราะไม่สบาย ยื่นใบลาย้อนหลัง → ป้ายแดง "ไม่มีออก"
+//      ลาครึ่งเช้า แล้วสแกนเข้า 12:45 → ป้าย "สาย 3 ชม."
+//    ทั้งสองถูกตามตัวเลข แต่ไม่ใช่ความผิดของพนักงาน ป้ายแดงจึงเป็นการกล่าวหา
+//
+// ⚠️ ข้อความมาจากเซิร์ฟเวอร์ (leaveNote) ไม่ประกอบที่นี่
+//    ตัวประกอบข้อความอยู่ที่ leaveLabel ใน Edge Function ที่เดียว
+//    หน้า "เช็คเวลา" ของพนักงานใช้ตัวเดียวกัน สองจอจึงพูดตรงกันเสมอ
+function lvNote(row) {
+  if (!row || !row.leaveNote) return '';
+  const c = row.leavePending ? 'var(--wn)' : 'var(--tx3)';
+  return `<div style="font-size:10px;color:${c};margin-top:3px;line-height:1.3">${row.leaveNote}</div>`;
+}
+
 function renderReport(r) {
   const s = r.summary || {};
   document.getElementById('hrrep-s-days').textContent  = s.totalRows || 0;
@@ -5205,7 +5221,7 @@ function renderReport(r) {
         <td>${d}/${m}/${(+y)+543}${dow}</td>
         <td>${row.inTime || '—'}${inSrc}</td>
         <td>${row.outTime || '—'}${outSrc}</td>
-        <td>${badge[row.status] || ''}</td>
+        <td>${badge[row.status] || ''}${lvNote(row)}</td>
       </tr>`;
     });
   }
@@ -5220,13 +5236,14 @@ function hrRepDownloadCSV() {
   // ที่มาแบบดิบ (GPS/FINGER/FACE/MANUAL) — ไม่มีก็ "-"
   const srcOr = v => (v && String(v).trim()) ? String(v).trim().toUpperCase() : '-';
   let csv = '\uFEFF';  // BOM ให้ Excel อ่านภาษาไทยถูก
-  csv += 'รหัส,ชื่อ,แผนก,กะ,วันที่,วัน,เวลาเข้า,เวลาออก,สถานะ,ที่มา,พิกัด GPS\r\n';
+  // ⚠️ "ใบลา" ต่อท้ายคอลัมน์เดิม ไม่แทรกกลาง — ของเดิมที่ใครเอาไปทำสูตรไว้จะยังใช้ได้
+  csv += 'รหัส,ชื่อ,แผนก,กะ,วันที่,วัน,เวลาเข้า,เวลาออก,สถานะ,ที่มา,พิกัด GPS,ใบลา\r\n';
   hrRepData.rows.forEach(r => {
     const [y,m,d] = r.date.split('-');
     const thDate = `${d}/${m}/${y}`;
     const src   = `${srcOr(r.inSrcRaw)}/${srcOr(r.outSrcRaw)}`;                  // เข้า/ออก เช่น GPS/FINGER
     const coord = `${(r.inCoord||'-')}/${(r.outCoord||'-')}`;                    // เข้า/ออก (มีจุลภาค → ครอบ "")
-    csv += `${r.empId},"${r.name}","${r.department}",${r.shift},${thDate},${r.dow||''},${r.inTime||''},${r.outTime||''},${statusTH[r.status]||''},"${src}","${coord}"\r\n`;
+    csv += `${r.empId},"${r.name}","${r.department}",${r.shift},${thDate},${r.dow||''},${r.inTime||''},${r.outTime||''},${statusTH[r.status]||''},"${src}","${coord}","${r.leaveNote||''}"\r\n`;
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
