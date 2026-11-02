@@ -77,6 +77,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;background:rgba(
 .hd-b-late{background:rgba(217,119,6,.12);color:var(--wn)}
 .hd-b-noout{background:rgba(220,38,38,.1);color:var(--er)}
 .hd-b-present{background:rgba(5,150,105,.12);color:var(--ok)}
+/* ⚠️ ออกก่อน — ม่วง ต้องไม่ใช้สีเหลืองของ "มาสาย"
+   เดิมยืมสีเหลืองมาใช้ แล้วสองกลุ่มที่อยู่ติดกันบนจอดูเหมือนกันจนแยกไม่ออก
+   (ED เจอเองจากของจริง) ใช้สีเดียวกับป้ายในหน้ารายงานเพื่อให้สองจอตรงกัน */
+.hd-b-early{background:rgba(168,85,247,.15);color:#a855f7}
 .hd-name{font-size:15px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hd-meta{font-size:13px;color:var(--tx3);margin-top:2px}
 /* แถววันหยุด: วันที่ก่อน แล้วชื่อ บรรทัดเดียว — tabular-nums ให้เลขตรงคอลัมน์กันทุกแถว */
@@ -4351,7 +4355,7 @@ function applyDashFilter(filter) {
     const eoTxt = eoMin > 0 ? eoText(eoMin) : '';
     const bTxt  = (eoTxt && e.status === 'present') ? eoTxt
                 : (b.txt + (eoTxt ? ' · ' + eoTxt : ''));
-    const bCls  = (eoTxt && e.status === 'present') ? 'hd-b-late' : badgeCls;
+    const bCls  = (eoTxt && e.status === 'present') ? 'hd-b-early' : badgeCls;
     html += `<div class="hd-row">
       <span class="hd-badge ${bCls}">${bTxt}${lateTxt ? ' ' + lateTxt : ''}</span>
       <div style="flex:1;min-width:0">
