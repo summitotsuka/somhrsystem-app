@@ -198,6 +198,10 @@ select.inp option{background:var(--sf2)}
 .chip-w{background:rgba(234,88,12,.14);color:#c2410c}
 .chip-e{background:rgba(220,38,38,.12);color:var(--er)}
 .chip-d{background:var(--bd);color:var(--tx3);font-weight:500}
+/* ⚠️ ออกก่อน — ม่วง ต้องเท่ากับ .hd-b-early และป้ายในหน้ารายงาน
+   เรื่องเดียวกันต้องสีเดียวกันทั้งสามจอ ไม่งั้นพนักงานกับฝ่ายบุคคล
+   มองของเดียวกันแล้วเห็นคนละสี (ยืมสีเตือนส้มมาใช้ตอนแรกแล้วไม่ตรง) */
+.chip-eo{background:rgba(168,85,247,.15);color:#a855f7}
 .range-btn{flex:1;padding:8px 0;border-radius:8px;border:1px solid var(--bd2);background:var(--sf2);color:var(--tx2);font-size:12px;font-weight:500;font-family:var(--fn);cursor:pointer;transition:all .15s}
 .range-btn.active{background:var(--ac);border-color:var(--ac);color:#fff}
 
@@ -6828,7 +6832,7 @@ function renderHistory(r) {
       const em = Number(d.earlyOutMin);
       const et = em >= 60 ? (Math.floor(em / 60) + ' ชม.' + (em % 60 ? ' ' + (em % 60) + 'น.' : ''))
                           : (em + ' นาที');
-      chips += '<div><span class="hist-chip chip-w">ออกก่อน ' + et + '</span></div>';
+      chips += '<div><span class="hist-chip chip-eo">ออกก่อน ' + et + '</span></div>';
     }
     if (d.leave && punches.length) {
       chips += '<div><span class="hist-chip chip-d">' + esc(d.leave) + '</span></div>';
