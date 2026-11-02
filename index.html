@@ -5191,6 +5191,21 @@ function lvNote(row) {
   return `<div style="font-size:10px;color:${c};margin-top:3px;line-height:1.3">${row.leaveNote}</div>`;
 }
 
+// ── ป้าย "ออกก่อน" ──
+// ⚠️ ป้ายเพิ่ม ไม่ทับป้ายสถานะเดิม และตัวเลขสรุปสี่ตัวด้านบนไม่เปลี่ยน
+//    ช่องว่างที่ป้ายนี้อุด: รายงานมีตัวจับ "มาสาย" แต่ไม่มีตัวจับ "ออกก่อน"
+//    คนมา 08:30 แล้วสแกนออก 12:00 เคยขึ้น "ปกติ" สีเขียวเหมือนทำงานครบวัน
+//
+// ⚠️ จำนวนนาทีคิดที่เซิร์ฟเวอร์ (earlyOutMin) ไม่คิดที่นี่
+//    หน้าเช็คเวลาของพนักงานใช้ตัวเดียวกัน สองจอจึงตัดสินเหมือนกันเสมอ
+function eoBadge(row) {
+  const m = row && Number(row.earlyOutMin) || 0;
+  if (m <= 0) return '';
+  const txt = m >= 60 ? ('ออกก่อน ' + Math.floor(m / 60) + ' ชม.' + (m % 60 ? ' ' + (m % 60) + 'น.' : ''))
+                      : ('ออกก่อน ' + m + ' น.');
+  return `<div style="margin-top:3px"><span class="rep-bdg" style="background:rgba(168,85,247,.15);color:#a855f7">${txt}</span></div>`;
+}
+
 function renderReport(r) {
   const s = r.summary || {};
   document.getElementById('hrrep-s-days').textContent  = s.totalRows || 0;
@@ -5221,7 +5236,7 @@ function renderReport(r) {
         <td>${d}/${m}/${(+y)+543}${dow}</td>
         <td>${row.inTime || '—'}${inSrc}</td>
         <td>${row.outTime || '—'}${outSrc}</td>
-        <td>${badge[row.status] || ''}${lvNote(row)}</td>
+        <td>${badge[row.status] || ''}${eoBadge(row)}${lvNote(row)}</td>
       </tr>`;
     });
   }
@@ -5237,13 +5252,13 @@ function hrRepDownloadCSV() {
   const srcOr = v => (v && String(v).trim()) ? String(v).trim().toUpperCase() : '-';
   let csv = '\uFEFF';  // BOM ให้ Excel อ่านภาษาไทยถูก
   // ⚠️ "ใบลา" ต่อท้ายคอลัมน์เดิม ไม่แทรกกลาง — ของเดิมที่ใครเอาไปทำสูตรไว้จะยังใช้ได้
-  csv += 'รหัส,ชื่อ,แผนก,กะ,วันที่,วัน,เวลาเข้า,เวลาออก,สถานะ,ที่มา,พิกัด GPS,ใบลา\r\n';
+  csv += 'รหัส,ชื่อ,แผนก,กะ,วันที่,วัน,เวลาเข้า,เวลาออก,สถานะ,ที่มา,พิกัด GPS,ใบลา,ออกก่อน (นาที)\r\n';
   hrRepData.rows.forEach(r => {
     const [y,m,d] = r.date.split('-');
     const thDate = `${d}/${m}/${y}`;
     const src   = `${srcOr(r.inSrcRaw)}/${srcOr(r.outSrcRaw)}`;                  // เข้า/ออก เช่น GPS/FINGER
     const coord = `${(r.inCoord||'-')}/${(r.outCoord||'-')}`;                    // เข้า/ออก (มีจุลภาค → ครอบ "")
-    csv += `${r.empId},"${r.name}","${r.department}",${r.shift},${thDate},${r.dow||''},${r.inTime||''},${r.outTime||''},${statusTH[r.status]||''},"${src}","${coord}","${r.leaveNote||''}"\r\n`;
+    csv += `${r.empId},"${r.name}","${r.department}",${r.shift},${thDate},${r.dow||''},${r.inTime||''},${r.outTime||''},${statusTH[r.status]||''},"${src}","${coord}","${r.leaveNote||''}",${Number(r.earlyOutMin)||''}\r\n`;
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -6762,7 +6777,7 @@ function renderHistory(r) {
   });
 
   let html = histTableHead();
-  let nMiss = 0, nHol = 0, nFix = 0;
+  let nMiss = 0, nHol = 0, nFix = 0, nEarly = 0;
 
   dayList.forEach(d => {
     if (!d || !d.date) return;
@@ -6779,6 +6794,15 @@ function renderHistory(r) {
     if (d.needFix) {
       nFix++;
       chips += '<div><span class="hist-chip chip-e">ไม่มีเวลาออก</span></div>';
+    }
+    // ⚠️ ป้ายเดียวกับหน้ารายงานของฝ่ายบุคคล และคิดนาทีจากที่เดียวกัน
+    //    พนักงานเห็นเหมือนที่หัวหน้าเห็น จะไม่มีใครเถียงว่าจอใครถูก
+    if (Number(d.earlyOutMin) > 0) {
+      nEarly++;
+      const em = Number(d.earlyOutMin);
+      const et = em >= 60 ? (Math.floor(em / 60) + ' ชม.' + (em % 60 ? ' ' + (em % 60) + 'น.' : ''))
+                          : (em + ' นาที');
+      chips += '<div><span class="hist-chip chip-w">ออกก่อน ' + et + '</span></div>';
     }
     if (d.leave && punches.length) {
       chips += '<div><span class="hist-chip chip-d">' + esc(d.leave) + '</span></div>';
@@ -6834,10 +6858,11 @@ function renderHistory(r) {
   // ⚠️ บรรทัดนี้สำคัญพอ ๆ กับตาราง: เปิดให้ทุกคนเห็นพร้อมกัน ถ้าไม่บอกว่า
   //    "เจอแล้วทำยังไงต่อ" ฝ่ายบุคคลจะโดนถามคำถามเดียวกัน 80 รอบ
   let note = '';
-  if (nMiss || nHol || nFix) {
+  if (nMiss || nHol || nFix || nEarly) {
     const bits = [];
     if (nMiss) bits.push('ไม่มีข้อมูล ' + nMiss + ' วัน');
     if (nFix)  bits.push('ไม่มีเวลาออก ' + nFix + ' วัน');
+    if (nEarly) bits.push('ออกก่อนเวลา ' + nEarly + ' วัน');
     if (nHol)  bits.push('ทำงานวันหยุด ' + nHol + ' วัน');
     note = '<div style="padding:10px 12px;border-bottom:1px solid var(--bd);' +
            'font-size:12.5px;color:var(--tx2);background:var(--sf2)">ในช่วงนี้: ' +
