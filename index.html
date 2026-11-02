@@ -4343,8 +4343,17 @@ function applyDashFilter(filter) {
     //    ใช้สีเหลืองของกลุ่มมาสายแทน ให้สายตาจับได้ตรงกับความหมาย
     //    ⚠️ เปลี่ยนแค่สี ไม่เปลี่ยนกลุ่ม — การจัดกลุ่มกับการเรียงยังเหมือนเดิมทุกอย่าง
     const badgeCls = (e.status === 'no_checkout' && lateTxt) ? 'hd-b-late' : b.cls;
+    // ⚠️ ออกก่อน — แทนป้าย "ปกติ" ไปเลย เพราะปกติแปลว่าไม่มีอะไรต้องดู
+    //    สถานะอื่นไม่แทน แต่ต่อท้ายไว้ ความสายจะได้ไม่หายไปจากสายตา
+    //    ⚠️ ไม่เปลี่ยนช่อง status — การ์ดนับยอดด้านบนใช้ธง present/late
+    //       ถ้าเปลี่ยน status ตัวเลขบนการ์ดจะเพี้ยนทันที
+    const eoMin = Number(e.earlyOutMin) || 0;
+    const eoTxt = eoMin > 0 ? eoText(eoMin) : '';
+    const bTxt  = (eoTxt && e.status === 'present') ? eoTxt
+                : (b.txt + (eoTxt ? ' · ' + eoTxt : ''));
+    const bCls  = (eoTxt && e.status === 'present') ? 'hd-b-late' : badgeCls;
     html += `<div class="hd-row">
-      <span class="hd-badge ${badgeCls}">${b.txt}${lateTxt ? ' ' + lateTxt : ''}</span>
+      <span class="hd-badge ${bCls}">${bTxt}${lateTxt ? ' ' + lateTxt : ''}</span>
       <div style="flex:1;min-width:0">
         <div class="hd-name">${e.name}</div>
         <div class="hd-meta">${e.empId} · ${e.department} · กะ ${e.shift}</div>
@@ -5198,12 +5207,25 @@ function lvNote(row) {
 //
 // ⚠️ จำนวนนาทีคิดที่เซิร์ฟเวอร์ (earlyOutMin) ไม่คิดที่นี่
 //    หน้าเช็คเวลาของพนักงานใช้ตัวเดียวกัน สองจอจึงตัดสินเหมือนกันเสมอ
+function eoText(m) {
+  return m >= 60 ? ('ออกก่อน ' + Math.floor(m / 60) + ' ชม.' + (m % 60 ? ' ' + (m % 60) + 'น.' : ''))
+                 : ('ออกก่อน ' + m + ' น.');
+}
 function eoBadge(row) {
   const m = row && Number(row.earlyOutMin) || 0;
   if (m <= 0) return '';
-  const txt = m >= 60 ? ('ออกก่อน ' + Math.floor(m / 60) + ' ชม.' + (m % 60 ? ' ' + (m % 60) + 'น.' : ''))
-                      : ('ออกก่อน ' + m + ' น.');
-  return `<div style="margin-top:3px"><span class="rep-bdg" style="background:rgba(168,85,247,.15);color:#a855f7">${txt}</span></div>`;
+  // ⚠️ แถวที่สถานะเป็น "ปกติ" ให้ "ออกก่อน" แทนไปเลย ไม่แสดงคู่กัน
+  //    เพราะ "ปกติ" แปลว่าไม่มีอะไรต้องดู ซึ่งขัดกับป้ายที่อยู่ข้าง ๆ
+  //    (ED เจอเองจากของจริง: "ปกติ" + "ออกก่อน 5 ชม. 56น." อ่านแล้วขัดกัน)
+  //
+  // ⚠️ แต่สถานะอื่น (สาย · ไม่มีออก · ไม่มีเข้า) ต้องไม่ถูกแทน
+  //    คนที่มาสายแล้วออกก่อนด้วย ถ้าแทนป้าย ความสายจะหายไปจากสายตา
+  const sep = eoStandalone(row) ? '' : '<div style="margin-top:3px"></div>';
+  return `${sep}<span class="rep-bdg" style="background:rgba(168,85,247,.15);color:#a855f7">${eoText(m)}</span>`;
+}
+// แถวนี้ "ออกก่อน" ยืนเดี่ยวแทนป้ายเดิมได้ไหม — ได้เฉพาะตอนสถานะเดิมคือ ปกติ
+function eoStandalone(row) {
+  return (Number(row && row.earlyOutMin) || 0) > 0 && row.status === 'present';
 }
 
 function renderReport(r) {
@@ -5236,7 +5258,7 @@ function renderReport(r) {
         <td>${d}/${m}/${(+y)+543}${dow}</td>
         <td>${row.inTime || '—'}${inSrc}</td>
         <td>${row.outTime || '—'}${outSrc}</td>
-        <td>${badge[row.status] || ''}${eoBadge(row)}${lvNote(row)}</td>
+        <td>${eoStandalone(row) ? '' : (badge[row.status] || '')}${eoBadge(row)}${lvNote(row)}</td>
       </tr>`;
     });
   }
