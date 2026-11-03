@@ -1198,7 +1198,7 @@ textarea.inp{resize:vertical;min-height:60px}
         กติกาเดียวกับหน้าผู้รับข้อความแจ้งเตือน — เลขนี้เปลี่ยนไม่ได้
         เหมือนรหัสผ่าน หลุดแล้วเรียกคืนไม่ได้ -->
 <div class="page" id="page-hr-empreport">
-  <button id="hremp-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
+  <button id="empr-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
 
   <div style="margin-bottom:14px">
     <div style="font-size:17px;font-weight:600">รายงานข้อมูลพนักงาน</div>
@@ -1209,42 +1209,49 @@ textarea.inp{resize:vertical;min-height:60px}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div style="font-size:12px;color:var(--tx2);font-weight:500">สถานะที่ต้องการดู</div>
       <div style="display:flex;gap:6px">
-        <button class="btn o sm" id="hremp-st-all">เลือกทั้งหมด</button>
-        <button class="btn o sm" id="hremp-st-none">ล้าง</button>
+        <button class="btn o sm" id="empr-st-all">เลือกทั้งหมด</button>
+        <button class="btn o sm" id="empr-st-none">ล้าง</button>
       </div>
     </div>
-    <div id="hremp-statuses" style="display:flex;gap:6px;flex-wrap:wrap">
+    <div id="empr-statuses" style="display:flex;gap:6px;flex-wrap:wrap">
       <div style="color:var(--tx3);font-size:13px">กำลังโหลด...</div>
     </div>
     <div style="font-size:11px;color:var(--tx3);margin-top:8px">ไม่เลือกเลย = ทุกสถานะ (รวมคนที่ลาออกแล้ว)</div>
   </div>
 
-  <button class="btn p" id="hremp-generate" style="margin-bottom:10px">สร้างรายงาน</button>
+  <button class="btn p" id="empr-generate" style="margin-bottom:10px">สร้างรายงาน</button>
 
-  <div id="hremp-result" style="display:none">
+  <div id="empr-result" style="display:none">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
       <div class="card" style="padding:12px;text-align:center;margin:0">
         <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">จำนวนคน</div>
-        <div style="font-size:20px;font-weight:700;color:var(--ac)" id="hremp-s-total">—</div>
+        <div style="font-size:20px;font-weight:700;color:var(--ac)" id="empr-s-total">—</div>
       </div>
       <div class="card" style="padding:12px;text-align:center;margin:0">
         <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">ยังไม่มีตำแหน่ง</div>
-        <div style="font-size:20px;font-weight:700;color:var(--wn)" id="hremp-s-nopos">—</div>
+        <div style="font-size:20px;font-weight:700;color:var(--wn)" id="empr-s-nopos">—</div>
       </div>
       <div class="card" style="padding:12px;text-align:center;margin:0">
         <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">ยังไม่มีวันเกิด</div>
-        <div style="font-size:20px;font-weight:700;color:var(--wn)" id="hremp-s-nobirth">—</div>
+        <div style="font-size:20px;font-weight:700;color:var(--wn)" id="empr-s-nobirth">—</div>
       </div>
       <div class="card" style="padding:12px;text-align:center;margin:0">
         <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">ยังไม่ตั้ง Telegram</div>
-        <div style="font-size:20px;font-weight:700;color:#fb923c" id="hremp-s-notg">—</div>
+        <div style="font-size:20px;font-weight:700;color:#fb923c" id="empr-s-notg">—</div>
       </div>
     </div>
 
-    <button class="btn o" id="hremp-csv" style="margin-bottom:12px">⤓ CSV</button>
+    <!-- ⚠️ กรองที่เครื่อง ไม่ยิงใหม่ — ข้อมูลทั้งหมดอยู่ในมือแล้ว
+         ยิงใหม่ทุกตัวอักษรจะช้าและเปลืองเปล่า ๆ -->
+    <input class="inp" id="empr-filter" placeholder="ค้นหา รหัส · ชื่อ · แผนก · ตำแหน่ง"
+           style="margin-bottom:10px;font-size:13px">
+
+    <button class="btn o" id="empr-csv" style="margin-bottom:12px">⤓ CSV</button>
+
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:6px" id="empr-count"></div>
 
     <div class="card" style="padding:0;overflow:hidden">
-      <div id="hremp-table" style="overflow-x:auto"></div>
+      <div id="empr-table" style="overflow-x:auto"></div>
     </div>
   </div>
 </div>
@@ -4799,8 +4806,8 @@ function empRepThDate(iso) {
 function loadEmpReportPage() {
   empRepPicked = {};
   empRepData = null;
-  document.getElementById('hremp-result').style.display = 'none';
-  const box = document.getElementById('hremp-statuses');
+  document.getElementById('empr-result').style.display = 'none';
+  const box = document.getElementById('empr-statuses');
 
   if (!sbReady()) {
     box.innerHTML = '<div style="color:var(--er);font-size:13px">รายงานนี้ต้องใช้ฐานข้อมูลใหม่ ขณะนี้เชื่อมต่อไม่ได้</div>';
@@ -4825,7 +4832,7 @@ function loadEmpReportPage() {
 }
 
 function empRepRenderStatuses() {
-  const box = document.getElementById('hremp-statuses');
+  const box = document.getElementById('empr-statuses');
   if (!empRepStatuses.length) {
     box.innerHTML = '<div style="color:var(--tx3);font-size:13px">ไม่มีข้อมูลสถานะ</div>';
     return;
@@ -4850,7 +4857,7 @@ function empRepSetAll(on) {
 
 function empRepGenerate() {
   if (!sbReady()) { showToast('รายงานนี้ต้องใช้ฐานข้อมูลใหม่ ขณะนี้เชื่อมต่อไม่ได้'); return; }
-  const btn = document.getElementById('hremp-generate');
+  const btn = document.getElementById('empr-generate');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง...';
   // ⚠️ ไม่ติ๊กเลย = ทุกสถานะ — ส่ง array ว่างไป Edge Function แปลงเป็น null ให้
   gasRun('hrGetEmpReport', { hrToken: S.hrToken, statuses: Object.keys(empRepPicked) }, 60000)
@@ -4869,14 +4876,24 @@ function empRepGenerate() {
     });
 }
 
+function empRepRedraw() {
+  if (empRepData) empRepRender(empRepData);
+}
+
 function empRepRender(r) {
   const c = r.counts || {};
-  document.getElementById('hremp-s-total').textContent   = c.total      != null ? c.total      : '—';
-  document.getElementById('hremp-s-nopos').textContent   = c.noPosition != null ? c.noPosition : '—';
-  document.getElementById('hremp-s-nobirth').textContent = c.noBirth    != null ? c.noBirth    : '—';
-  document.getElementById('hremp-s-notg').textContent    = c.noTelegram != null ? c.noTelegram : '—';
+  document.getElementById('empr-s-total').textContent   = c.total      != null ? c.total      : '—';
+  document.getElementById('empr-s-nopos').textContent   = c.noPosition != null ? c.noPosition : '—';
+  document.getElementById('empr-s-nobirth').textContent = c.noBirth    != null ? c.noBirth    : '—';
+  document.getElementById('empr-s-notg').textContent    = c.noTelegram != null ? c.noTelegram : '—';
 
-  const rows = Array.isArray(r.rows) ? r.rows : [];
+  const fEl = document.getElementById('empr-filter');
+  const kw  = fEl ? fEl.value.trim().toLowerCase() : '';
+  const all = Array.isArray(r.rows) ? r.rows : [];
+  // ค้นได้ทั้งรหัส ชื่อ แผนก ตำแหน่ง — ฝ่ายบุคคลจะดูคนเดียวหรือทั้งแผนกก็ได้
+  const rows = kw ? all.filter(e =>
+    [e.empId, e.name, e.dept, e.position].some(v =>
+      String(v || '').toLowerCase().indexOf(kw) >= 0)) : all;
   const dash = v => (v == null || v === '') ? '<span style="color:var(--tx3)">—</span>' : String(v);
   // ผู้อนุมัติ: ถ้ามีชื่อให้โชว์ชื่อ + รหัสตัวเล็ก (ED ขอให้ดึงชื่อมาด้วย)
   const appr = (id, name) => {
@@ -4904,9 +4921,16 @@ function empRepRender(r) {
       + '<td style="text-align:center">' + (e.hasTelegram ? '✓' : '<span style="color:#fb923c">ยังไม่ตั้ง</span>') + '</td>'
       + '</tr>';
   });
-  if (!body) body = '<tr><td colspan="16" style="text-align:center;color:var(--tx3);padding:18px">ไม่มีข้อมูลตามเงื่อนไขที่เลือก</td></tr>';
+  if (!body) body = '<tr><td colspan="16" style="text-align:center;color:var(--tx3);padding:18px">'
+    + (kw ? 'ไม่พบคนที่ตรงกับคำค้น' : 'ไม่มีข้อมูลตามเงื่อนไขที่เลือก') + '</td></tr>';
+  // ⚠️ ตัวนับบนหัวรายงานเป็นของทั้งชุด ไม่ใช่ของที่กรองแล้ว
+  //    ถ้าไม่บอก จะอ่านว่า "คนหายไป" — ต้องเห็นว่ากรองอยู่
+  const cnt = document.getElementById('empr-count');
+  if (cnt) cnt.textContent = kw
+    ? ('กรองอยู่ · แสดง ' + rows.length + ' จาก ' + all.length + ' คน')
+    : ('แสดงทั้งหมด ' + all.length + ' คน');
 
-  document.getElementById('hremp-table').innerHTML =
+  document.getElementById('empr-table').innerHTML =
     '<table class="rep-table" style="font-size:11px;white-space:nowrap"><thead><tr>'
     + '<th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>ตำแหน่ง</th><th>กะ</th>'
     + '<th>เริ่มงาน</th><th>อายุงาน</th><th>วันเกิด</th><th>อายุ</th>'
@@ -4914,7 +4938,7 @@ function empRepRender(r) {
     + '<th>อีเมล</th><th>โทร</th><th>Telegram</th>'
     + '</tr></thead><tbody>' + body + '</tbody></table>';
 
-  document.getElementById('hremp-result').style.display = 'block';
+  document.getElementById('empr-result').style.display = 'block';
 }
 
 function empRepDownloadCSV() {
@@ -4924,7 +4948,13 @@ function empRepDownloadCSV() {
   csv += 'รหัส,คำนำหน้า,ชื่อ,แผนก,ตำแหน่ง,กะ,วันเริ่มงาน,อายุงาน,อายุงาน (เดือน),'
        + 'วันเกิด,อายุ,สถานะ,วันพ้นสภาพ,ผู้อนุมัติ 1,ชื่อผู้อนุมัติ 1,'
        + 'ผู้อนุมัติ 2,ชื่อผู้อนุมัติ 2,อีเมล,โทร,Telegram\r\n';
-  empRepData.rows.forEach(e => {
+  // ⚠️ CSV ต้องตรงกับที่เห็นบนจอ — กรองอยู่แล้วโหลดได้ทั้งชุด จะงงว่าเลขไม่ตรง
+  const fEl2 = document.getElementById('empr-filter');
+  const kw2  = fEl2 ? fEl2.value.trim().toLowerCase() : '';
+  const out  = kw2 ? empRepData.rows.filter(e =>
+    [e.empId, e.name, e.dept, e.position].some(v =>
+      String(v || '').toLowerCase().indexOf(kw2) >= 0)) : empRepData.rows;
+  out.forEach(e => {
     csv += [e.empId, q(e.title), q(e.name), q(e.dept), q(e.position), e.shift || '',
             e.startDate || '', q(e.tenure), e.tenureMonths != null ? e.tenureMonths : '',
             e.birthDate || '', e.age != null ? e.age : '', q(e.status), e.endDate || '',
@@ -7691,11 +7721,12 @@ applyLogo();
   on('hr-menu-broadcast', 'click', function() { go('hr-broadcast'); });
   on('hr-menu-holiday',   'click', function() { go('hr-holiday'); });
   on('hr-menu-empreport', 'click', function() { go('hr-empreport'); loadEmpReportPage(); });
-  on('hremp-back',      'click', function() { go('hr-dash'); });
-  on('hremp-st-all',    'click', function() { empRepSetAll(true); });
-  on('hremp-st-none',   'click', function() { empRepSetAll(false); });
-  on('hremp-generate',  'click', empRepGenerate);
-  on('hremp-csv',       'click', empRepDownloadCSV);
+  on('empr-back',      'click', function() { go('hr-dash'); });
+  on('empr-st-all',    'click', function() { empRepSetAll(true); });
+  on('empr-st-none',   'click', function() { empRepSetAll(false); });
+  on('empr-generate',  'click', empRepGenerate);
+  on('empr-csv',       'click', empRepDownloadCSV);
+  on('empr-filter',     'input', empRepRedraw);
   on('hr-menu-face',      'click', function() { go('hr-face'); });
   on('hr-menu-kiosk',     'click', function() { go('kiosk'); });
 
