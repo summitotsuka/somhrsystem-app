@@ -835,6 +835,10 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(16,185,129,.15);color:#059669">☷</div></div>
         <div class="home-lb">จัดการพนักงาน</div>
       </button>
+      <button class="home-item" id="hr-menu-empreport" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(14,165,233,.15);color:#0284c7">⛁</div></div>
+        <div class="home-lb">รายงานข้อมูลพนักงาน</div>
+      </button>
       <button class="home-item" id="hr-menu-holiday" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(236,72,153,.15);color:#db2777">◷</div></div>
         <div class="home-lb">จัดการวันหยุด</div>
@@ -1182,6 +1186,65 @@ textarea.inp{resize:vertical;min-height:60px}
     <!-- ตาราง -->
     <div class="card" style="padding:0;overflow:hidden">
       <div id="hrrep-table" style="overflow-x:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ HR รายงานข้อมูลพนักงาน ═══════════════ -->
+<!-- ⚠️ หน้านี้เปิดให้ฝ่ายบุคคลเท่านั้น (ED กำหนด) — ด่านจริงอยู่ใน
+     ฐานข้อมูล (is_hr ในไฟล์ 67) ไม่ได้อยู่ที่นี่ ซ่อนปุ่มไม่ใช่ด่าน
+     ⚠️ ไม่มีข้อมูลเงินในหน้านี้เลย — เลขบัญชี/ฐานเงินเดือนอยู่ไฟล์ Excel
+     ⚠️ Telegram แสดงแค่ว่า "ตั้งแล้ว/ยังไม่ตั้ง" ไม่ส่งเลข chat id ออกมา
+        กติกาเดียวกับหน้าผู้รับข้อความแจ้งเตือน — เลขนี้เปลี่ยนไม่ได้
+        เหมือนรหัสผ่าน หลุดแล้วเรียกคืนไม่ได้ -->
+<div class="page" id="page-hr-empreport">
+  <button id="hremp-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
+
+  <div style="margin-bottom:14px">
+    <div style="font-size:17px;font-weight:600">รายงานข้อมูลพนักงาน</div>
+    <div style="font-size:12px;color:var(--tx3);margin-top:2px">ดูข้อมูลทะเบียนพนักงานแบบอ่านเท่านั้น · แก้ไขที่เมนูจัดการพนักงาน</div>
+  </div>
+
+  <div class="card" style="padding:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--tx2);font-weight:500">สถานะที่ต้องการดู</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn o sm" id="hremp-st-all">เลือกทั้งหมด</button>
+        <button class="btn o sm" id="hremp-st-none">ล้าง</button>
+      </div>
+    </div>
+    <div id="hremp-statuses" style="display:flex;gap:6px;flex-wrap:wrap">
+      <div style="color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);margin-top:8px">ไม่เลือกเลย = ทุกสถานะ (รวมคนที่ลาออกแล้ว)</div>
+  </div>
+
+  <button class="btn p" id="hremp-generate" style="margin-bottom:10px">สร้างรายงาน</button>
+
+  <div id="hremp-result" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="card" style="padding:12px;text-align:center;margin:0">
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">จำนวนคน</div>
+        <div style="font-size:20px;font-weight:700;color:var(--ac)" id="hremp-s-total">—</div>
+      </div>
+      <div class="card" style="padding:12px;text-align:center;margin:0">
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">ยังไม่มีตำแหน่ง</div>
+        <div style="font-size:20px;font-weight:700;color:var(--wn)" id="hremp-s-nopos">—</div>
+      </div>
+      <div class="card" style="padding:12px;text-align:center;margin:0">
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">ยังไม่มีวันเกิด</div>
+        <div style="font-size:20px;font-weight:700;color:var(--wn)" id="hremp-s-nobirth">—</div>
+      </div>
+      <div class="card" style="padding:12px;text-align:center;margin:0">
+        <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">ยังไม่ตั้ง Telegram</div>
+        <div style="font-size:20px;font-weight:700;color:#fb923c" id="hremp-s-notg">—</div>
+      </div>
+    </div>
+
+    <button class="btn o" id="hremp-csv" style="margin-bottom:12px">⤓ CSV</button>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="hremp-table" style="overflow-x:auto"></div>
     </div>
   </div>
 </div>
@@ -2065,6 +2128,10 @@ const SB = {
   KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
   ACTIONS:  { login: 1, getMyAttendance: 1, payGetMySlips: 1,
               hrGetEmployeeList: 1, hrFindEmployee: 1,
+              // ⚠️ สองตัวนี้มีแต่ใน Supabase ไม่มีฝั่ง GAS
+              //    ถ้า Supabase ใช้ไม่ได้ หน้าจะบอกตรง ๆ (ดู hrEmpLoad)
+              //    ไม่ทำฝั่ง GAS ด้วย เพราะจะกลายเป็นกติกาที่สอง
+              hrGetEmpReport: 1, hrGetEmpStatuses: 1,
               leaveGetMyRequests: 1, otGetMyRequests: 1,
               leaveGetTypes: 1, otGetTypes: 1,
               leaveGetMyTeam: 1, otGetMyTeam: 1,
@@ -3313,7 +3380,7 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete'];
+  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
@@ -4712,6 +4779,165 @@ function hrRepGenerate() {
       renderReport(r);
     })
     .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'สร้างรายงาน'; showToast(e.message); });
+}
+
+// ═══════════════ รายงานข้อมูลพนักงาน (ฝ่ายบุคคลเท่านั้น) ═══════════════
+// ⚠️ รายงานนี้มีแต่ฝั่ง Supabase ไม่มีฝั่ง GAS โดยเจตนา
+//    ถ้าทำฝั่ง GAS ด้วย กติกา "ใครดูได้" จะมีสองที่ แล้ววันหนึ่งจะไม่ตรงกัน
+//    ถ้า Supabase ใช้ไม่ได้ จึงต้องบอกตรง ๆ ไม่ใช่ปล่อยให้ error งง ๆ
+let empRepStatuses = [];     // [{status, n}] จากฐานข้อมูล
+let empRepPicked   = {};     // สถานะที่ติ๊กไว้
+let empRepData     = null;
+
+function empRepThDate(iso) {
+  if (!iso) return '—';
+  const p = String(iso).split('-');
+  if (p.length !== 3) return '—';
+  return p[2] + '/' + p[1] + '/' + (Number(p[0]) + 543);   // พ.ศ. เหมือนรายงานอื่น
+}
+
+function loadEmpReportPage() {
+  empRepPicked = {};
+  empRepData = null;
+  document.getElementById('hremp-result').style.display = 'none';
+  const box = document.getElementById('hremp-statuses');
+
+  if (!sbReady()) {
+    box.innerHTML = '<div style="color:var(--er);font-size:13px">รายงานนี้ต้องใช้ฐานข้อมูลใหม่ ขณะนี้เชื่อมต่อไม่ได้</div>';
+    return;
+  }
+  box.innerHTML = '<div style="color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
+
+  gasRun('hrGetEmpStatuses', { hrToken: S.hrToken }, 30000)
+    .withSuccessHandler(r => {
+      if (!r || !r.success) {
+        box.innerHTML = '<div style="color:var(--er);font-size:13px">' +
+          ((r && r.message) || 'โหลดรายการสถานะไม่สำเร็จ') + '</div>';
+        if (r && r.authError) authBounce(r);
+        return;
+      }
+      empRepStatuses = Array.isArray(r.statuses) ? r.statuses : [];
+      empRepRenderStatuses();
+    })
+    .withFailureHandler(e => {
+      box.innerHTML = '<div style="color:var(--er);font-size:13px">' + e.message + '</div>';
+    });
+}
+
+function empRepRenderStatuses() {
+  const box = document.getElementById('hremp-statuses');
+  if (!empRepStatuses.length) {
+    box.innerHTML = '<div style="color:var(--tx3);font-size:13px">ไม่มีข้อมูลสถานะ</div>';
+    return;
+  }
+  box.innerHTML = empRepStatuses.map(s =>
+    '<button class="rep-stat' + (empRepPicked[s.status] ? ' active' : '') +
+    '" data-st="' + s.status + '">' + s.status + ' (' + s.n + ')</button>').join('');
+  box.querySelectorAll('[data-st]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const k = this.getAttribute('data-st');
+      if (empRepPicked[k]) delete empRepPicked[k]; else empRepPicked[k] = 1;
+      empRepRenderStatuses();
+    });
+  });
+}
+
+function empRepSetAll(on) {
+  empRepPicked = {};
+  if (on) empRepStatuses.forEach(s => { empRepPicked[s.status] = 1; });
+  empRepRenderStatuses();
+}
+
+function empRepGenerate() {
+  if (!sbReady()) { showToast('รายงานนี้ต้องใช้ฐานข้อมูลใหม่ ขณะนี้เชื่อมต่อไม่ได้'); return; }
+  const btn = document.getElementById('hremp-generate');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง...';
+  // ⚠️ ไม่ติ๊กเลย = ทุกสถานะ — ส่ง array ว่างไป Edge Function แปลงเป็น null ให้
+  gasRun('hrGetEmpReport', { hrToken: S.hrToken, statuses: Object.keys(empRepPicked) }, 60000)
+    .withSuccessHandler(r => {
+      btn.disabled = false; btn.textContent = 'สร้างรายงาน';
+      if (!r || !r.success) {
+        showToast((r && r.message) || 'สร้างรายงานไม่สำเร็จ');
+        if (r && r.authError) authBounce(r);
+        return;
+      }
+      empRepData = r;
+      empRepRender(r);
+    })
+    .withFailureHandler(e => {
+      btn.disabled = false; btn.textContent = 'สร้างรายงาน'; showToast(e.message);
+    });
+}
+
+function empRepRender(r) {
+  const c = r.counts || {};
+  document.getElementById('hremp-s-total').textContent   = c.total      != null ? c.total      : '—';
+  document.getElementById('hremp-s-nopos').textContent   = c.noPosition != null ? c.noPosition : '—';
+  document.getElementById('hremp-s-nobirth').textContent = c.noBirth    != null ? c.noBirth    : '—';
+  document.getElementById('hremp-s-notg').textContent    = c.noTelegram != null ? c.noTelegram : '—';
+
+  const rows = Array.isArray(r.rows) ? r.rows : [];
+  const dash = v => (v == null || v === '') ? '<span style="color:var(--tx3)">—</span>' : String(v);
+  // ผู้อนุมัติ: ถ้ามีชื่อให้โชว์ชื่อ + รหัสตัวเล็ก (ED ขอให้ดึงชื่อมาด้วย)
+  const appr = (id, name) => {
+    if (!id) return '<span style="color:var(--tx3)">—</span>';
+    return name ? name + '<div style="font-size:9px;color:var(--tx3)">' + id + '</div>' : id;
+  };
+  let body = '';
+  rows.forEach(e => {
+    body += '<tr>'
+      + '<td>' + e.empId + '</td>'
+      + '<td style="white-space:nowrap">' + dash((e.title ? e.title + ' ' : '') + (e.name || '')) + '</td>'
+      + '<td>' + dash(e.dept) + '</td>'
+      + '<td>' + dash(e.position) + '</td>'
+      + '<td style="text-align:center">' + dash(e.shift) + '</td>'
+      + '<td style="white-space:nowrap">' + empRepThDate(e.startDate) + '</td>'
+      + '<td style="white-space:nowrap">' + dash(e.tenure) + '</td>'
+      + '<td style="white-space:nowrap">' + empRepThDate(e.birthDate) + '</td>'
+      + '<td style="text-align:center">' + dash(e.age) + '</td>'
+      + '<td>' + dash(e.status) + '</td>'
+      + '<td style="white-space:nowrap">' + empRepThDate(e.endDate) + '</td>'
+      + '<td>' + appr(e.ap1, e.ap1Name) + '</td>'
+      + '<td>' + appr(e.ap2, e.ap2Name) + '</td>'
+      + '<td>' + dash(e.email) + '</td>'
+      + '<td>' + dash(e.phone) + '</td>'
+      + '<td style="text-align:center">' + (e.hasTelegram ? '✓' : '<span style="color:#fb923c">ยังไม่ตั้ง</span>') + '</td>'
+      + '</tr>';
+  });
+  if (!body) body = '<tr><td colspan="16" style="text-align:center;color:var(--tx3);padding:18px">ไม่มีข้อมูลตามเงื่อนไขที่เลือก</td></tr>';
+
+  document.getElementById('hremp-table').innerHTML =
+    '<table class="rep-table" style="font-size:11px;white-space:nowrap"><thead><tr>'
+    + '<th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>ตำแหน่ง</th><th>กะ</th>'
+    + '<th>เริ่มงาน</th><th>อายุงาน</th><th>วันเกิด</th><th>อายุ</th>'
+    + '<th>สถานะ</th><th>พ้นสภาพ</th><th>ผู้อนุมัติ 1</th><th>ผู้อนุมัติ 2</th>'
+    + '<th>อีเมล</th><th>โทร</th><th>Telegram</th>'
+    + '</tr></thead><tbody>' + body + '</tbody></table>';
+
+  document.getElementById('hremp-result').style.display = 'block';
+}
+
+function empRepDownloadCSV() {
+  if (!empRepData || !empRepData.rows) { showToast('กรุณาสร้างรายงานก่อน'); return; }
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  let csv = '\uFEFF';   // BOM ให้ Excel อ่านภาษาไทยถูก
+  csv += 'รหัส,คำนำหน้า,ชื่อ,แผนก,ตำแหน่ง,กะ,วันเริ่มงาน,อายุงาน,อายุงาน (เดือน),'
+       + 'วันเกิด,อายุ,สถานะ,วันพ้นสภาพ,ผู้อนุมัติ 1,ชื่อผู้อนุมัติ 1,'
+       + 'ผู้อนุมัติ 2,ชื่อผู้อนุมัติ 2,อีเมล,โทร,Telegram\r\n';
+  empRepData.rows.forEach(e => {
+    csv += [e.empId, q(e.title), q(e.name), q(e.dept), q(e.position), e.shift || '',
+            e.startDate || '', q(e.tenure), e.tenureMonths != null ? e.tenureMonths : '',
+            e.birthDate || '', e.age != null ? e.age : '', q(e.status), e.endDate || '',
+            e.ap1 || '', q(e.ap1Name), e.ap2 || '', q(e.ap2Name),
+            q(e.email), q(e.phone), e.hasTelegram ? 'ตั้งแล้ว' : 'ยังไม่ตั้ง'
+           ].join(',') + '\r\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'employees_' + (empRepData.asOf || 'report') + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ═══════════════ รายงานการบันทึกดิบ (raw log) ═══════════════
@@ -7464,6 +7690,12 @@ applyLogo();
   on('hr-menu-bulletin',  'click', hrBulOpen);
   on('hr-menu-broadcast', 'click', function() { go('hr-broadcast'); });
   on('hr-menu-holiday',   'click', function() { go('hr-holiday'); });
+  on('hr-menu-empreport', 'click', function() { go('hr-empreport'); loadEmpReportPage(); });
+  on('hremp-back',      'click', function() { go('hr-dash'); });
+  on('hremp-st-all',    'click', function() { empRepSetAll(true); });
+  on('hremp-st-none',   'click', function() { empRepSetAll(false); });
+  on('hremp-generate',  'click', empRepGenerate);
+  on('hremp-csv',       'click', empRepDownloadCSV);
   on('hr-menu-face',      'click', function() { go('hr-face'); });
   on('hr-menu-kiosk',     'click', function() { go('kiosk'); });
 
