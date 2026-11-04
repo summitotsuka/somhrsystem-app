@@ -102,6 +102,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;background:rgba(
 .exp-meta{font-size:10px;color:var(--tx3)}
 .rep-stat{flex:1;min-width:64px;padding:7px 0;border-radius:8px;border:1px solid var(--bd2);background:var(--sf2);color:var(--tx2);font-size:12px;font-weight:500;font-family:var(--fn);cursor:pointer;transition:all .15s}
 .rep-stat.active{background:var(--ac);border-color:var(--ac);color:#fff}
+/* ⚠️ ปุ่มเลือกวิธีเรียง ต้องมีคลาสของตัวเอง ห้ามใช้ .rep-stat ร่วม
+   เพราะ .rep-stat มีตัวจัดการแบบทั่วทั้งหน้าสองที่ (ดู loadReportPage
+   กับตัวผูกปุ่มกรองสถานะ) ซึ่งล้างสถานะ active ของ .rep-stat ทุกตัวในหน้า
+   ใช้ร่วมแล้วกดปุ่มเรียง ปุ่มกรองสถานะจะถูกปลดการเลือกไปด้วย
+   — ความผิดแบบเดียวกับคำนำหน้า id ที่ชนกัน (ดู README ข้อ 11) */
+.rep-sort{flex:1;min-width:64px;padding:7px 0;border-radius:8px;border:1px solid var(--bd2);background:var(--sf2);color:var(--tx2);font-size:12px;font-weight:500;font-family:var(--fn);cursor:pointer;transition:all .15s}
+.rep-sort.active{background:var(--ac);border-color:var(--ac);color:#fff}
 .rep-table{width:100%;border-collapse:collapse;font-size:13px}
 .rep-table th{background:var(--sf2);padding:9px 8px;text-align:left;color:var(--tx2);font-weight:700;white-space:nowrap;position:sticky;top:0;font-size:13px}
 .rep-table td{padding:9px 8px;border-top:1px solid var(--bd);white-space:nowrap;color:var(--tx)}
@@ -835,6 +842,10 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(16,185,129,.15);color:#059669">☷</div></div>
         <div class="home-lb">จัดการพนักงาน</div>
       </button>
+      <button class="home-item" id="hr-menu-incomplete" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(239,68,68,.15);color:#dc2626">⚠</div></div>
+        <div class="home-lb">ลงเวลาไม่สมบูรณ์</div>
+      </button>
       <button class="home-item" id="hr-menu-empreport" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(14,165,233,.15);color:#0284c7">⛁</div></div>
         <div class="home-lb">รายงานข้อมูลพนักงาน</div>
@@ -1174,6 +1185,19 @@ textarea.inp{resize:vertical;min-height:60px}
       <div class="card" style="padding:12px;text-align:center;margin:0">
         <div style="font-size:10px;color:var(--tx3);margin-bottom:3px">ยังไม่ออก</div>
         <div style="font-size:20px;font-weight:700;color:var(--er)" id="hrrep-s-noout">—</div>
+      </div>
+    </div>
+
+    <!-- ⚠️ เรียงที่เครื่อง ไม่ยิงใหม่ — ข้อมูลอยู่ในมือแล้ว
+         ยิงใหม่แค่เพื่อเรียงจะช้าและเปลืองเปล่า ๆ -->
+    <div class="card" style="padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:8px;font-weight:500">จัดเรียง</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="hrrep-sort-tabs">
+        <button class="rep-sort active" data-sort="date">ตามวันที่</button>
+        <button class="rep-sort" data-sort="emp">ตามพนักงาน</button>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:8px" id="hrrep-sort-hint">
+        เรียงตามวันที่ แล้วตามพนักงานในแต่ละวัน
       </div>
     </div>
 
@@ -1534,6 +1558,23 @@ textarea.inp{resize:vertical;min-height:60px}
        ข้อมูลใน Supabase เริ่มจากกลางปี การไม่บอกจะทำให้คิดว่าก่อนหน้านั้นไม่มีปัญหา -->
   <div id="inc-range" style="font-size:12px;color:var(--tx3);margin-bottom:12px"></div>
   <div id="inc-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
+
+  <!-- ⚠️ การ์ดตั้งค่า เห็นเฉพาะฝ่ายบุคคล — ด่านจริงอยู่ในฐานข้อมูล (is_hr)
+       ซ่อนปุ่มไม่ใช่ด่าน แต่ไม่ต้องให้หัวหน้างานเห็นของที่กดไม่ได้ -->
+  <div class="card" id="inc-setting" style="padding:14px;margin-bottom:14px;display:none">
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:4px;font-weight:500">เริ่มแสดงรายการตั้งแต่วันที่</div>
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">
+      เว้นว่าง = ดูทั้งหมด · ของเก่าไม่ได้หายไปจากระบบ แค่ไม่แสดงในหน้านี้
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <div class="field" style="flex:1;margin:0"><label>วันที่</label>
+        <input class="inp" id="inc-from" type="date"></div>
+      <button class="btn p sm" id="inc-from-save" style="width:auto;padding:9px 14px">บันทึก</button>
+      <button class="btn o sm" id="inc-from-clear" style="width:auto;padding:9px 14px">ล้าง</button>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);margin-top:8px" id="inc-from-note"></div>
+  </div>
+
   <div id="inc-list"></div>
 </div>
 
@@ -2139,6 +2180,7 @@ const SB = {
               //    ถ้า Supabase ใช้ไม่ได้ หน้าจะบอกตรง ๆ (ดู hrEmpLoad)
               //    ไม่ทำฝั่ง GAS ด้วย เพราะจะกลายเป็นกติกาที่สอง
               hrGetEmpReport: 1, hrGetEmpStatuses: 1,
+              hrIncGetFrom: 1, hrIncSetFrom: 1,
               leaveGetMyRequests: 1, otGetMyRequests: 1,
               leaveGetTypes: 1, otGetTypes: 1,
               leaveGetMyTeam: 1, otGetMyTeam: 1,
@@ -3410,7 +3452,7 @@ function go(id) {
   }
 
   if (id === 'home') renderHomeMenu();
-  if (id === 'att-incomplete') loadIncompletePage();
+  if (id === 'att-incomplete') { loadIncompletePage(); incFromLoad(); }
   if (id === 'holiday') loadHolidayViewPage();
   if (id === 'history') loadHistory();
   if (id === 'hr-dashboard') {
@@ -4525,6 +4567,48 @@ function renderHomeIncomplete() {
   });
 }
 
+/** ค่าตั้ง "เริ่มแสดงตั้งแต่วันไหน" — ฝ่ายบุคคลเท่านั้น */
+// ⚠️ โหลดค่าตั้งแยกจากรายการ เพราะรายการใหญ่กว่าและช้ากว่า
+//    ถ้ารวมกันแล้วรายการล้ม ค่าตั้งก็หายไปด้วย แล้วฝ่ายบุคคลจะแก้อะไรไม่ได้เลย
+//    — ซึ่งเป็นสภาพที่เพิ่งเกิดจริงตอนหน้านี้ช้า 96 วินาที
+function incFromLoad() {
+  const box = document.getElementById('inc-setting');
+  if (!box) return;
+  if (S.role !== 'HR') { box.style.display = 'none'; return; }
+  box.style.display = '';
+  gasRun('hrIncGetFrom', { hrToken: S.hrToken }, 20000)
+    .withSuccessHandler(r => {
+      if (!r || !r.success) return;
+      const el = document.getElementById('inc-from');
+      if (el) el.value = r.fromDate || '';
+      const note = document.getElementById('inc-from-note');
+      if (note) note.textContent =
+        'ข้อมูลเก่าสุดในระบบ ' + (r.earliest || '—') +
+        ' · ตอนนี้ดูตั้งแต่ ' + (r.effectiveFrom || '—') + ' ถึง ' + (r.effectiveTo || '—');
+    })
+    .withFailureHandler(() => {});
+}
+
+function incFromSave(ค่า) {
+  const btn = document.getElementById('inc-from-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก...'; }
+  gasRun('hrIncSetFrom', { hrToken: S.hrToken, fromDate: String(ค่า || '') }, 20000)
+    .withSuccessHandler(r => {
+      if (btn) { btn.disabled = false; btn.textContent = 'บันทึก'; }
+      if (!r || !r.success) { showToast((r && r.message) || 'บันทึกไม่สำเร็จ'); return; }
+      showToast(ค่า ? 'เริ่มแสดงตั้งแต่ ' + r.fromDate : 'ยกเลิกแล้ว — ดูทั้งหมด');
+      const el = document.getElementById('inc-from');
+      if (el) el.value = r.fromDate || '';
+      // ⚠️ โหลดรายการใหม่ ไม่งั้นตัวเลขบนจอจะไม่ตรงกับค่าตั้งที่เพิ่งเปลี่ยน
+      loadIncompletePage();
+      incFromLoad();
+    })
+    .withFailureHandler(e => {
+      if (btn) { btn.disabled = false; btn.textContent = 'บันทึก'; }
+      showToast(e.message);
+    });
+}
+
 /** หน้ารวม */
 function loadIncompletePage() {
   const list = document.getElementById('inc-list');
@@ -5492,6 +5576,44 @@ function eoStandalone(row) {
   return (Number(row && row.earlyOutMin) || 0) > 0 && row.status === 'present';
 }
 
+// วิธีเรียงรายงานการลงเวลา — 'date' (เดิม) หรือ 'emp'
+// ⚠️ ค่าตั้งต้นต้องเป็น 'date' เพื่อให้พฤติกรรมเดิมไม่เปลี่ยนสำหรับคนที่ไม่กดอะไร
+let hrRepSort = 'date';
+
+// ⚠️ เรียงบนสำเนา ไม่แก้ลำดับของ hrRepData.rows ตัวจริง
+//    ถ้าแก้ตัวจริง CSV กับ PDF จะเปลี่ยนลำดับตามไปด้วยโดยไม่ได้ตั้งใจ
+//    และกดสลับไปมาหลายรอบจะทำให้ลำดับเดิมหายไปเลย
+function hrRepSorted(rows) {
+  const out = rows.slice();
+  if (hrRepSort === 'emp') {
+    // ตามพนักงาน แล้วตามวันที่ในแต่ละคน — ใช้ตรวจคนที่ขาดงานต่อกันหลายวัน
+    out.sort(function (a, b) {
+      const n = String(a.empId).localeCompare(String(b.empId), 'th', { numeric: true });
+      return n !== 0 ? n : String(a.date).localeCompare(String(b.date));
+    });
+  } else {
+    // เดิม: ตามวันที่ แล้วตามพนักงาน
+    out.sort(function (a, b) {
+      const n = String(a.date).localeCompare(String(b.date));
+      return n !== 0 ? n : String(a.empId).localeCompare(String(b.empId), 'th', { numeric: true });
+    });
+  }
+  return out;
+}
+
+function hrRepSetSort(how) {
+  hrRepSort = (how === 'emp') ? 'emp' : 'date';
+  const tabs = document.getElementById('hrrep-sort-tabs');
+  if (tabs) tabs.querySelectorAll('[data-sort]').forEach(function (b) {
+    b.classList.toggle('active', b.getAttribute('data-sort') === hrRepSort);
+  });
+  const hint = document.getElementById('hrrep-sort-hint');
+  if (hint) hint.textContent = hrRepSort === 'emp'
+    ? 'เรียงตามพนักงาน แล้วตามวันที่ของแต่ละคน — ใช้ดูคนที่ขาดงานต่อกันหลายวัน'
+    : 'เรียงตามวันที่ แล้วตามพนักงานในแต่ละวัน';
+  if (hrRepData) renderReport(hrRepData);
+}
+
 function renderReport(r) {
   const s = r.summary || {};
   document.getElementById('hrrep-s-days').textContent  = s.totalRows || 0;
@@ -5499,7 +5621,8 @@ function renderReport(r) {
   document.getElementById('hrrep-s-late').textContent  = s.late || 0;
   document.getElementById('hrrep-s-noout').textContent = s.noCheckout || 0;
 
-  const rows = r.rows || [];
+  // ⚠️ วาดตามลำดับที่เลือก แต่ไม่แตะ r.rows ตัวจริง (CSV/PDF ใช้ตัวจริง)
+  const rows = hrRepSorted(r.rows || []);
   const badge = {
     present:     '<span class="rep-bdg" style="background:rgba(16,185,129,.15);color:var(--ok)">ปกติ</span>',
     late:        '<span class="rep-bdg" style="background:rgba(245,158,11,.15);color:var(--wn)">สาย</span>',
@@ -5539,7 +5662,8 @@ function hrRepDownloadCSV() {
   let csv = '\uFEFF';  // BOM ให้ Excel อ่านภาษาไทยถูก
   // ⚠️ "ใบลา" ต่อท้ายคอลัมน์เดิม ไม่แทรกกลาง — ของเดิมที่ใครเอาไปทำสูตรไว้จะยังใช้ได้
   csv += 'รหัส,ชื่อ,แผนก,กะ,วันที่,วัน,เวลาเข้า,เวลาออก,สถานะ,ที่มา,พิกัด GPS,ใบลา,ออกก่อน (นาที)\r\n';
-  hrRepData.rows.forEach(r => {
+  // ⚠️ CSV ต้องเรียงเหมือนที่เห็นบนจอ ไม่งั้นเปิดไฟล์แล้วหาไม่เจอว่าตรงไหน
+  hrRepSorted(hrRepData.rows).forEach(r => {
     const [y,m,d] = r.date.split('-');
     const thDate = `${d}/${m}/${y}`;
     const src   = `${srcOr(r.inSrcRaw)}/${srcOr(r.outSrcRaw)}`;                  // เข้า/ออก เช่น GPS/FINGER
@@ -5562,7 +5686,8 @@ function hrRepDownloadPDF() {
   const [ty,tm,td] = hrRepData.dateTo.split('-');
   const srcOr = v => (v && String(v).trim()) ? String(v).trim().toUpperCase() : '-';
   let rowsHtml = '';
-  hrRepData.rows.forEach(r => {
+  // ⚠️ PDF ก็ต้องเรียงเหมือนบนจอด้วยเหตุผลเดียวกัน
+  hrRepSorted(hrRepData.rows).forEach(r => {
     const [y,m,d] = r.date.split('-');
     const dow = r.dow ? ` (${r.dow})` : '';
     const src = `${srcOr(r.inSrcRaw)}/${srcOr(r.outSrcRaw)}`;
@@ -7699,6 +7824,10 @@ applyLogo();
   attachDayPicker('hrdm-to');
   on('hr-autodel-save', 'click', hrAutoDelSave);
   on('hr-autodel-runnow', 'click', hrAutoDelRunNow);
+  const sortTabs = document.getElementById('hrrep-sort-tabs');
+  if (sortTabs) sortTabs.querySelectorAll('[data-sort]').forEach(function (b) {
+    b.addEventListener('click', function () { hrRepSetSort(this.getAttribute('data-sort')); });
+  });
   on('hrrep-csv', 'click', hrRepDownloadCSV);
   on('hrrep-pdf', 'click', hrRepDownloadPDF);
 
@@ -7721,6 +7850,11 @@ applyLogo();
   on('hr-menu-broadcast', 'click', function() { go('hr-broadcast'); });
   on('hr-menu-holiday',   'click', function() { go('hr-holiday'); });
   on('hr-menu-empreport', 'click', function() { go('hr-empreport'); loadEmpReportPage(); });
+  // ⚠️ ED ทักว่าไม่มีเมนูเข้าหน้านี้ มีแต่ลิงก์บนการ์ดหน้าหลัก
+  //    ถ้าการ์ดซ่อนตัวเอง (เช่นคำขอล้ม) ฝ่ายบุคคลจะไม่มีทางเข้าเลย
+  on('hr-menu-incomplete', 'click', function() { go('att-incomplete'); });
+  on('inc-from-save',  'click', function() { incFromSave(document.getElementById('inc-from').value); });
+  on('inc-from-clear', 'click', function() { incFromSave(''); });
   on('empr-back',      'click', function() { go('hr-dash'); });
   on('empr-st-all',    'click', function() { empRepSetAll(true); });
   on('empr-st-none',   'click', function() { empRepSetAll(false); });
