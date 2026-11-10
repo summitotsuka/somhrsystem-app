@@ -1580,6 +1580,14 @@ textarea.inp{resize:vertical;min-height:60px}
   </div>
   <!-- ⚠️ บอกช่วงที่ดูได้จริง ไม่ใช่ปล่อยให้เข้าใจว่าครบทั้งปี
        ข้อมูลใน Supabase เริ่มจากกลางปี การไม่บอกจะทำให้คิดว่าก่อนหน้านั้นไม่มีปัญหา -->
+  <!-- ⚠️⚠️ ใช้คลาสของตัวเอง (inc-view) ห้ามใช้ rep-stat หรือ rep-sort
+       สองคลาสนั้นมีโค้ดที่ querySelectorAll แล้วล้าง active ทั้งหมด
+       เคยชนกันจริงจนกดกลุ่มหนึ่งไปล้างค่าอีกกลุ่มแบบเงียบ ๆ -->
+  <div id="inc-view-tabs" style="display:flex;gap:6px;margin-bottom:12px">
+    <button class="btn p sm inc-view" data-inc-view="inc" style="flex:1">ข้อมูลไม่สมบูรณ์</button>
+    <button class="btn o sm inc-view" data-inc-view="absent" style="flex:1" id="inc-view-absent">ขาดงานต่อเนื่อง</button>
+  </div>
+
   <div id="inc-range" style="font-size:12px;color:var(--tx3);margin-bottom:12px"></div>
   <div id="inc-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
 
@@ -1600,6 +1608,12 @@ textarea.inp{resize:vertical;min-height:60px}
   </div>
 
   <div id="inc-list"></div>
+
+  <!-- ⚠️⚠️ รายงานขาดงานต่อเนื่อง — คนละรายงานกับข้อมูลไม่สมบูรณ์
+       ไม่สมบูรณ์ = วันเดี่ยว ๆ ที่ข้อมูลขาด (ลืมสแกน) ย้อนหลังได้หลายเดือน
+       ขาดงานต่อเนื่อง = คน "ที่หายอยู่ตอนนี้" ติดกันถึงเกณฑ์ ไม่ใช่เคยขาด
+       จึงแยกกล่องกัน ไม่ยัดรวมในรายการเดียว -->
+  <div id="inc-absent" style="display:none"></div>
 </div>
 
 <!-- ═══════════════ ระบบลา: หน้าขอลา ═══════════════ -->
@@ -2208,6 +2222,9 @@ const SB = {
               // ⚠️ กันด้วยตั๋วที่ Edge Function และกันด้วย is_setting_editor
               //    (HR/ADMIN ที่ยัง ACTIVE) ที่ฐานข้อมูลอีกชั้น
               hrSettingList: 1, hrSettingSet: 1, hrSettingHistory: 1,
+              // ⚠️ คนละตัวกับ attAbsentList ที่กั้นด้วยรหัสลับ (ใช้โดย Absent.gs)
+              //    ตัวนี้เอารหัสพนักงานจากตั๋ว แล้ว emp_scope ตัดสินว่าเห็นของใคร
+              hrAbsentReport: 1,
               leaveGetMyRequests: 1, otGetMyRequests: 1,
               leaveGetTypes: 1, otGetTypes: 1,
               leaveGetMyTeam: 1, otGetMyTeam: 1,
@@ -2640,7 +2657,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.43.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.44.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3479,7 +3496,11 @@ function go(id) {
   }
 
   if (id === 'home') renderHomeMenu();
-  if (id === 'att-incomplete') { loadIncompletePage(); incFromLoad(); }
+  // ⚠️⚠️ ตั้งมุมมองกลับเป็น "ไม่สมบูรณ์" ทุกครั้งที่เข้าหน้า
+  //    ถ้าไม่ตั้ง แล้วคราวก่อนออกจากหน้าตอนดูรายงานขาดงานอยู่
+  //    กลับเข้ามาจะเห็นรายงานขาดงานเก่าค้าง และรายการไม่สมบูรณ์ถูกซ่อนไว้
+  //    ทั้งที่ชื่อหน้าบอกว่า "ข้อมูลลงเวลาไม่สมบูรณ์" — ดูเหมือนหน้าพัง
+  if (id === 'att-incomplete') { incSetView('inc'); loadIncompletePage(); incFromLoad(); }
   if (id === 'holiday') loadHolidayViewPage();
   if (id === 'history') loadHistory();
   if (id === 'hr-dashboard') {
@@ -4968,6 +4989,128 @@ function incFromSave(ค่า) {
     });
 }
 
+/* ═══════════════════════════════════════════════════════════════
+ *  รายงานขาดงานต่อเนื่อง — อยู่หน้าเดียวกับข้อมูลไม่สมบูรณ์ (ED เลือก)
+ *
+ *  ⚠️⚠️ สองรายงานนี้ตอบคำถามคนละข้อ ห้ามยัดรวมเป็นรายการเดียว
+ *     ไม่สมบูรณ์         = "วันไหนข้อมูลขาด" — วันเดี่ยว ๆ ย้อนได้หลายเดือน
+ *     ขาดงานต่อเนื่อง    = "ใครหายอยู่ตอนนี้" — คนที่ขาดติดกันถึงเกณฑ์
+ *     ED อธิบายวัตถุประสงค์ไว้ว่า "พนักงานหายไปโดยไร้ร่องรอย อาจเกิดอุบัติเหตุ"
+ *
+ *  ⚠️ ทำเป็นปุ่มในหน้าเดิม ไม่ทำการ์ดใหม่ที่หน้าหลัก เพราะเหตุการณ์นี้เกิดนาน ๆ ครั้ง
+ *     การ์ดที่ว่างเป็นส่วนใหญ่ จะถูกเลิกเปิด แล้วกลายเป็นที่ซ่อนของจริง
+ * ═══════════════════════════════════════════════════════════════ */
+
+var incViewNow = 'inc';
+
+function incSetView(ไหน) {
+  incViewNow = ไหน;
+  // ⚠️ ล้าง active แค่ในกลุ่มของตัวเอง (.inc-view) ไม่ใช่ทุกปุ่มในหน้า
+  document.querySelectorAll('.inc-view').forEach(function (b) {
+    const on = b.getAttribute('data-inc-view') === ไหน;
+    b.classList.remove('p', 'o');
+    b.classList.add(on ? 'p' : 'o');
+  });
+
+  const โชว์ = function (id, เห็น) {
+    const e = document.getElementById(id);
+    if (e) e.style.display = เห็น ? '' : 'none';
+  };
+  const เป็นไม่สมบูรณ์ = (ไหน === 'inc');
+  โชว์('inc-range',   เป็นไม่สมบูรณ์);
+  โชว์('inc-summary', เป็นไม่สมบูรณ์);
+  โชว์('inc-list',    เป็นไม่สมบูรณ์);
+  โชว์('inc-absent',  !เป็นไม่สมบูรณ์);
+  // ⚠️ การ์ดตั้งค่าเป็นของรายงานไม่สมบูรณ์เท่านั้น — ซ่อนตอนดูอีกรายงาน
+  //    ไม่ซ่อน = ฝ่ายบุคคลจะคิดว่าค่านั้นคุมรายงานขาดงานด้วย ซึ่งไม่จริง
+  const st = document.getElementById('inc-setting');
+  if (st) st.style.display = (เป็นไม่สมบูรณ์ && S.role === 'HR') ? '' : 'none';
+
+  if (!เป็นไม่สมบูรณ์) loadAbsentReport();
+}
+
+function loadAbsentReport() {
+  const box = document.getElementById('inc-absent');
+  if (!box) return;
+  box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด…</div>';
+  gasRun('hrAbsentReport', { hrToken: S.hrToken }, 30000)
+    .withSuccessHandler(r => {
+      if (!r || !r.success) {
+        box.innerHTML = '<div style="padding:20px;color:var(--er)">' +
+          esc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>';
+        return;
+      }
+      absentRender(box, r);
+    })
+    .withFailureHandler(e => {
+      box.innerHTML = '<div style="padding:20px;color:var(--er)">' + esc(e.message) + '</div>';
+    });
+}
+
+function absentRender(box, r) {
+  const rows = r.rows || [];
+  const c = r.counts || {};
+  let h = '';
+
+  // ⚠️ บอกเกณฑ์กับช่วงที่ดูเสมอ ไม่ใช่โชว์แต่รายชื่อ
+  //    ฝ่ายบุคคลต้องรู้ว่า "ไม่มีใคร" หมายถึงไม่มีใครถึงเกณฑ์ ไม่ใช่ระบบไม่ทำงาน
+  h += '<div style="font-size:12px;color:var(--tx3);margin-bottom:12px">' +
+       'ขาดติดกันตั้งแต่ ' + esc(r.days) + ' วันทำงานขึ้นไป · ไม่นับวันนี้ · ' +
+       'ไม่นับวันหยุดและวันอาทิตย์<br>ข้อมูลถึงวันที่ ' + esc(วันไทยสั้น(r.to)) + '</div>';
+
+  if (!rows.length) {
+    // ⚠️⚠️ หน้าว่างต้องบอกว่า "ตรวจแล้วไม่มี" ไม่ใช่เงียบ
+    //    หน้าว่างที่ไม่อธิบายตัวเอง ทำให้คนคิดว่าโหลดไม่สำเร็จ
+    h += '<div class="card" style="padding:22px;text-align:center">' +
+         '<div style="font-size:15px;font-weight:600;color:#059669">ไม่มีพนักงานขาดงานต่อเนื่อง</div>' +
+         '<div style="font-size:12px;color:var(--tx3);margin-top:6px">' +
+         'ตรวจแล้วไม่มีใครถึงเกณฑ์ ' + esc(r.days) + ' วันทำงาน</div></div>';
+    if (c.pendingLeave) {
+      h += '<div style="font-size:12px;color:#b45309;background:rgba(245,158,11,.12);' +
+           'padding:10px;border-radius:8px;margin-top:10px">' +
+           'มีใบลารออนุมัติ ' + esc(c.pendingLeave) + ' ใบในช่วงนี้</div>';
+    }
+    box.innerHTML = h;
+    return;
+  }
+
+  h += '<div style="font-size:13px;font-weight:600;margin-bottom:8px">' +
+       'พบ ' + esc(c.people) + ' คน · หายนานสุด ' + esc(c.maxDays) + ' วันทำงาน</div>';
+
+  rows.forEach(function (x) {
+    h += '<div class="card" style="padding:14px;margin-bottom:10px;border-left:3px solid var(--er)">';
+    h += '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">';
+    h += '<div style="min-width:0"><div style="font-size:14px;font-weight:600">' +
+         esc(x.name) + '</div>';
+    h += '<div style="font-size:12px;color:var(--tx3);margin-top:2px">' + esc(x.empId);
+    if (x.dept && x.dept !== '-') h += ' · ' + esc(x.dept);
+    if (x.shift) h += ' · กะ ' + esc(x.shift);
+    h += '</div></div>';
+    h += '<div style="text-align:right;white-space:nowrap">' +
+         '<div style="font-size:18px;font-weight:700;color:var(--er)">' + esc(x.days) + '</div>' +
+         '<div style="font-size:11px;color:var(--tx3)">วันทำงาน</div></div>';
+    h += '</div>';
+    h += '<div style="font-size:12px;color:var(--tx2);margin-top:8px">ตั้งแต่ ' +
+         esc(วันไทยสั้น(x.from)) + ' ถึง ' + esc(วันไทยสั้น(x.to)) + '</div>';
+    // ⚠️ ชื่อหัวหน้าช่วยให้ฝ่ายบุคคลรู้ว่าจะถามใครก่อน
+    //    ⚠️ ไม่มีหัวหน้าก็ต้องบอก ไม่ใช่เว้นว่างให้เดาว่าระบบไม่ส่งมา
+    if (x.ap1Name) {
+      h += '<div style="font-size:12px;color:var(--tx3);margin-top:3px">หัวหน้า: ' +
+           esc(x.ap1Name) + '</div>';
+    } else {
+      h += '<div style="font-size:12px;color:#b45309;margin-top:3px">ไม่มีผู้อนุมัติในทะเบียน</div>';
+    }
+    h += '</div>';
+  });
+
+  if (c.pendingLeave) {
+    h += '<div style="font-size:12px;color:#b45309;background:rgba(245,158,11,.12);' +
+         'padding:10px;border-radius:8px;margin-top:4px">' +
+         'มีใบลารออนุมัติ ' + esc(c.pendingLeave) + ' ใบในช่วงนี้ — ถ้าอนุมัติแล้วบางคนอาจหลุดจากรายการนี้</div>';
+  }
+  box.innerHTML = h;
+}
+
 /** หน้ารวม */
 function loadIncompletePage() {
   const list = document.getElementById('inc-list');
@@ -5239,11 +5382,15 @@ let empRepStatuses = [];     // [{status, n}] จากฐานข้อมู�
 let empRepPicked   = {};     // สถานะที่ติ๊กไว้
 let empRepData     = null;
 
-function empRepThDate(iso) {
-  if (!iso) return '—';
-  const p = String(iso).split('-');
-  if (p.length !== 3) return '—';
-  return p[2] + '/' + p[1] + '/' + (Number(p[0]) + 543);   // พ.ศ. เหมือนรายงานอื่น
+/** yyyy-MM-dd → วว/ดด/ปปปป (พ.ศ.) · ค่าเพี้ยนคืน "—"
+ *  ⚠️⚠️ ตัวแปลงวันแบบสั้นมี "ตัวเดียว" ในไฟล์นี้ ห้ามเขียนตัวที่สอง
+ *     (เดิมชื่อ empRepThDate อยู่กับรายงานพนักงาน แล้วหน้าอื่นก็เริ่มก๊อป
+ *      จนเกือบมีสามตัวที่แก้ไม่พร้อมกัน — ชุดทดสอบ docs.js นับจำนวนไว้)
+ *  ⚠️ ต้องตรวจว่าปีเป็นเลขสี่ตัว ไม่งั้นค่าเพี้ยนจะกลายเป็น "09/11/NaN" บนจอ */
+function วันไทยสั้น(iso) {
+  const p = String(iso == null ? '' : iso).trim().split('-');
+  if (p.length !== 3 || !/^\d{4}$/.test(p[0])) return '—';
+  return p[2] + '/' + p[1] + '/' + (Number(p[0]) + 543);
 }
 
 function loadEmpReportPage() {
@@ -5351,12 +5498,12 @@ function empRepRender(r) {
       + '<td>' + dash(e.dept) + '</td>'
       + '<td>' + dash(e.position) + '</td>'
       + '<td style="text-align:center">' + dash(e.shift) + '</td>'
-      + '<td style="white-space:nowrap">' + empRepThDate(e.startDate) + '</td>'
+      + '<td style="white-space:nowrap">' + วันไทยสั้น(e.startDate) + '</td>'
       + '<td style="white-space:nowrap">' + dash(e.tenure) + '</td>'
-      + '<td style="white-space:nowrap">' + empRepThDate(e.birthDate) + '</td>'
+      + '<td style="white-space:nowrap">' + วันไทยสั้น(e.birthDate) + '</td>'
       + '<td style="text-align:center">' + dash(e.age) + '</td>'
       + '<td>' + dash(e.status) + '</td>'
-      + '<td style="white-space:nowrap">' + empRepThDate(e.endDate) + '</td>'
+      + '<td style="white-space:nowrap">' + วันไทยสั้น(e.endDate) + '</td>'
       + '<td>' + appr(e.ap1, e.ap1Name) + '</td>'
       + '<td>' + appr(e.ap2, e.ap2Name) + '</td>'
       + '<td>' + dash(e.email) + '</td>'
@@ -8216,6 +8363,12 @@ applyLogo();
   on('inc-from-clear', 'click', function() { incFromSave(''); });
   on('empr-back',      'click', function() { go('hr-dash'); });
   on('hr-menu-setting', 'click', function() { go('hr-setting'); loadSettingPage(); });
+  // ⚠️ ผูกครั้งเดียวตอนเริ่ม ไม่ผูกใหม่ทุกครั้งที่เข้าหน้า (จะได้ handler ซ้อน)
+  document.querySelectorAll('.inc-view').forEach(function (b) {
+    b.addEventListener('click', function () {
+      incSetView(b.getAttribute('data-inc-view'));
+    });
+  });
   // ⚠️ ADMIN ไม่มีหน้า "เมนูงานบุคคล" จึงต้องกลับหน้าหลัก
   //    ถ้ากลับไป hr-dash เสมอ ADMIN จะไปติดอยู่หน้าที่ใช้อะไรไม่ได้
   on('cfg-back',        'click', function() { go(backFromHrPage()); });
