@@ -850,6 +850,10 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(14,165,233,.15);color:#0284c7">⛁</div></div>
         <div class="home-lb">รายงานข้อมูลพนักงาน</div>
       </button>
+      <button class="home-item" id="hr-menu-setting" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(100,116,139,.15);color:#475569">⚙</div></div>
+        <div class="home-lb">ตั้งค่าระบบ</div>
+      </button>
       <button class="home-item" id="hr-menu-holiday" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(236,72,153,.15);color:#db2777">◷</div></div>
         <div class="home-lb">จัดการวันหยุด</div>
@@ -1281,6 +1285,26 @@ textarea.inp{resize:vertical;min-height:60px}
 </div>
 
 <!-- ═══════════════ HR รายงานการบันทึกดิบ (raw log) ═══════════════ -->
+<div class="page" id="page-hr-setting">
+  <button id="cfg-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
+
+  <div style="margin-bottom:14px">
+    <div style="font-size:17px;font-weight:600">ตั้งค่าระบบ</div>
+    <div style="font-size:12px;color:var(--tx3);margin-top:2px">ค่าที่มีผลกับการคำนวณทั้งระบบ · ทุกการแก้บันทึกประวัติไว้</div>
+  </div>
+
+  <!-- ⚠️ หน้านี้สร้างช่องกรอกเองจากบัญชีรายชื่อค่าในฐานข้อมูล (app_setting_meta)
+       เพิ่มค่าใหม่ = เพิ่มหนึ่งแถวในตารางนั้น ไม่ต้องแก้ไฟล์นี้ -->
+  <div id="cfg-list">
+    <div class="card" style="padding:14px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+  </div>
+
+  <div style="margin-top:16px">
+    <button class="btn o" id="cfg-hist-btn" style="width:100%">ดูประวัติการแก้</button>
+    <div id="cfg-hist" style="display:none;margin-top:10px"></div>
+  </div>
+</div>
+
 <div class="page" id="page-hr-rawlog">
   <button id="hrraw-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← กลับเมนูงานบุคคล</button>
 
@@ -2181,6 +2205,9 @@ const SB = {
               //    ไม่ทำฝั่ง GAS ด้วย เพราะจะกลายเป็นกติกาที่สอง
               hrGetEmpReport: 1, hrGetEmpStatuses: 1,
               hrIncGetFrom: 1, hrIncSetFrom: 1,
+              // ⚠️ กันด้วยตั๋วที่ Edge Function และกันด้วย is_setting_editor
+              //    (HR/ADMIN ที่ยัง ACTIVE) ที่ฐานข้อมูลอีกชั้น
+              hrSettingList: 1, hrSettingSet: 1, hrSettingHistory: 1,
               leaveGetMyRequests: 1, otGetMyRequests: 1,
               leaveGetTypes: 1, otGetTypes: 1,
               leaveGetMyTeam: 1, otGetMyTeam: 1,
@@ -3429,7 +3456,7 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport'];
+  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport','hr-setting'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
@@ -3682,6 +3709,19 @@ function renderHomeMenu() {
       { p: 'hr-employees', t: 'จัดการพนักงาน',  ic: '☷', bg: 'rgba(16,185,129,.15)',  fg: '#059669' },
       { p: 'hr-bulletin',  t: 'จัดการประกาศ',   ic: '📋', bg: 'rgba(232,89,12,.15)',  fg: '#e8590c' },
       { p: 'hr-dash',      t: 'เมนูงานบุคคล',   ic: '★', bg: 'rgba(124,58,237,.15)',  fg: '#7c3aed' },
+    ]);
+    if (hrSec) hrSec.style.display = '';
+  } else if (S.role === 'ADMIN') {
+    // ⚠️ ใช้ S.role ไม่ใช่ role — ฟังก์ชันนี้ไม่มีตัวแปร role ในขอบเขต
+    //    (มีอยู่ในอีกฟังก์ชันหนึ่งเท่านั้น) เขียนผิดแล้วหน้าหลักของ ADMIN
+    //    จะพังทั้งหน้าด้วย ReferenceError — ชุดทดสอบ ฎ1 จับได้
+    // ⚠️⚠️ ADMIN ได้ "แผ่นเดียว" คือตั้งค่าระบบ ไม่ใช่เมนูงานบุคคลทั้งหมด
+    //    ED ให้ ADMIN แก้ค่าตั้งค่าได้ แต่ไม่ได้ให้เข้าถึงทะเบียนพนักงาน
+    //    หรือเงินเดือน — ถ้าเปิด hr-dash ให้ ADMIN จะได้ของเหล่านั้นติดมาด้วย
+    //    ซึ่งเป็นการขยายสิทธิ์ที่ไม่มีใครขอ (แบบเดียวกับที่ห้ามแก้ is_hr)
+    // ⚠️ ด่านจริงอยู่ที่ is_setting_editor ในฐานข้อมูล ไม่ใช่การโชว์แผ่นนี้
+    homeFillGrid('home-grid-hr', [
+      { p: 'hr-setting', t: 'ตั้งค่าระบบ', ic: '⚙', bg: 'rgba(100,116,139,.15)', fg: '#475569' },
     ]);
     if (hrSec) hrSec.style.display = '';
   } else if (isExec) {
@@ -4565,6 +4605,325 @@ function renderHomeIncomplete() {
     }
     card.style.display = '';
   });
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+ *  เมนูตั้งค่าระบบ (ไฟล์ SQL 73)
+ *
+ *  ⚠️⚠️ หน้านี้ "สร้างช่องกรอกเองจากบัญชีรายชื่อค่าในฐานข้อมูล"
+ *     ไม่ได้เขียนช่องไว้ตายตัว เพิ่มค่าใหม่ = เพิ่มหนึ่งแถวใน app_setting_meta
+ *     ถ้าวันหนึ่งมีคนมาเขียนช่องตายตัวเพิ่มที่นี่ ข้อดีนั้นจะหายไปทันที
+ *
+ *  ⚠️ ค่าที่เก็บฝั่ง GAS (ลบอัตโนมัติ · ภาพรวมเริ่มกี่โมง) ยังไม่อยู่ในหน้านี้
+ *     เพราะอยู่ใน Script Properties ไม่ใช่ app_setting — ทำต่อเป็นรอบถัดไป
+ * ═══════════════════════════════════════════════════════════════ */
+
+function cfgEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ⚠️⚠️ จุดเดียวในหน้านี้ที่ "รู้จักชื่อคีย์เฉพาะตัว"
+ *
+ *  ค่าที่เก็บฝั่ง Apps Script (store = 'gas') ต้องเรียก action ของ GAS
+ *  ซึ่งแต่ละตัวรับพารามิเตอร์คนละแบบ จึงเลี่ยงการรู้จักชื่อคีย์ไม่ได้
+ *  ⚠️ ให้ความรู้นี้อยู่ที่นี่ที่เดียว ห้ามกระจายไปตามที่ต่าง ๆ ในหน้า
+ *
+ *  ⚠️⚠️ ลบข้อมูลอัตโนมัติมีสองค่าแต่ action เดียว (hrSaveAutoDeleteConfig
+ *     รับ enabled กับ keepDays พร้อมกัน) จึงต้องส่งค่าพี่น้องไปด้วยทุกครั้ง
+ *     ไม่ส่ง = อีกค่าจะถูกเขียนทับด้วยค่าว่าง ซึ่งปิดการลบอัตโนมัติไปเลย
+ */
+var CFG_GAS = {
+  dash_day_start_hour: {
+    get:  'hrGetDashStart',
+    read: function (r) { return (r.hour === null || r.hour === undefined) ? '' : String(r.hour); },
+    set:  function (v) { return { action: 'hrSetDashStart', payload: { hour: v } }; },
+  },
+  attdel_enabled: {
+    get:  'hrGetAutoDeleteConfig',
+    read: function (r) { return r.enabled ? 'true' : 'false'; },
+    set:  function (v, cur) {
+      return { action: 'hrSaveAutoDeleteConfig',
+               payload: { enabled: String(v) === 'true',
+                          keepDays: Number(cur.attdel_keep_days || 0) } };
+    },
+  },
+  attdel_keep_days: {
+    get:  'hrGetAutoDeleteConfig',
+    read: function (r) { return r.keepDays ? String(r.keepDays) : ''; },
+    set:  function (v, cur) {
+      return { action: 'hrSaveAutoDeleteConfig',
+               payload: { enabled: String(cur.attdel_enabled) === 'true',
+                          keepDays: Number(v || 0) } };
+    },
+  },
+};
+
+var cfgค่าGAS = {};   // คีย์ → ค่าที่อ่านมาจากฝั่ง GAS
+
+/* ═══════════════════════════════════════════════════════════════
+ *  เมนูตั้งค่าระบบ (ไฟล์ SQL 73)
+ *
+ *  ⚠️⚠️ หน้านี้ "สร้างช่องกรอกเองจากบัญชีรายชื่อค่าในฐานข้อมูล"
+ *     ไม่ได้เขียนช่องไว้ตายตัว เพิ่มค่าใหม่ = เพิ่มหนึ่งแถวใน app_setting_meta
+ *     ถ้าวันหนึ่งมีคนมาเขียนช่องตายตัวเพิ่มที่นี่ ข้อดีนั้นจะหายไปทันที
+ *
+ *  ⚠️ ค่าเก็บได้สองที่ — Supabase (store='db') และ Script Properties ฝั่ง GAS
+ *     (store='gas') หน้านี้ตัดสินจากช่อง store ที่ฐานข้อมูลบอกมา ไม่เดาจากชื่อคีย์
+ *
+ *  ⚠️⚠️ ค่าที่ hrOnly = true ADMIN แก้ไม่ได้ (ของเดิมกั้นด้วย requireHR_)
+ *     จึงแสดงแบบอ่านอย่างเดียว ไม่ใช่ให้กดแล้วถูกปฏิเสธ
+ * ═══════════════════════════════════════════════════════════════ */
+
+function loadSettingPage() {
+  const box = document.getElementById('cfg-list');
+  if (!box) return;
+  box.innerHTML = '<div class="card" style="padding:14px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
+  // ⚠️ ซ่อนประวัติทุกครั้งที่เข้าหน้า ไม่งั้นจะค้างของรอบก่อน
+  const h = document.getElementById('cfg-hist');
+  const hb = document.getElementById('cfg-hist-btn');
+  if (h) { h.style.display = 'none'; h.innerHTML = ''; }
+  if (hb) hb.textContent = 'ดูประวัติการแก้';
+
+  gasRun('hrSettingList', { hrToken: S.hrToken }, 20000)
+    .withSuccessHandler(r => {
+      if (!r || !r.success) {
+        box.innerHTML = '<div class="card" style="padding:14px;color:var(--dg);font-size:13px">' +
+          cfgEsc((r && r.message) || 'อ่านค่าตั้งค่าไม่สำเร็จ') + '</div>';
+        return;
+      }
+      const rows = r.rows || [];
+      // ── อ่านค่าที่เก็บฝั่ง GAS ──
+      // ⚠️ action เดียวอาจให้หลายค่า (ลบอัตโนมัติให้ทั้ง enabled และ keepDays)
+      //    จึงเรียก action ละครั้ง ไม่ใช่เรียกต่อค่า
+      const actions = {};
+      rows.forEach(function (c) {
+        if (c.store === 'gas' && CFG_GAS[c.key]) actions[CFG_GAS[c.key].get] = 1;
+      });
+      const รายการ = Object.keys(actions);
+      cfgค่าGAS = {};
+      if (!รายการ.length) { cfgRender(rows); return; }
+
+      let เหลือ = รายการ.length;
+      // ⚠️ วาดเมื่อครบทุก action ไม่ใช่วาดทุกครั้งที่ตัวหนึ่งกลับมา
+      //    ไม่งั้นจอจะกระพริบและค่าที่มาช้าจะไม่ขึ้น
+      const เสร็จ = function () { if (--เหลือ <= 0) cfgRender(rows); };
+      รายการ.forEach(function (act) {
+        gasRun(act, { hrToken: S.hrToken }, 20000)
+          .withSuccessHandler(g => {
+            if (g && g.success) {
+              rows.forEach(function (c) {
+                if (c.store === 'gas' && CFG_GAS[c.key] && CFG_GAS[c.key].get === act) {
+                  cfgค่าGAS[c.key] = CFG_GAS[c.key].read(g);
+                }
+              });
+            }
+            เสร็จ();
+          })
+          // ⚠️ อ่านค่าฝั่ง GAS ไม่ได้ ต้องไม่ทำให้ทั้งหน้าว่าง
+          //    ค่าฝั่ง Supabase ยังแก้ได้ ควรให้แก้ต่อได้
+          .withFailureHandler(() => เสร็จ());
+      });
+    })
+    .withFailureHandler(e => {
+      box.innerHTML = '<div class="card" style="padding:14px;color:var(--dg);font-size:13px">' +
+        cfgEsc(e.message) + '</div>';
+    });
+}
+
+/** ค่าที่จะแสดงในช่อง — ฝั่ง GAS เอาจากที่อ่านมา ฝั่ง Supabase เอาจากรายการ */
+function cfgค่าของ(c) {
+  if (c.store === 'gas') {
+    const v = cfgค่าGAS[c.key];
+    return (v === null || v === undefined) ? '' : String(v);
+  }
+  return (c.value === null || c.value === undefined) ? '' : String(c.value);
+}
+
+function cfgRender(rows) {
+  const box = document.getElementById('cfg-list');
+  if (!box) return;
+  if (!rows.length) {
+    box.innerHTML = '<div class="card" style="padding:14px;color:var(--tx3);font-size:13px">ยังไม่มีค่าที่แก้ได้</div>';
+    return;
+  }
+  // ⚠️⚠️ ADMIN แก้ค่าที่ hrOnly ไม่ได้ — ด่านจริงอยู่ฝั่ง GAS (requireHR_)
+  //    ที่นี่แค่ไม่ให้กดของที่กดไม่ได้ ไม่ใช่ด่าน
+  const เป็นHR = (S.role === 'HR');
+  let html = '';
+  rows.forEach(function (c) {
+    const id = 'cfg-v-' + c.key;
+    const ค่า = cfgค่าของ(c);
+    const แก้ได้ = เป็นHR || !c.hrOnly;
+    // ⚠️ ชนิดช่องมาจากฐานข้อมูล ไม่เดาจากชื่อคีย์
+    const t = (c.kind === 'date') ? 'date' : (c.kind === 'bool' ? 'checkbox' : 'number');
+    // ⚠️ ใส่ min/max ลงช่องด้วย เพื่อให้เบราว์เซอร์ช่วยกันก่อนส่ง
+    //    แต่ "ไม่ใช่ด่านจริง" — ด่านจริงอยู่ที่ฐานข้อมูลและฝั่ง GAS
+    let attr = '';
+    if (t === 'number') {
+      if (c.min !== null && c.min !== undefined) attr += ' min="' + cfgEsc(c.min) + '"';
+      if (c.max !== null && c.max !== undefined) attr += ' max="' + cfgEsc(c.max) + '"';
+      attr += (c.kind === 'int') ? ' step="1"' : ' step="any"';
+    }
+    if (!แก้ได้) attr += ' disabled';
+
+    html += '<div class="card" style="padding:14px;margin-bottom:10px">';
+    html += '<div style="font-size:13px;font-weight:600;margin-bottom:2px">' + cfgEsc(c.label) + '</div>';
+    if (c.note) {
+      html += '<div style="font-size:11px;color:var(--tx3);margin-bottom:8px;line-height:1.5">' +
+              cfgEsc(c.note) + '</div>';
+    }
+    html += '<div style="display:flex;gap:6px;align-items:center">';
+    if (t === 'checkbox') {
+      html += '<label style="display:flex;align-items:center;gap:8px;flex:1;font-size:13px;cursor:pointer">';
+      html += '<input id="' + id + '" type="checkbox"' + attr +
+              (ค่า === 'true' ? ' checked' : '') + ' style="width:18px;height:18px">';
+      html += '<span>' + (ค่า === 'true' ? 'เปิดอยู่' : 'ปิดอยู่') + '</span></label>';
+    } else {
+      html += '<input class="inp" id="' + id + '" type="' + t + '"' + attr +
+              ' value="' + cfgEsc(ค่า) + '" style="flex:1;min-width:0">';
+      if (c.unit) html += '<span style="font-size:12px;color:var(--tx2);white-space:nowrap">' + cfgEsc(c.unit) + '</span>';
+    }
+    if (แก้ได้) {
+      html += '<button class="btn p sm" data-cfg-save="' + cfgEsc(c.key) + '">บันทึก</button>';
+      // ⚠️ ค่าเปิด/ปิดไม่มี "ล้าง" เพราะปิดคือค่าหนึ่ง ไม่ใช่การไม่มีค่า
+      if (c.kind !== 'bool') {
+        html += '<button class="btn o sm" data-cfg-clear="' + cfgEsc(c.key) + '">ล้าง</button>';
+      }
+    }
+    html += '</div>';
+    if (!แก้ได้) {
+      html += '<div style="font-size:11px;color:#b45309;margin-top:6px">ฝ่ายบุคคลเท่านั้นที่แก้ค่านี้ได้</div>';
+    }
+    // ⚠️ บอกให้เห็นว่ายังไม่ได้ตั้ง = ใช้ค่าตั้งต้นของระบบ ไม่ใช่ "ค่าว่าง"
+    if (c.store !== 'gas' && !c.isSet) {
+      html += '<div style="font-size:11px;color:var(--tx3);margin-top:6px">ยังไม่ได้ตั้ง — ใช้ค่าตั้งต้นของระบบ</div>';
+    }
+    // ⚠️ บอกว่าค่านี้เก็บคนละที่ เพื่อให้คนที่มารับงานต่อไม่หาผิดที่
+    if (c.store === 'gas') {
+      html += '<div style="font-size:11px;color:var(--tx3);margin-top:6px">เก็บใน Apps Script · ประวัติการแก้ยังบันทึกที่เดียวกับค่าอื่น</div>';
+    }
+    // ⚠️⚠️ ค่าที่มีคู่ฝั่ง GAS ต้องเตือนให้เห็นทุกครั้ง ไม่ใช่เตือนแค่ตอนบันทึก
+    //    ถ้าสองฝั่งไม่ตรงกัน การลงเวลาจะคิดคนละแบบระหว่างหน้าเว็บกับตัวสำรอง
+    // ⚠️⚠️ ข้อความเตือนมาจากฐานข้อมูล ไม่ฝังในหน้านี้
+    //    เพราะมีค่าที่เก็บสองฝั่งหลายตัว และเตือนคนละเรื่องกัน
+    //    รอบทำงาน → ต้องไปแก้ Code.gs เอง (ฮาร์ดโค้ดอยู่)
+    //    ภาพรวมประจำวัน → เมนูนี้ซิงค์ให้ทั้งสองฝั่งแล้ว
+    //    เกิดจริง: เคยฝังข้อความของรอบทำงานไว้ตรง ๆ พอมีค่าที่สองก็ขึ้นผิดตัว
+    if (c.dualSide && c.dualNote) {
+      html += '<div style="font-size:11px;color:#b45309;background:rgba(245,158,11,.12);' +
+              'padding:8px;border-radius:6px;margin-top:8px;line-height:1.5">⚠️ ' +
+              cfgEsc(c.dualNote) + '</div>';
+    }
+    html += '</div>';
+  });
+  box.innerHTML = html;
+
+  // ⚠️ ผูกปุ่มหลังวาดเสร็จ ไม่ใช้ onclick ในสตริง (ชื่อคีย์อาจมีอักขระที่ทำสตริงพัง)
+  box.querySelectorAll('[data-cfg-save]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      const k = b.getAttribute('data-cfg-save');
+      const el = document.getElementById('cfg-v-' + k);
+      let v = '';
+      if (el) v = (el.type === 'checkbox') ? (el.checked ? 'true' : 'false') : el.value;
+      cfgSave(k, v, b);
+    });
+  });
+  box.querySelectorAll('[data-cfg-clear]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      cfgSave(b.getAttribute('data-cfg-clear'), '', b);
+    });
+  });
+}
+
+function cfgSave(key, value, btn) {
+  const เดิม = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+  // ⚠️⚠️ ค่าฝั่ง GAS ไปทาง action ของ GAS ไม่ใช่ตัวแก้กลางของ Supabase
+  //    ถ้าส่งไปตัวแก้กลาง ฐานข้อมูลจะปฏิเสธ (ไฟล์ 73 กันไว้)
+  //    เพราะถ้าเขียนลง app_setting จะเกิดสำเนาที่สองที่ไม่มีใครอ่าน
+  let คำขอ;
+  if (CFG_GAS[key]) {
+    // ⚠️ ส่งค่าพี่น้องไปด้วย เพราะ action ฝั่ง GAS รับหลายค่าพร้อมกัน
+    const cur = {};
+    Object.keys(cfgค่าGAS).forEach(function (k) { cur[k] = cfgค่าGAS[k]; });
+    cur[key] = value;
+    คำขอ = CFG_GAS[key].set(value, cur);
+  } else {
+    คำขอ = { action: 'hrSettingSet', payload: { key: String(key), value: String(value == null ? '' : value) } };
+  }
+  คำขอ.payload.hrToken = S.hrToken;
+
+  gasRun(คำขอ.action, คำขอ.payload, 20000)
+    .withSuccessHandler(r => {
+      if (btn) { btn.disabled = false; btn.textContent = เดิม; }
+      // ⚠️⚠️ ฐานข้อมูลปฏิเสธก็มาทางนี้ ต้องอ่าน success ไม่ใช่เดาว่าสำเร็จ
+      //    ข้อความจากฐานข้อมูลบอกชื่อค่าและขอบเขตมาแล้ว แสดงตรง ๆ ได้เลย
+      if (!r || !r.success) { showToast((r && r.message) || 'บันทึกไม่สำเร็จ'); return; }
+      showToast(r.message || 'บันทึกแล้ว');
+      // ⚠️⚠️ บันทึกค่าสำเร็จ แต่เขียนประวัติไม่สำเร็จ ต้องบอกให้รู้
+      //    ไม่บอก = ฝ่ายบุคคลจะเชื่อว่าประวัติครบ ซึ่งแย่กว่าไม่มีประวัติ
+      if (r.logWarning) showToast('บันทึกค่าแล้ว แต่ลงประวัติไม่สำเร็จ: ' + r.logWarning);
+      // ⚠️ โหลดใหม่ทั้งหน้า ไม่แก้ค่าบนจอเอง — ค่าที่เก็บจริง
+      //    อาจไม่เท่าที่พิมพ์ (เช่น 20.00 เก็บเป็น 20) ถ้าแก้บนจอเองจะโชว์ผิด
+      loadSettingPage();
+    })
+    .withFailureHandler(e => {
+      if (btn) { btn.disabled = false; btn.textContent = เดิม; }
+      showToast(e.message);
+    });
+}
+
+function cfgLoadHistory() {
+  const box = document.getElementById('cfg-hist');
+  const btn = document.getElementById('cfg-hist-btn');
+  if (!box) return;
+  // กดซ้ำ = ปิด
+  if (box.style.display !== 'none') {
+    box.style.display = 'none';
+    if (btn) btn.textContent = 'ดูประวัติการแก้';
+    return;
+  }
+  box.style.display = '';
+  if (btn) btn.textContent = 'ซ่อนประวัติ';
+  box.innerHTML = '<div class="card" style="padding:14px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>';
+  gasRun('hrSettingHistory', { hrToken: S.hrToken, limit: 50 }, 20000)
+    .withSuccessHandler(r => {
+      if (!r || !r.success) {
+        box.innerHTML = '<div class="card" style="padding:14px;color:var(--dg);font-size:13px">' +
+          cfgEsc((r && r.message) || 'อ่านประวัติไม่สำเร็จ') + '</div>';
+        return;
+      }
+      const rows = r.rows || [];
+      if (!rows.length) {
+        box.innerHTML = '<div class="card" style="padding:14px;color:var(--tx3);font-size:13px">ยังไม่มีการแก้ค่า</div>';
+        return;
+      }
+      let h = '<div class="card" style="padding:0;overflow:hidden">';
+      rows.forEach(function (x, i) {
+        h += '<div style="padding:10px 12px' + (i ? ';border-top:1px solid var(--bd)' : '') + '">';
+        h += '<div style="font-size:12px;font-weight:600">' + cfgEsc(x.label) + '</div>';
+        // ⚠️ ต้องแสดงค่าเก่าด้วย ไม่ใช่แค่ค่าใหม่ ไม่งั้นประวัติตอบไม่ได้ว่าเปลี่ยนอะไร
+        h += '<div style="font-size:12px;color:var(--tx2);margin-top:2px">' +
+             cfgEsc(x.from === null || x.from === undefined ? '(ค่าตั้งต้น)' : x.from) +
+             ' → <b>' + cfgEsc(x.to === null || x.to === undefined ? '(ค่าตั้งต้น)' : x.to) + '</b></div>';
+        h += '<div style="font-size:11px;color:var(--tx3);margin-top:3px">' +
+             cfgEsc(x.at || '') + ' · ' + cfgEsc(x.actorName || x.actor || '—') + '</div>';
+        if (x.note) {
+          h += '<div style="font-size:11px;color:#b45309;margin-top:3px">' + cfgEsc(x.note) + '</div>';
+        }
+        h += '</div>';
+      });
+      h += '</div>';
+      box.innerHTML = h;
+    })
+    .withFailureHandler(e => {
+      box.innerHTML = '<div class="card" style="padding:14px;color:var(--dg);font-size:13px">' +
+        cfgEsc(e.message) + '</div>';
+    });
 }
 
 /** ค่าตั้ง "เริ่มแสดงตั้งแต่วันไหน" — ฝ่ายบุคคลเท่านั้น */
@@ -7856,6 +8215,11 @@ applyLogo();
   on('inc-from-save',  'click', function() { incFromSave(document.getElementById('inc-from').value); });
   on('inc-from-clear', 'click', function() { incFromSave(''); });
   on('empr-back',      'click', function() { go('hr-dash'); });
+  on('hr-menu-setting', 'click', function() { go('hr-setting'); loadSettingPage(); });
+  // ⚠️ ADMIN ไม่มีหน้า "เมนูงานบุคคล" จึงต้องกลับหน้าหลัก
+  //    ถ้ากลับไป hr-dash เสมอ ADMIN จะไปติดอยู่หน้าที่ใช้อะไรไม่ได้
+  on('cfg-back',        'click', function() { go(backFromHrPage()); });
+  on('cfg-hist-btn',    'click', cfgLoadHistory);
   on('empr-st-all',    'click', function() { empRepSetAll(true); });
   on('empr-st-none',   'click', function() { empRepSetAll(false); });
   on('empr-generate',  'click', empRepGenerate);
