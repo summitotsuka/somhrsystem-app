@@ -1410,19 +1410,18 @@ textarea.inp{resize:vertical;min-height:60px}
     <div style="font-size:15px;font-weight:700;margin-bottom:4px">⏰ ลบข้อมูลอัตโนมัติ</div>
     <div style="font-size:13px;color:var(--tx3);margin-bottom:12px">ย้ายข้อมูลเก่าไปเก็บที่ชีต Attendance_Archive แล้วลบออกจากตารางหลัก ทำงานอัตโนมัติทุกคืน (ตี 1-2 น.)</div>
 
-    <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer">
-      <input type="checkbox" id="hr-autodel-enabled" style="width:18px;height:18px">
-      <span style="font-size:14px;font-weight:600">เปิดการลบอัตโนมัติ</span>
-    </label>
-
-    <div class="field" style="margin-bottom:12px">
-      <label>เก็บข้อมูลย้อนหลัง (วัน)</label>
-      <input class="inp" id="hr-autodel-days" type="number" min="90" value="180" inputmode="numeric" style="max-width:160px">
-      <div style="font-size:12px;color:var(--tx3);margin-top:4px">ขั้นต่ำ 90 วัน · ข้อมูลเก่ากว่านี้จะถูกย้ายไป archive</div>
+    <!-- ⚠️⚠️ ช่องแก้ค่าย้ายไปหน้า "ตั้งค่าระบบ" แล้ว ที่นี่อ่านอย่างเดียว
+         เหตุผล: ค่าเดียวกันแก้ได้สองที่ = วันหนึ่งจะมีคนแก้ที่หนึ่งแล้วงงว่า
+         ทำไมอีกที่ไม่ตรง · ส่วนปุ่ม "ทดสอบลบตอนนี้" ไม่ใช่ค่าตั้ง แต่เป็น
+         คำสั่งให้ทำงานเดี๋ยวนี้ จึงอยู่ที่นี่ต่อ ไม่ย้ายไปหน้าตั้งค่า
+         (หน้านั้นสร้างช่องจากข้อมูลในตาราง app_setting_meta ทั้งหมด
+          เอาปุ่มเฉพาะกิจไปแปะจะพังหลักการที่ทำให้หน้านั้นมีประโยชน์) -->
+    <div id="hr-autodel-now" style="font-size:14px;margin-bottom:6px">กำลังโหลด…</div>
+    <div style="font-size:12px;color:var(--tx3);margin-bottom:12px">
+      แก้ค่าได้ที่ เมนูงานบุคคล → ตั้งค่าระบบ (มีประวัติการแก้ไขให้ตรวจสอบ)
     </div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="btn p sm" id="hr-autodel-save" style="width:auto;padding:8px 18px">บันทึกการตั้งค่า</button>
       <button class="btn o sm" id="hr-autodel-runnow" style="width:auto;padding:8px 16px">ทดสอบลบตอนนี้</button>
     </div>
 
@@ -1591,21 +1590,13 @@ textarea.inp{resize:vertical;min-height:60px}
   <div id="inc-range" style="font-size:12px;color:var(--tx3);margin-bottom:12px"></div>
   <div id="inc-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px"></div>
 
-  <!-- ⚠️ การ์ดตั้งค่า เห็นเฉพาะฝ่ายบุคคล — ด่านจริงอยู่ในฐานข้อมูล (is_hr)
-       ซ่อนปุ่มไม่ใช่ด่าน แต่ไม่ต้องให้หัวหน้างานเห็นของที่กดไม่ได้ -->
-  <div class="card" id="inc-setting" style="padding:14px;margin-bottom:14px;display:none">
-    <div style="font-size:12px;color:var(--tx2);margin-bottom:4px;font-weight:500">เริ่มแสดงรายการตั้งแต่วันที่</div>
-    <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">
-      เว้นว่าง = ดูทั้งหมด · ของเก่าไม่ได้หายไปจากระบบ แค่ไม่แสดงในหน้านี้
-    </div>
-    <div style="display:flex;gap:8px;align-items:flex-end">
-      <div class="field" style="flex:1;margin:0"><label>วันที่</label>
-        <input class="inp" id="inc-from" type="date"></div>
-      <button class="btn p sm" id="inc-from-save" style="width:auto;padding:9px 14px">บันทึก</button>
-      <button class="btn o sm" id="inc-from-clear" style="width:auto;padding:9px 14px">ล้าง</button>
-    </div>
-    <div style="font-size:11px;color:var(--tx3);margin-top:8px" id="inc-from-note"></div>
-  </div>
+  <!-- ⚠️⚠️ การ์ด "เริ่มแสดงรายการตั้งแต่วันที่" ถูกเอาออก (10 พ.ย. 2569)
+       ค่าเดียวกัน (incomplete_from_date) แก้ได้ที่หน้า "ตั้งค่าระบบ" แล้ว
+       พร้อมปุ่มล้างและประวัติการแก้ไข — ไม่ต้องมีสองที่
+       ⚠️ ได้ความเร็วคืนด้วย: ตัดการเรียก hrIncGetFrom ตอนเปิดหน้าออกหนึ่งครั้ง
+          (หน้านี้เคยช้า 96 วินาที จึงนับทุกการเรียกหลังบ้าน)
+       ⚠️ ช่วงวันที่ที่กำลังดูอยู่ ย้ายไปบอกที่บรรทัด inc-range ด้านบน
+          ซึ่งใช้ค่าที่โหลดมาแล้ว ไม่ต้องเรียกหลังบ้านเพิ่ม -->
 
   <div id="inc-list"></div>
 
@@ -2657,7 +2648,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.44.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.45.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3500,7 +3491,7 @@ function go(id) {
   //    ถ้าไม่ตั้ง แล้วคราวก่อนออกจากหน้าตอนดูรายงานขาดงานอยู่
   //    กลับเข้ามาจะเห็นรายงานขาดงานเก่าค้าง และรายการไม่สมบูรณ์ถูกซ่อนไว้
   //    ทั้งที่ชื่อหน้าบอกว่า "ข้อมูลลงเวลาไม่สมบูรณ์" — ดูเหมือนหน้าพัง
-  if (id === 'att-incomplete') { incSetView('inc'); loadIncompletePage(); incFromLoad(); }
+  if (id === 'att-incomplete') { incSetView('inc'); loadIncompletePage(); }
   if (id === 'holiday') loadHolidayViewPage();
   if (id === 'history') loadHistory();
   if (id === 'hr-dashboard') {
@@ -4947,47 +4938,14 @@ function cfgLoadHistory() {
     });
 }
 
-/** ค่าตั้ง "เริ่มแสดงตั้งแต่วันไหน" — ฝ่ายบุคคลเท่านั้น */
-// ⚠️ โหลดค่าตั้งแยกจากรายการ เพราะรายการใหญ่กว่าและช้ากว่า
-//    ถ้ารวมกันแล้วรายการล้ม ค่าตั้งก็หายไปด้วย แล้วฝ่ายบุคคลจะแก้อะไรไม่ได้เลย
-//    — ซึ่งเป็นสภาพที่เพิ่งเกิดจริงตอนหน้านี้ช้า 96 วินาที
-function incFromLoad() {
-  const box = document.getElementById('inc-setting');
-  if (!box) return;
-  if (S.role !== 'HR') { box.style.display = 'none'; return; }
-  box.style.display = '';
-  gasRun('hrIncGetFrom', { hrToken: S.hrToken }, 20000)
-    .withSuccessHandler(r => {
-      if (!r || !r.success) return;
-      const el = document.getElementById('inc-from');
-      if (el) el.value = r.fromDate || '';
-      const note = document.getElementById('inc-from-note');
-      if (note) note.textContent =
-        'ข้อมูลเก่าสุดในระบบ ' + (r.earliest || '—') +
-        ' · ตอนนี้ดูตั้งแต่ ' + (r.effectiveFrom || '—') + ' ถึง ' + (r.effectiveTo || '—');
-    })
-    .withFailureHandler(() => {});
-}
-
-function incFromSave(ค่า) {
-  const btn = document.getElementById('inc-from-save');
-  if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก...'; }
-  gasRun('hrIncSetFrom', { hrToken: S.hrToken, fromDate: String(ค่า || '') }, 20000)
-    .withSuccessHandler(r => {
-      if (btn) { btn.disabled = false; btn.textContent = 'บันทึก'; }
-      if (!r || !r.success) { showToast((r && r.message) || 'บันทึกไม่สำเร็จ'); return; }
-      showToast(ค่า ? 'เริ่มแสดงตั้งแต่ ' + r.fromDate : 'ยกเลิกแล้ว — ดูทั้งหมด');
-      const el = document.getElementById('inc-from');
-      if (el) el.value = r.fromDate || '';
-      // ⚠️ โหลดรายการใหม่ ไม่งั้นตัวเลขบนจอจะไม่ตรงกับค่าตั้งที่เพิ่งเปลี่ยน
-      loadIncompletePage();
-      incFromLoad();
-    })
-    .withFailureHandler(e => {
-      if (btn) { btn.disabled = false; btn.textContent = 'บันทึก'; }
-      showToast(e.message);
-    });
-}
+/* ⚠️⚠️ incFromLoad / incFromSave ถูกลบ (10 พ.ย. 2569)
+ *    ค่า incomplete_from_date แก้ได้ที่หน้า "ตั้งค่าระบบ" ที่เดียวแล้ว
+ *    🚫 ห้ามเขียนตัวแก้ค่านี้กลับมาที่หน้านี้ — ค่าเดียวแก้ได้สองที่
+ *       คือต้นเหตุที่เราเพิ่งไล่เก็บไปทั้งระบบ (ดู README หมวด 8ก)
+ *    ⚠️ action hrIncGetFrom / hrIncSetFrom ฝั่งหลังบ้านยังอยู่ ไม่ได้ลบ
+ *       เพราะ att_inc_from_set ถูกด่านตรวจในไฟล์ 73 ข้อ 9 ใช้งานอยู่
+ *       จดไว้ในงานค้างว่าเป็นทางที่ไม่มีใครเรียกแล้ว
+ */
 
 /* ═══════════════════════════════════════════════════════════════
  *  รายงานขาดงานต่อเนื่อง — อยู่หน้าเดียวกับข้อมูลไม่สมบูรณ์ (ED เลือก)
@@ -5021,11 +4979,6 @@ function incSetView(ไหน) {
   โชว์('inc-summary', เป็นไม่สมบูรณ์);
   โชว์('inc-list',    เป็นไม่สมบูรณ์);
   โชว์('inc-absent',  !เป็นไม่สมบูรณ์);
-  // ⚠️ การ์ดตั้งค่าเป็นของรายงานไม่สมบูรณ์เท่านั้น — ซ่อนตอนดูอีกรายงาน
-  //    ไม่ซ่อน = ฝ่ายบุคคลจะคิดว่าค่านั้นคุมรายงานขาดงานด้วย ซึ่งไม่จริง
-  const st = document.getElementById('inc-setting');
-  if (st) st.style.display = (เป็นไม่สมบูรณ์ && S.role === 'HR') ? '' : 'none';
-
   if (!เป็นไม่สมบูรณ์) loadAbsentReport();
 }
 
@@ -5127,8 +5080,13 @@ function loadIncompletePage() {
       return;
     }
     if (rng) {
+      // ⚠️ บอกทั้งต้นและปลายช่วง เพราะการ์ด "เริ่มแสดงตั้งแต่วันที่" ถูกเอาออกแล้ว
+      //    บรรทัดนี้จึงเป็นที่เดียวที่บอกว่ากำลังดูช่วงไหนอยู่
+      //    ⚠️ ใช้ค่าที่โหลดมาพร้อมรายการ ไม่เรียกหลังบ้านเพิ่ม
       rng.textContent = INC.from
-        ? ('ดูย้อนหลังได้ถึง ' + incThaiDate(INC.from) + ' — เท่าที่มีข้อมูลในระบบ')
+        ? ('กำลังดูตั้งแต่ ' + incThaiDate(INC.from) +
+           (INC.to ? ' ถึง ' + incThaiDate(INC.to) : '') +
+           ' · แก้ช่วงได้ที่ ตั้งค่าระบบ')
         : '';
     }
     const c = INC.counts || {};
@@ -5735,11 +5693,24 @@ function loadAutoDeleteConfig() {
   gasRun('hrGetAutoDeleteConfig', { hrToken: S.hrToken })
     .withSuccessHandler(r => {
       if (!r || !r.success) return;
-      const en = document.getElementById('hr-autodel-enabled');
-      const days = document.getElementById('hr-autodel-days');
+      const now = document.getElementById('hr-autodel-now');
       const st = document.getElementById('hr-autodel-status');
-      if (en) en.checked = !!r.enabled;
-      if (days) { days.value = r.keepDays || 180; days.min = r.minDays || 90; }
+      if (now) {
+        const เปิด = !!r.enabled;
+        const วัน = r.keepDays || 180;
+        now.innerHTML = เปิด
+          ? '<span style="color:#059669;font-weight:600">เปิดอยู่</span> · เก็บข้อมูลย้อนหลัง ' +
+            esc(วัน) + ' วัน'
+          : '<span style="color:var(--tx2);font-weight:600">ปิดอยู่</span> · ตั้งไว้ ' +
+            esc(วัน) + ' วัน';
+        // ⚠️⚠️ ปุ่ม "ทดสอบลบตอนนี้" ลบจริงแม้การลบอัตโนมัติปิดอยู่
+        //    (hrRunAutoDeleteNow ไม่ได้เช็ก ATTDEL_ENABLED) — ต้องบอกให้รู้
+        //    ไม่งั้นคนเห็นว่า "ปิดอยู่" แล้วกดปุ่มเล่น ๆ โดยคิดว่าไม่มีอะไรเกิดขึ้น
+        if (!เปิด) {
+          now.innerHTML += '<div style="font-size:12px;color:#b45309;margin-top:4px">' +
+            'ปิดอยู่ = ไม่ลบอัตโนมัติตอนกลางคืน แต่ปุ่มทดสอบลบตอนนี้ยังลบจริง</div>';
+        }
+      }
       if (st) {
         st.textContent = r.lastRun
           ? `ลบล่าสุด: ${r.lastRun} (${r.lastCount || 0} แถว)`
@@ -5749,20 +5720,10 @@ function loadAutoDeleteConfig() {
     .withFailureHandler(() => {});
 }
 
-function hrAutoDelSave() {
-  const enabled = document.getElementById('hr-autodel-enabled').checked;
-  const keepDays = parseInt(document.getElementById('hr-autodel-days').value, 10);
-  const btn = document.getElementById('hr-autodel-save');
-  if (enabled && (!keepDays || keepDays < 90)) { showToast('จำนวนวันต้องไม่น้อยกว่า 90'); return; }
-  if (btn) btn.disabled = true;
-  gasRunNoRetry('hrSaveAutoDeleteConfig', { hrToken: S.hrToken, enabled: enabled, keepDays: keepDays })
-    .withSuccessHandler(r => {
-      if (btn) btn.disabled = false;
-      showToast((r && r.message) || (r && r.success ? 'บันทึกแล้ว' : 'บันทึกไม่สำเร็จ'));
-      loadAutoDeleteConfig();
-    })
-    .withFailureHandler(() => { if (btn) btn.disabled = false; showToast('เกิดข้อผิดพลาด'); });
-}
+/* ⚠️⚠️ hrAutoDelSave ถูกลบ (10 พ.ย. 2569) — แก้ค่าที่หน้า "ตั้งค่าระบบ" ที่เดียว
+ *    🚫 ห้ามเขียนกลับมา · action hrSaveAutoDeleteConfig ฝั่งหลังบ้านยังใช้อยู่
+ *       เพราะหน้าตั้งค่าเรียกตัวนั้นเอง (คีย์นี้ store = 'gas')
+ */
 
 function hrAutoDelRunNow() {
   if (!confirm('ทดสอบลบตอนนี้?\nข้อมูลเก่ากว่าจำนวนวันที่ตั้งไว้จะถูกย้ายไป Attendance_Archive แล้วลบออกจากตารางหลัก')) return;
@@ -8328,7 +8289,6 @@ applyLogo();
   on('hrdm-to', 'keydown', allowDateKeys);
   attachDayPicker('hrdm-from');
   attachDayPicker('hrdm-to');
-  on('hr-autodel-save', 'click', hrAutoDelSave);
   on('hr-autodel-runnow', 'click', hrAutoDelRunNow);
   const sortTabs = document.getElementById('hrrep-sort-tabs');
   if (sortTabs) sortTabs.querySelectorAll('[data-sort]').forEach(function (b) {
@@ -8359,8 +8319,6 @@ applyLogo();
   // ⚠️ ED ทักว่าไม่มีเมนูเข้าหน้านี้ มีแต่ลิงก์บนการ์ดหน้าหลัก
   //    ถ้าการ์ดซ่อนตัวเอง (เช่นคำขอล้ม) ฝ่ายบุคคลจะไม่มีทางเข้าเลย
   on('hr-menu-incomplete', 'click', function() { go('att-incomplete'); });
-  on('inc-from-save',  'click', function() { incFromSave(document.getElementById('inc-from').value); });
-  on('inc-from-clear', 'click', function() { incFromSave(''); });
   on('empr-back',      'click', function() { go('hr-dash'); });
   on('hr-menu-setting', 'click', function() { go('hr-setting'); loadSettingPage(); });
   // ⚠️ ผูกครั้งเดียวตอนเริ่ม ไม่ผูกใหม่ทุกครั้งที่เข้าหน้า (จะได้ handler ซ้อน)
