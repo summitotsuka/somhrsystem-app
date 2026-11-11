@@ -822,6 +822,10 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(55,138,221,.15);color:#2563eb">▧</div></div>
         <div class="home-lb">รายงาน OT</div>
       </button>
+      <button class="home-item" id="hr-menu-fix-report" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(14,165,233,.15);color:#0284c7">✎</div></div>
+        <div class="home-lb">รายงานขอบันทึกเวลา</div>
+      </button>
   </div>
 
   <div class="home-sec">เงินเดือน</div>
@@ -1860,6 +1864,107 @@ textarea.inp{resize:vertical;min-height:60px}
   <div id="otr-result"></div>
 </div>
 
+<!-- ═══════════════ ขอบันทึกเวลา: ฟอร์มขอ ═══════════════
+     ⚠️ ED เลือกให้กรอกวันที่เองแบบปฏิทิน ไม่ใช่เลือกจากรายการ
+        "พนักงานจำวันที่ได้แน่นอน เพราะเห็นจากหน้าจอเช็คเวลา"
+     ⚠️⚠️ ด่านตรวจวันที่อยู่ที่ฐานข้อมูล (att_fix_submit) ไม่ใช่ที่นี่
+        ที่นี่แค่ช่วยให้ไม่ต้องส่งแล้วถูกปฏิเสธ — ซ่อนช่องที่วันนั้นไม่ได้ขาด
+        ถ้าซ่อนผิด ฐานข้อมูลยังปฏิเสธให้อยู่ดี · ถ้าไม่ซ่อน ก็ยังปลอดภัย -->
+<div class="page" id="page-fix-form">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+    <button class="btn o sm" id="fix-form-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
+    <h2 style="margin:0;font-size:18px;flex:1">ขอบันทึกเวลา</h2>
+    <button class="btn o sm" id="fix-goto-history" style="width:auto;padding:6px 12px;font-size:13px">ประวัติ</button>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:12px;color:var(--tx3);margin-bottom:12px;line-height:1.6">
+      ใช้เมื่อลืมสแกนเข้าหรือออก · ขอได้เฉพาะวันที่ระบบตรวจพบว่าข้อมูลไม่ครบ<br>
+      เมื่อหัวหน้าและฝ่ายบุคคลอนุมัติครบ เวลาจะถูกบันทึกเข้าระบบ
+    </div>
+
+    <div class="field" style="margin-bottom:4px">
+      <label>วันที่ที่ลืมสแกน</label>
+      <input class="inp" id="fix-date" type="date">
+    </div>
+    <div id="fix-days-hint" style="font-size:12px;color:var(--tx3);margin-bottom:12px"></div>
+
+    <div id="fix-time-wrap">
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div class="field" id="fix-in-wrap" style="flex:1;margin:0">
+          <label>เวลาเข้า</label>
+          <input class="inp" id="fix-in" type="time">
+        </div>
+        <div class="field" id="fix-out-wrap" style="flex:1;margin:0">
+          <label>เวลาออก</label>
+          <input class="inp" id="fix-out" type="time">
+        </div>
+      </div>
+      <div id="fix-time-note" style="font-size:12px;color:#b45309;margin-bottom:12px"></div>
+    </div>
+
+    <div class="field" style="margin-bottom:12px">
+      <label>เหตุผล</label>
+      <textarea class="inp" id="fix-reason" rows="3"
+        placeholder="เช่น ลืมสแกนออกเพราะรีบไปส่งของ"></textarea>
+    </div>
+
+    <button class="btn p" id="fix-send" style="width:100%">ส่งคำขอ</button>
+  </div>
+</div>
+
+<!-- ═══════════════ ขอบันทึกเวลา: ประวัติ ═══════════════ -->
+<div class="page" id="page-fix-history">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn o sm" id="fix-history-back" style="width:auto;padding:6px 12px;margin:0">‹ หน้าหลัก</button>
+    <h2 style="margin:0;font-size:18px">ประวัติขอบันทึกเวลา</h2>
+    <div style="display:flex;gap:6px;margin-left:auto">
+      <button class="btn p sm" id="fix-goto-form" style="width:auto;padding:6px 12px;font-size:13px;margin:0">+ ขอใหม่</button>
+    </div>
+  </div>
+  <div id="fix-history-list"></div>
+</div>
+
+<!-- ═══════════════ ขอบันทึกเวลา: อนุมัติ ═══════════════ -->
+<div class="page" id="page-fix-approve">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+    <button class="btn o sm" id="fix-approve-back" style="width:auto;padding:6px 12px">‹ หน้าหลัก</button>
+    <h2 style="margin:0;font-size:18px;flex:1">อนุมัติบันทึกเวลา</h2>
+    <button class="btn o sm" id="fix-approve-refresh" style="width:auto;padding:6px 12px">↻ รีเฟรช</button>
+  </div>
+  <div id="fix-approve-list"></div>
+</div>
+
+<!-- ═══════════════ ขอบันทึกเวลา: รายงาน ═══════════════ -->
+<div class="page" id="page-fix-report">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+    <button class="btn o sm" id="fixr-back" style="width:auto;padding:6px 12px">‹ เมนูงานบุคคล</button>
+    <h2 style="margin:0;font-size:18px">รายงานการขอบันทึกเวลา</h2>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <div style="flex:1"><label class="lbl">สถานะ</label>
+        <select id="fixr-f-status" class="inp">
+          <option value="">ทุกสถานะ</option>
+          <option value="PENDING_L1">รอหัวหน้าขั้น 1</option>
+          <option value="PENDING_L2">รอหัวหน้าขั้น 2</option>
+          <option value="PENDING_HR">รอฝ่ายบุคคล</option>
+          <option value="APPROVED">อนุมัติแล้ว</option>
+          <option value="REJECTED">ไม่อนุมัติ</option>
+          <option value="CANCELLED">ยกเลิกแล้ว</option>
+          <option value="VOIDED">ถูกยกเลิก</option>
+        </select></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <div style="flex:1"><label class="lbl">ตั้งแต่</label><input id="fixr-f-from" type="date" class="inp"></div>
+      <div style="flex:1"><label class="lbl">ถึง</label><input id="fixr-f-to" type="date" class="inp"></div>
+    </div>
+    <button class="btn p" id="fixr-search" style="width:100%">ค้นหา</button>
+  </div>
+  <div id="fixr-result"></div>
+</div>
+
+
 <!-- ═══════════════ สลิปเงินเดือน: จัดการงวด ═══════════════ -->
 <div class="page" id="page-pay-periods">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -2216,6 +2321,12 @@ const SB = {
               // ⚠️ คนละตัวกับ attAbsentList ที่กั้นด้วยรหัสลับ (ใช้โดย Absent.gs)
               //    ตัวนี้เอารหัสพนักงานจากตั๋ว แล้ว emp_scope ตัดสินว่าเห็นของใคร
               hrAbsentReport: 1,
+    // ── โมดูล 10 ขอบันทึกเวลา (SQL 77 + 78 · Edge 5.50) ──
+    // ⚠️⚠️ ทุกตัวเอารหัสพนักงานจากตั๋วที่ Edge Function ตรวจแล้ว
+    //    ไม่มีตัวไหนรับรหัสจากหน้าเว็บ จึงปลอมในชื่อคนอื่นไม่ได้
+    fixDays: 1, fixSubmit: 1, fixMy: 1, fixPending: 1,
+    fixApprove: 1, fixReject: 1, fixCancel: 1,
+    fixCancelByApprover: 1, fixReport: 1,
               leaveGetMyRequests: 1, otGetMyRequests: 1,
               leaveGetTypes: 1, otGetTypes: 1,
               leaveGetMyTeam: 1, otGetMyTeam: 1,
@@ -2648,7 +2759,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.45.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.46.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3464,7 +3575,7 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport','hr-setting'];
+  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport','hr-setting','fix-form','fix-history','fix-approve','fix-report'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
@@ -3529,6 +3640,10 @@ function go(id) {
   if (id === 'leave-report')  { if (typeof loadLeaveReport === 'function') loadLeaveReport(); }
   if (id === 'finger')        { resetFingerPage(); }
   if (id === 'ot-form')       { if (typeof loadOTForm === 'function') loadOTForm(); }
+  if (id === 'fix-form')      loadFixForm();
+  if (id === 'fix-history')   loadFixHistory();
+  if (id === 'fix-approve')   loadFixApprove();
+  if (id === 'fix-report')    loadFixReport();
   if (id === 'ot-history')    { if (typeof loadOTHistory === 'function') loadOTHistory(); }
   if (id === 'ot-approve')    { if (typeof loadOTApprovals === 'function') loadOTApprovals(); }
   if (id === 'ot-report')     { if (typeof loadOTReport === 'function') loadOTReport(); }
@@ -3667,6 +3782,10 @@ function renderHomeMenu() {
   me.push({ p: 'holiday',    t: 'ปฏิทินวันหยุด', ic: '◷', bg: 'rgba(236,72,153,.14)', fg: '#db2777' });
   me.push({ p: 'leave-history', t: 'ประวัติการลา', ic: '☰', bg: 'rgba(16,185,129,.10)', fg: '#059669' });
   me.push({ p: 'ot-history', t: 'ประวัติโอที', ic: '☰', bg: 'rgba(245,158,11,.10)', fg: '#d97706' });
+  // ⚠️ ED เลือกให้เป็น "สองการ์ดแยกกัน" ไม่รวมเป็นการ์ดเดียว
+  //    และไม่เอาไปไว้ในหน้าลงเวลาไม่สมบูรณ์ เพราะพนักงานไม่เห็นหน้านั้น
+  me.push({ p: 'fix-form',    t: 'ขอบันทึกเวลา', ic: '✎', bg: 'rgba(14,165,233,.14)', fg: '#0284c7' });
+  me.push({ p: 'fix-history', t: 'ประวัติขอบันทึกเวลา', ic: '☰', bg: 'rgba(14,165,233,.10)', fg: '#0284c7' });
 
   // ⚠️ ผู้บริหารไม่ต้องเช็คเวลา ไม่ต้องขอลา ไม่ต้องขอโอที → ไม่สร้างปุ่มเลย
   //    เคยทำเป็น "สร้างแล้วซ่อน" — ปุ่มยังอยู่ในหน้า แค่มองไม่เห็น
@@ -3694,6 +3813,7 @@ function renderHomeMenu() {
     homeFillGrid('home-grid-appr', [
       { p: 'leave-approve', t: 'อนุมัติลา',   ic: '✓', bg: 'rgba(16,185,129,.14)', fg: '#059669' },
       { p: 'ot-approve',    t: 'อนุมัติโอที', ic: '✓', bg: 'rgba(245,158,11,.16)', fg: '#d97706' },
+      { p: 'fix-approve',   t: 'อนุมัติบันทึกเวลา', ic: '✓', bg: 'rgba(14,165,233,.16)', fg: '#0284c7' },
     ]);
     if (apprSec) apprSec.style.display = '';
   } else if (apprSec) {
@@ -3745,6 +3865,7 @@ function renderHomeMenu() {
       { p: 'hr-report',     t: 'รายงานลงเวลา',   ic: '▤', bg: 'rgba(245,158,11,.15)', fg: '#d97706' },
       { p: 'leave-report',  t: 'รายงานการลา',    ic: '✈', bg: 'rgba(16,185,129,.15)', fg: '#059669' },
       { p: 'ot-report',     t: 'รายงานโอที',     ic: '＋', bg: 'rgba(245,158,11,.12)', fg: '#d97706' },
+      { p: 'fix-report',    t: 'รายงานขอบันทึกเวลา', ic: '✎', bg: 'rgba(14,165,233,.12)', fg: '#0284c7' },
     ]);
     const hd = document.getElementById('home-sec-hr-title');
     if (hd) hd.textContent = 'รายงาน';
@@ -3755,6 +3876,7 @@ function renderHomeMenu() {
       { p: 'hr-report',     t: 'รายงานลงเวลา',  ic: '▤', bg: 'rgba(245,158,11,.15)', fg: '#d97706' },
       { p: 'leave-report',  t: 'รายงานการลา',   ic: '✈', bg: 'rgba(16,185,129,.15)', fg: '#059669' },
       { p: 'ot-report',     t: 'รายงานโอที',    ic: '＋', bg: 'rgba(245,158,11,.12)', fg: '#d97706' },
+      { p: 'fix-report',    t: 'รายงานขอบันทึกเวลา', ic: '✎', bg: 'rgba(14,165,233,.12)', fg: '#0284c7' },
     ]);
     const hd2 = document.getElementById('home-sec-hr-title');
     if (hd2) hd2.textContent = 'รายงานทีมของฉัน';
@@ -5063,6 +5185,470 @@ function absentRender(box, r) {
   }
   box.innerHTML = h;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+ *  โมดูล 10 — ขอบันทึกเวลา (SQL 77 + 78 · Edge 5.50)
+ *
+ *  สี่หน้า: ขอ · ประวัติ · อนุมัติ · รายงาน (โครงเดียวกับโอที)
+ *
+ *  ⚠️⚠️ ด่านทุกด่านอยู่ที่ฐานข้อมูล ไม่ใช่ที่นี่
+ *     หน้านี้ซ่อนช่องที่วันนั้นไม่ได้ขาด "เพื่อความสะดวก" เท่านั้น
+ *     ถ้าซ่อนผิด ฐานข้อมูลยังปฏิเสธให้อยู่ดี — ไม่มีทางยิงผ่าน
+ *
+ *  ⚠️ ไม่ส่งรหัสพนักงานไปกับคำขอเลยแม้แต่ตัวเดียว
+ *     Edge Function เอารหัสจากตั๋วที่ตรวจแล้วเท่านั้น
+ * ═══════════════════════════════════════════════════════════════ */
+
+/** วันที่ขอได้ของฉัน — เก็บไว้ใช้ทั้งข้อความช่วยและการซ่อนช่อง */
+var FIXDAYS = { days: [], from: '', to: '', loaded: false };
+
+/** แปลสถานะเป็นคำไทย
+ *  ⚠️⚠️ ใช้ชุดสถานะเดียวกับใบลาและโอที (7 ค่า) ห้ามตั้งชื่อใหม่
+ *     ถ้าเพิ่มชื่อใหม่แล้วลืมเติมคำแปล พนักงานจะเห็นภาษาอังกฤษดิบ */
+function fixสถานะไทย(st) {
+  switch (String(st || '').trim()) {
+    case 'PENDING_L1': return 'รอหัวหน้าขั้น 1';
+    case 'PENDING_L2': return 'รอหัวหน้าขั้น 2';
+    case 'PENDING_HR': return 'รอฝ่ายบุคคล';
+    case 'APPROVED':   return 'อนุมัติแล้ว';
+    case 'REJECTED':   return 'ไม่อนุมัติ';
+    case 'CANCELLED':  return 'ยกเลิกแล้ว';
+    case 'VOIDED':     return 'ถูกยกเลิก';
+    default:           return String(st || '-');
+  }
+}
+
+function fixสีสถานะ(st) {
+  const s = String(st || '').trim();
+  if (s === 'APPROVED') return '#059669';
+  if (s === 'REJECTED') return 'var(--er)';
+  if (s === 'CANCELLED' || s === 'VOIDED') return 'var(--tx3)';
+  return '#d97706';
+}
+
+/** ประเภทที่ขาด → คำไทย */
+function fixประเภทไทย(kind) {
+  switch (String(kind || '').trim()) {
+    case 'NO_IN':   return 'ไม่มีเวลาเข้า';
+    case 'NO_OUT':  return 'ไม่มีเวลาออก';
+    case 'NO_SCAN': return 'ไม่มีการลงเวลาเลย';
+    default:        return String(kind || '-');
+  }
+}
+
+/* ───────────── หน้าที่ 1: ฟอร์มขอ ───────────── */
+
+function loadFixForm() {
+  const hint = document.getElementById('fix-days-hint');
+  if (hint) hint.textContent = 'กำลังตรวจวันที่ขอได้…';
+  ['fix-date', 'fix-in', 'fix-out'].forEach(function (id) {
+    const e = document.getElementById(id);
+    if (e) e.value = '';
+  });
+  const rs = document.getElementById('fix-reason');
+  if (rs) rs.value = '';
+  fixปรับช่อง();
+
+  gasRun('fixDays', { hrToken: S.hrToken }, 30000)
+    .withSuccessHandler(function (r) {
+      if (!r || !r.success || !r.ok) {
+        if (hint) {
+          hint.innerHTML = '<span style="color:var(--er)">' +
+            esc((r && r.message) || 'ตรวจวันที่ขอได้ไม่สำเร็จ') + '</span>';
+        }
+        return;
+      }
+      FIXDAYS = { days: r.days || [], from: r.from || '', to: r.to || '', loaded: true };
+      fixแสดงวันที่ขอได้();
+      fixปรับช่อง();
+    })
+    .withFailureHandler(function () {
+      if (hint) hint.innerHTML = '<span style="color:var(--er)">ตรวจวันที่ขอได้ไม่สำเร็จ</span>';
+    });
+}
+
+/** ⚠️ บอกวันที่ขอได้เป็น "ข้อความช่วย" ไม่ใช่รายการให้เลือก
+ *     ED เลือกให้กรอกวันที่เองแบบปฏิทิน — ไม่เปลี่ยนข้อนั้น
+ *     แต่บอกไว้ก่อนดีกว่าให้กรอกผิดแล้วถูกปฏิเสธ (ข้อความปฏิเสธก็บอกอยู่แล้ว) */
+function fixแสดงวันที่ขอได้() {
+  const hint = document.getElementById('fix-days-hint');
+  if (!hint) return;
+  const d = FIXDAYS.days || [];
+  if (!d.length) {
+    hint.innerHTML = '<span style="color:#059669">ข้อมูลลงเวลาของคุณครบทุกวัน ' +
+                     'ไม่มีวันที่ต้องขอบันทึกเวลา</span>';
+    return;
+  }
+  const รายการ = d.map(function (x) {
+    return วันไทยสั้น(x.date) + ' (' + fixประเภทไทย(x.kind) + ')';
+  }).join(' · ');
+  hint.innerHTML = 'วันที่ขอได้: ' + esc(รายการ);
+}
+
+/** ⚠️⚠️ ซ่อนช่องที่วันนั้นไม่ได้ขาด — ของเครื่องสแกนแก้ไม่ได้
+ *     เครื่องสแกนเป็นหลักฐานที่หนักกว่าคำบอกเล่า
+ *     ⚠️ ฐานข้อมูลปฏิเสธอยู่แล้ว ที่นี่แค่ไม่ให้กรอกไปเสียเปล่า */
+function fixปรับช่อง() {
+  const d  = document.getElementById('fix-date');
+  const iw = document.getElementById('fix-in-wrap');
+  const ow = document.getElementById('fix-out-wrap');
+  const nt = document.getElementById('fix-time-note');
+  const fi = document.getElementById('fix-in');
+  const fo = document.getElementById('fix-out');
+  if (!d || !iw || !ow) return;
+
+  const วัน = String(d.value || '').trim();
+  let แถว = null;
+  (FIXDAYS.days || []).forEach(function (x) { if (x.date === วัน) แถว = x; });
+
+  // ยังไม่เลือกวัน หรือวันที่ไม่อยู่ในรายการ → โชว์ทั้งสองช่อง ให้ฐานข้อมูลเป็นคนบอก
+  if (!วัน || !แถว) {
+    iw.style.display = ''; ow.style.display = '';
+    if (nt) nt.textContent = '';
+    return;
+  }
+
+  const k = String(แถว.kind || '');
+  if (k === 'NO_OUT') {
+    iw.style.display = 'none'; ow.style.display = '';
+    if (fi) fi.value = '';
+    if (nt) {
+      nt.textContent = 'วันนี้มีเวลาเข้าจากเครื่องสแกนแล้ว (' +
+                       (แถว.inTime || '-') + ') ขอได้เฉพาะเวลาออก';
+    }
+  } else if (k === 'NO_IN') {
+    iw.style.display = ''; ow.style.display = 'none';
+    if (fo) fo.value = '';
+    if (nt) {
+      nt.textContent = 'วันนี้มีเวลาออกจากเครื่องสแกนแล้ว (' +
+                       (แถว.outTime || '-') + ') ขอได้เฉพาะเวลาเข้า';
+    }
+  } else {
+    iw.style.display = ''; ow.style.display = '';
+    // ⚠️ ไม่บังคับกรอกทั้งสองช่อง (ED ชี้ว่าบังคับ = ผลักให้เดาเวลาที่จำไม่ได้)
+    if (nt) {
+      nt.textContent = 'วันนี้ไม่มีการลงเวลาเลย กรอกช่องที่จำได้ ' +
+                       'อีกช่องยื่นเพิ่มภายหลังได้';
+    }
+  }
+}
+
+function fixSend() {
+  const btn = document.getElementById('fix-send');
+  const วัน = String((document.getElementById('fix-date') || {}).value || '').trim();
+  const เข้า = String((document.getElementById('fix-in') || {}).value || '').trim();
+  const ออก = String((document.getElementById('fix-out') || {}).value || '').trim();
+  const เหตุ = String((document.getElementById('fix-reason') || {}).value || '').trim();
+
+  if (!วัน)  { showToast('กรุณาเลือกวันที่'); return; }
+  if (!เหตุ) { showToast('กรุณากรอกเหตุผล'); return; }
+  if (!เข้า && !ออก) { showToast('กรุณากรอกเวลาเข้าหรือเวลาออก'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง…'; }
+  // ⚠️ ไม่ส่ง empId — Edge Function เอารหัสจากตั๋วเท่านั้น
+  gasRunNoRetry('fixSubmit', {
+    hrToken: S.hrToken, workDate: วัน, reqIn: เข้า, reqOut: ออก, reason: เหตุ
+  }, 40000)
+    .withSuccessHandler(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = 'ส่งคำขอ'; }
+      showToast((r && r.message) || (r && r.success ? 'ส่งคำขอเรียบร้อย' : 'ส่งคำขอไม่สำเร็จ'));
+      if (r && r.success) {
+        sbMarkLvStale();
+        go('fix-history');
+      } else {
+        // ⚠️ ฐานข้อมูลส่งวันที่ขอได้กลับมาด้วยตอนปฏิเสธ — อัปเดตข้อความช่วยให้ตรง
+        if (r && r.days) { FIXDAYS.days = r.days; fixแสดงวันที่ขอได้(); fixปรับช่อง(); }
+      }
+    })
+    .withFailureHandler(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'ส่งคำขอ'; }
+      showToast('เกิดข้อผิดพลาด');
+    });
+}
+
+/* ───────────── หน้าที่ 2: ประวัติของฉัน ───────────── */
+
+function loadFixHistory() {
+  const box = document.getElementById('fix-history-list');
+  if (!box) return;
+  box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด…</div>';
+  gasRun('fixMy', { hrToken: S.hrToken }, 30000)
+    .withSuccessHandler(function (r) {
+      if (!r || !r.success) {
+        box.innerHTML = '<div style="padding:20px;color:var(--er)">' +
+          esc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>';
+        return;
+      }
+      fixHistoryRender(box, r.requests || []);
+    })
+    .withFailureHandler(function () {
+      box.innerHTML = '<div style="padding:20px;color:var(--er)">โหลดไม่สำเร็จ</div>';
+    });
+}
+
+function fixHistoryRender(box, rows) {
+  if (!rows.length) {
+    box.innerHTML = '<div class="card" style="padding:22px;text-align:center">' +
+      '<div style="font-size:15px;font-weight:600">ยังไม่มีคำขอ</div>' +
+      '<div style="font-size:12px;color:var(--tx3);margin-top:6px">' +
+      'กดปุ่ม "ขอใหม่" เมื่อลืมสแกนเข้าหรือออก</div></div>';
+    return;
+  }
+  let h = '';
+  rows.forEach(function (x) {
+    h += '<div class="card" style="padding:14px;margin-bottom:10px">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">';
+    h += '<div><div style="font-size:15px;font-weight:600">' +
+         esc(วันไทยสั้น(x.workDate)) + '</div>' +
+         '<div style="font-size:12px;color:var(--tx3);margin-top:2px">' +
+         esc(fixประเภทไทย(x.kind)) + '</div></div>';
+    h += '<div style="font-size:12px;font-weight:600;white-space:nowrap;color:' +
+         fixสีสถานะ(x.status) + '">' + esc(fixสถานะไทย(x.status)) + '</div>';
+    h += '</div>';
+
+    // ⚠️⚠️ โชว์ของที่ขอข้างของที่เครื่องสแกนมี เพื่อให้เห็นว่าเติมอะไรเข้าไป
+    h += '<div style="font-size:12px;color:var(--tx2);margin-top:8px">';
+    if (x.reqIn)  h += 'ขอเวลาเข้า <b>' + esc(x.reqIn) + '</b> ';
+    if (x.reqOut) h += 'ขอเวลาออก <b>' + esc(x.reqOut) + '</b> ';
+    if (x.scanIn || x.scanOut) {
+      h += '<br><span style="color:var(--tx3)">เครื่องสแกนมี: ' +
+           'เข้า ' + esc(x.scanIn || '-') + ' · ออก ' + esc(x.scanOut || '-') + '</span>';
+    }
+    h += '</div>';
+
+    if (x.reason) {
+      h += '<div style="font-size:12px;color:var(--tx3);margin-top:6px">เหตุผล: ' +
+           esc(x.reason) + '</div>';
+    }
+
+    // ⚠️ รอใครอยู่ — พนักงานต้องรู้ว่าจะไปตามใคร ไม่ใช่เห็นแค่ "รออนุมัติ"
+    if (String(x.status || '').indexOf('PENDING') === 0) {
+      const ชื่อ = x.currentApprName || x.currentAppr || '';
+      h += '<div style="font-size:12px;color:#d97706;margin-top:6px">' +
+           (ชื่อ ? 'รอ: ' + esc(ชื่อ) : 'รอฝ่ายบุคคล') + '</div>';
+    }
+    if (x.rejectReason) {
+      h += '<div style="font-size:12px;color:var(--er);margin-top:6px">' +
+           'เหตุผลที่ไม่อนุมัติ: ' + esc(x.rejectReason) + '</div>';
+    }
+
+    // ⚠️ ยกเลิกได้เฉพาะที่ยังรออนุมัติ — อนุมัติครบแล้วต้องให้ฝ่ายบุคคลจัดการ
+    if (String(x.status || '').indexOf('PENDING') === 0) {
+      h += '<button class="btn o sm fix-cancel" data-req="' + esc(x.requestId) +
+           '" style="width:auto;padding:6px 14px;margin-top:10px;font-size:13px">ยกเลิกคำขอ</button>';
+    }
+    h += '</div>';
+  });
+  box.innerHTML = h;
+
+  box.querySelectorAll('.fix-cancel').forEach(function (b) {
+    b.addEventListener('click', function () {
+      const req = b.getAttribute('data-req');
+      if (!confirm('ยกเลิกคำขอนี้?')) return;
+      b.disabled = true;
+      gasRunNoRetry('fixCancel', { hrToken: S.hrToken, requestId: req }, 30000)
+        .withSuccessHandler(function (r) {
+          showToast((r && r.message) || 'ยกเลิกแล้ว');
+          sbMarkLvStale();
+          loadFixHistory();
+        })
+        .withFailureHandler(function () { b.disabled = false; showToast('เกิดข้อผิดพลาด'); });
+    });
+  });
+}
+
+/* ───────────── หน้าที่ 3: อนุมัติ ───────────── */
+
+function loadFixApprove() {
+  const box = document.getElementById('fix-approve-list');
+  if (!box) return;
+  box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด…</div>';
+  gasRun('fixPending', { hrToken: S.hrToken }, 30000)
+    .withSuccessHandler(function (r) {
+      if (!r || !r.success) {
+        box.innerHTML = '<div style="padding:20px;color:var(--er)">' +
+          esc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>';
+        return;
+      }
+      fixApproveRender(box, r.requests || []);
+    })
+    .withFailureHandler(function () {
+      box.innerHTML = '<div style="padding:20px;color:var(--er)">โหลดไม่สำเร็จ</div>';
+    });
+}
+
+function fixApproveRender(box, rows) {
+  if (!rows.length) {
+    box.innerHTML = '<div class="card" style="padding:22px;text-align:center">' +
+      '<div style="font-size:15px;font-weight:600;color:#059669">ไม่มีคำขอรออนุมัติ</div>' +
+      '<div style="font-size:12px;color:var(--tx3);margin-top:6px">' +
+      'ตรวจแล้วไม่มีคำขอบันทึกเวลาที่รอคุณอยู่</div></div>';
+    return;
+  }
+  let h = '';
+  rows.forEach(function (x) {
+    h += '<div class="card" style="padding:14px;margin-bottom:10px">';
+    h += '<div style="font-size:15px;font-weight:600">' + esc(x.empName || x.empId) + '</div>';
+    h += '<div style="font-size:12px;color:var(--tx3);margin-top:2px">' + esc(x.empId) +
+         ' · ' + esc(วันไทยสั้น(x.workDate)) + ' · ' + esc(fixประเภทไทย(x.kind)) + '</div>';
+
+    // ⚠️⚠️ จุดสำคัญที่สุดของหน้านี้
+    //    โชว์ "ของที่ขอ" ข้าง "ของที่เครื่องสแกนมี" เสมอ
+    //    ถ้าโชว์แต่ตัวเลขที่พนักงานพิมพ์มา หัวหน้าจะกดอนุมัติโดยไม่มีข้อมูลตัดสิน
+    h += '<div style="display:flex;gap:10px;margin-top:10px">';
+    h += '<div style="flex:1;background:rgba(14,165,233,.10);padding:10px;border-radius:8px">' +
+         '<div style="font-size:11px;color:var(--tx3)">พนักงานขอ</div>' +
+         '<div style="font-size:14px;font-weight:600;margin-top:2px">' +
+         'เข้า ' + esc(x.reqIn || '-') + ' · ออก ' + esc(x.reqOut || '-') + '</div></div>';
+    h += '<div style="flex:1;background:rgba(100,116,139,.10);padding:10px;border-radius:8px">' +
+         '<div style="font-size:11px;color:var(--tx3)">เครื่องสแกนมี</div>' +
+         '<div style="font-size:14px;font-weight:600;margin-top:2px">' +
+         'เข้า ' + esc(x.scanIn || '-') + ' · ออก ' + esc(x.scanOut || '-') + '</div></div>';
+    h += '</div>';
+
+    if (x.reason) {
+      h += '<div style="font-size:12px;color:var(--tx2);margin-top:8px">เหตุผล: ' +
+           esc(x.reason) + '</div>';
+    }
+    h += '<div style="font-size:11px;color:var(--tx3);margin-top:6px">ยื่นเมื่อ ' +
+         esc(x.createdAt || '-') + ' · ' + esc(fixสถานะไทย(x.status)) + '</div>';
+
+    h += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+         '<button class="btn p sm fix-ok" data-req="' + esc(x.requestId) +
+         '" style="width:auto;padding:8px 18px;margin:0">อนุมัติ</button>' +
+         '<button class="btn o sm fix-no" data-req="' + esc(x.requestId) +
+         '" style="width:auto;padding:8px 16px;margin:0">ไม่อนุมัติ</button>' +
+         '<button class="btn o sm fix-void" data-req="' + esc(x.requestId) +
+         '" style="width:auto;padding:8px 16px;margin:0;font-size:13px">ยกเลิกให้</button>' +
+         '</div>';
+    h += '</div>';
+  });
+  box.innerHTML = h;
+
+  const ยิง = function (b, action, payload) {
+    b.disabled = true;
+    gasRunNoRetry(action, Object.assign({ hrToken: S.hrToken }, payload), 40000)
+      .withSuccessHandler(function (r) {
+        showToast((r && r.message) || (r && r.success ? 'สำเร็จ' : 'ไม่สำเร็จ'));
+        sbMarkLvStale();
+        loadFixApprove();
+      })
+      .withFailureHandler(function () { b.disabled = false; showToast('เกิดข้อผิดพลาด'); });
+  };
+
+  box.querySelectorAll('.fix-ok').forEach(function (b) {
+    b.addEventListener('click', function () {
+      ยิง(b, 'fixApprove', { requestId: b.getAttribute('data-req') });
+    });
+  });
+  box.querySelectorAll('.fix-no').forEach(function (b) {
+    b.addEventListener('click', function () {
+      // ⚠️ บังคับเหตุผล เพราะพนักงานต้องรู้ว่าทำไมถูกปฏิเสธ จึงจะแก้ให้ถูกได้
+      const เหตุ = prompt('เหตุผลที่ไม่อนุมัติ:');
+      if (!เหตุ || !String(เหตุ).trim()) return;
+      ยิง(b, 'fixReject', { requestId: b.getAttribute('data-req'), rejectReason: เหตุ });
+    });
+  });
+  box.querySelectorAll('.fix-void').forEach(function (b) {
+    b.addEventListener('click', function () {
+      const เหตุ = prompt('เหตุผลที่ยกเลิกให้:');
+      if (!เหตุ || !String(เหตุ).trim()) return;
+      ยิง(b, 'fixCancelByApprover',
+          { requestId: b.getAttribute('data-req'), cancelReason: เหตุ });
+    });
+  });
+}
+
+/* ───────────── หน้าที่ 4: รายงาน ───────────── */
+
+function loadFixReport() {
+  const box = document.getElementById('fixr-result');
+  if (box) box.innerHTML = '';
+  fixReportSearch();
+}
+
+function fixReportSearch() {
+  const box = document.getElementById('fixr-result');
+  if (!box) return;
+  box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด…</div>';
+  gasRun('fixReport', {
+    hrToken: S.hrToken,
+    dateFrom: String((document.getElementById('fixr-f-from') || {}).value || ''),
+    dateTo:   String((document.getElementById('fixr-f-to') || {}).value || ''),
+    status:   String((document.getElementById('fixr-f-status') || {}).value || '')
+  }, 40000)
+    .withSuccessHandler(function (r) {
+      if (!r || !r.success || !r.ok) {
+        box.innerHTML = '<div style="padding:20px;color:var(--er)">' +
+          esc((r && r.message) || 'โหลดไม่สำเร็จ') + '</div>';
+        return;
+      }
+      fixReportRender(box, r);
+    })
+    .withFailureHandler(function () {
+      box.innerHTML = '<div style="padding:20px;color:var(--er)">โหลดไม่สำเร็จ</div>';
+    });
+}
+
+function fixReportRender(box, r) {
+  const rows = r.rows || [];
+  let h = '';
+
+  // ⚠️ สรุปจำนวนแยกตามสถานะ — ฝ่ายบุคคลอยากรู้ว่าค้างที่ขั้นไหนกี่ใบ
+  const c = r.counts || {};
+  const keys = Object.keys(c);
+  if (keys.length) {
+    h += '<div class="card" style="padding:12px;margin-bottom:12px">' +
+         '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    keys.forEach(function (k) {
+      h += '<div style="font-size:12px;padding:6px 10px;border-radius:8px;' +
+           'background:rgba(100,116,139,.10)"><span style="color:' + fixสีสถานะ(k) +
+           ';font-weight:600">' + esc(fixสถานะไทย(k)) + '</span> ' + esc(c[k]) + '</div>';
+    });
+    h += '</div></div>';
+  }
+
+  if (!rows.length) {
+    h += '<div class="card" style="padding:22px;text-align:center">' +
+         '<div style="font-size:15px;font-weight:600">ไม่พบคำขอในช่วงที่เลือก</div></div>';
+    box.innerHTML = h;
+    return;
+  }
+
+  h += '<div style="font-size:13px;font-weight:600;margin-bottom:8px">พบ ' +
+       esc(rows.length) + ' คำขอ</div>';
+  rows.forEach(function (x) {
+    h += '<div class="card" style="padding:12px;margin-bottom:8px">';
+    h += '<div style="display:flex;justify-content:space-between;gap:10px">';
+    h += '<div><div style="font-size:14px;font-weight:600">' +
+         esc(x.empName || x.empId) + '</div>' +
+         '<div style="font-size:12px;color:var(--tx3);margin-top:2px">' + esc(x.empId) +
+         ' · ' + esc(วันไทยสั้น(x.workDate)) + '</div></div>';
+    h += '<div style="font-size:12px;font-weight:600;white-space:nowrap;color:' +
+         fixสีสถานะ(x.status) + '">' + esc(fixสถานะไทย(x.status)) + '</div>';
+    h += '</div>';
+    h += '<div style="font-size:12px;color:var(--tx2);margin-top:6px">' +
+         esc(fixประเภทไทย(x.kind)) + ' · ขอ เข้า ' + esc(x.reqIn || '-') +
+         ' ออก ' + esc(x.reqOut || '-') + '</div>';
+    // ⚠️ บอกว่าเขียนลงตารางแล้วหรือยัง — ใบที่อนุมัติแล้วแต่ยังไม่เขียนคือของที่ต้องตาม
+    if (String(x.status || '').trim() === 'APPROVED') {
+      if (x.writtenAt) {
+        h += '<div style="font-size:11px;color:#059669;margin-top:4px">' +
+             'บันทึกลงระบบแล้ว ' + esc(x.writtenAt) + '</div>';
+      } else {
+        h += '<div style="font-size:11px;color:#b45309;margin-top:4px">' +
+             'อนุมัติแล้วแต่ยังไม่ได้บันทึกลงระบบ</div>';
+      }
+    }
+    if (x.rejectReason) {
+      h += '<div style="font-size:11px;color:var(--er);margin-top:4px">' +
+           esc(x.rejectReason) + '</div>';
+    }
+    h += '</div>';
+  });
+  box.innerHTML = h;
+}
+
 
 /** หน้ารวม */
 function loadIncompletePage() {
@@ -8321,6 +8907,26 @@ applyLogo();
   on('hr-menu-incomplete', 'click', function() { go('att-incomplete'); });
   on('empr-back',      'click', function() { go('hr-dash'); });
   on('hr-menu-setting', 'click', function() { go('hr-setting'); loadSettingPage(); });
+  // ⚠️⚠️ การ์ดในหน้าเมนูงานบุคคลต้องผูกปุ่มเองทุกใบ ไม่มีตัวผูกอัตโนมัติ
+  //    เจอว่าสี่ใบนี้ไม่มี handler เลยมาก่อน: hr-menu-leave-approve ·
+  //    hr-menu-ot-approve · hr-menu-leave-report · hr-menu-ot-report
+  //    (กดแล้วไม่เกิดอะไร — รายงานให้ ED แล้ว 11 พ.ย. 2569)
+  //    ของใหม่จึงผูกไว้ตั้งแต่ต้น ไม่ให้เพิ่มการ์ดตายใบที่ห้า
+  on('hr-menu-fix-report', 'click', function() { go('fix-report'); });
+
+  // ── โมดูล 10 ขอบันทึกเวลา — ผูกครั้งเดียวตอนเปิดแอป ──
+  // ⚠️ ผูกที่นี่ไม่ใช่ตอนเข้าหน้า ไม่งั้น handler จะซ้อนทุกครั้งที่เข้าหน้า
+  on('fix-form-back',      'click', function() { go('home'); });
+  on('fix-history-back',   'click', function() { go('home'); });
+  on('fix-approve-back',   'click', function() { go('home'); });
+  on('fixr-back',          'click', function() { go(backFromHrPage()); });
+  on('fix-goto-history',   'click', function() { go('fix-history'); });
+  on('fix-goto-form',      'click', function() { go('fix-form'); });
+  on('fix-approve-refresh','click', loadFixApprove);
+  on('fix-send',           'click', fixSend);
+  on('fixr-search',        'click', fixReportSearch);
+  // ⚠️⚠️ เปลี่ยนวันแล้วต้องปรับช่องทันที — วันนั้นขาดอะไรก็กรอกได้แค่นั้น
+  on('fix-date',           'change', fixปรับช่อง);
   // ⚠️ ผูกครั้งเดียวตอนเริ่ม ไม่ผูกใหม่ทุกครั้งที่เข้าหน้า (จะได้ handler ซ้อน)
   document.querySelectorAll('.inc-view').forEach(function (b) {
     b.addEventListener('click', function () {
