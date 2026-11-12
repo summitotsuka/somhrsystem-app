@@ -822,6 +822,15 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(55,138,221,.15);color:#2563eb">▧</div></div>
         <div class="home-lb">รายงาน OT</div>
       </button>
+      <!-- ⚠️⚠️ ED ทักว่าฝ่ายบุคคลไม่มีเมนูอนุมัติขอลงเวลา (11 พ.ย. 2569)
+           ถูกต้อง — กลุ่ม "งานอนุมัติ" ที่หน้าหลักขึ้นเฉพาะ !isHR
+           ฝ่ายบุคคลจึงต้องมีทางเข้าที่นี่ เหมือนอนุมัติลา/อนุมัติโอที
+           🚫 ห้ามเอาออกจนกว่าฝ่ายบุคคลจะมีทางเข้าหน้า fix-approve ที่อื่น
+           (ฝ่ายบุคคลเป็นขั้นอนุมัติสุดท้าย PENDING_HR — ไม่มีเมนู = ใบค้างถาวร) -->
+      <button class="home-item" id="hr-menu-fix-approve" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(14,165,233,.16);color:#0284c7">✓</div></div>
+        <div class="home-lb">อนุมัติขอลงเวลา</div>
+      </button>
       <button class="home-item" id="hr-menu-fix-report" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(14,165,233,.15);color:#0284c7">✎</div></div>
         <div class="home-lb">รายงานขอบันทึกเวลา</div>
@@ -1891,12 +1900,20 @@ textarea.inp{resize:vertical;min-height:60px}
 
     <div id="fix-time-wrap">
       <div style="display:flex;gap:10px;margin-bottom:12px">
+        <!-- ⚠️⚠️ เวลาเลือกจากตารางเวลา FIX_SCAN ในฐานข้อมูล (SQL 82)
+             ED เลือก "เลือกจากรายการเท่านั้น" 11 พ.ย. 2569
+             🚫 ห้ามฝังรายการเวลาไว้ในหน้านี้ — ฝ่ายบุคคลต้องแก้ที่ ot_grid ที่เดียว
+                เหมือนลารายชั่วโมง (LEAVE_HOURLY) และโอที (NORMAL_*/HOLIDAY_*)
+             ช่องพิมพ์เวลาเดิมเก็บไว้เป็นทางถอย เผื่อฐานข้อมูลไม่มีตารางเวลา
+             (ถ้าไม่มีทางถอย แล้ว SQL 82 ยังไม่ได้ติดตั้ง = ยื่นคำขอไม่ได้ทั้งคน) -->
         <div class="field" id="fix-in-wrap" style="flex:1;margin:0">
           <label>เวลาเข้า</label>
+          <select class="inp" id="fix-in-grid" style="display:none"></select>
           <input class="inp" id="fix-in" type="time">
         </div>
         <div class="field" id="fix-out-wrap" style="flex:1;margin:0">
           <label>เวลาออก</label>
+          <select class="inp" id="fix-out-grid" style="display:none"></select>
           <input class="inp" id="fix-out" type="time">
         </div>
       </div>
@@ -1959,6 +1976,27 @@ textarea.inp{resize:vertical;min-height:60px}
       <div style="flex:1"><label class="lbl">ตั้งแต่</label><input id="fixr-f-from" type="date" class="inp"></div>
       <div style="flex:1"><label class="lbl">ถึง</label><input id="fixr-f-to" type="date" class="inp"></div>
     </div>
+
+    <!-- ⚠️⚠️ ช่องเลือกพนักงาน (ED ขอ 11 พ.ย. 2569)
+         "เลือกพนักงานในทีม, ฝ่ายบุคคลเห็นทุกคนได้ไหม"
+         🚫 รายชื่อที่นี่เป็นเพียง "ตัวกรอง" ไม่ใช่การให้สิทธิ์
+            ขอบเขตจริงตัดสินที่ emp_scope ในฐานข้อมูล (SQL 80)
+            ฝ่ายบุคคลได้ทุกคน · หัวหน้าได้เฉพาะลูกทีม
+            ส่งรหัสคนนอกขอบเขตมาก็ไม่ได้ข้อมูล -->
+    <div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <label class="lbl" style="margin:0;flex:1">พนักงาน <span id="fixr-emp-count" style="color:var(--tx3);font-weight:400"></span></label>
+        <button class="btn o sm" id="fixr-emp-all"  type="button" style="width:auto;padding:4px 10px;font-size:12px">ทุกคน</button>
+        <button class="btn o sm" id="fixr-emp-none" type="button" style="width:auto;padding:4px 10px;font-size:12px">ล้าง</button>
+      </div>
+      <input id="fixr-emp-search" class="inp" placeholder="ค้นหาชื่อหรือรหัส" style="margin-bottom:6px">
+      <div id="fixr-emp-list"
+           style="max-height:180px;overflow:auto;border:1px solid var(--bd);border-radius:10px;padding:6px"></div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:5px">
+        ไม่เลือกใคร = เห็นทุกคนที่คุณมีสิทธิ์เห็น
+      </div>
+    </div>
+
     <button class="btn p" id="fixr-search" style="width:100%">ค้นหา</button>
   </div>
   <div id="fixr-result"></div>
@@ -2759,7 +2797,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.46.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.48.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5241,10 +5279,11 @@ function fixประเภทไทย(kind) {
 function loadFixForm() {
   const hint = document.getElementById('fix-days-hint');
   if (hint) hint.textContent = 'กำลังตรวจวันที่ขอได้…';
-  ['fix-date', 'fix-in', 'fix-out'].forEach(function (id) {
-    const e = document.getElementById(id);
-    if (e) e.value = '';
-  });
+  const fd = document.getElementById('fix-date');
+  if (fd) fd.value = '';
+  // ⚠️ ต้องล้างทั้งช่องเลือกและช่องพิมพ์ ไม่งั้นค่าที่ซ่อนอยู่ค้างแล้วถูกส่งไป
+  fixล้างเวลา('in');
+  fixล้างเวลา('out');
   const rs = document.getElementById('fix-reason');
   if (rs) rs.value = '';
   fixปรับช่อง();
@@ -5258,7 +5297,10 @@ function loadFixForm() {
         }
         return;
       }
-      FIXDAYS = { days: r.days || [], from: r.from || '', to: r.to || '', loaded: true };
+      FIXDAYS = { days: r.days || [], from: r.from || '', to: r.to || '',
+                  grid: Array.isArray(r.grid) ? r.grid : null,
+                  shift: r.shift || '', loaded: true };
+      fixเติมตารางเวลา();
       fixแสดงวันที่ขอได้();
       fixปรับช่อง();
     })
@@ -5293,8 +5335,6 @@ function fixปรับช่อง() {
   const iw = document.getElementById('fix-in-wrap');
   const ow = document.getElementById('fix-out-wrap');
   const nt = document.getElementById('fix-time-note');
-  const fi = document.getElementById('fix-in');
-  const fo = document.getElementById('fix-out');
   if (!d || !iw || !ow) return;
 
   const วัน = String(d.value || '').trim();
@@ -5311,14 +5351,15 @@ function fixปรับช่อง() {
   const k = String(แถว.kind || '');
   if (k === 'NO_OUT') {
     iw.style.display = 'none'; ow.style.display = '';
-    if (fi) fi.value = '';
+    // ⚠️ ล้างทั้งช่องเลือกและช่องพิมพ์ ไม่งั้นค่าที่ซ่อนอยู่ค้างแล้วถูกส่งไป
+    fixล้างเวลา('in');
     if (nt) {
       nt.textContent = 'วันนี้มีเวลาเข้าจากเครื่องสแกนแล้ว (' +
                        (แถว.inTime || '-') + ') ขอได้เฉพาะเวลาออก';
     }
   } else if (k === 'NO_IN') {
     iw.style.display = ''; ow.style.display = 'none';
-    if (fo) fo.value = '';
+    fixล้างเวลา('out');
     if (nt) {
       nt.textContent = 'วันนี้มีเวลาออกจากเครื่องสแกนแล้ว (' +
                        (แถว.outTime || '-') + ') ขอได้เฉพาะเวลาเข้า';
@@ -5333,11 +5374,58 @@ function fixปรับช่อง() {
   }
 }
 
+/** ช่องเวลาที่ "ใช้งานอยู่" ของด้านนั้น (ตารางเวลา ถ้าไม่มีก็ช่องพิมพ์)
+ *  ⚠️⚠️ ทุกที่ที่อ่านหรือล้างค่าเวลา ต้องผ่านสองตัวนี้
+ *     อ่าน fix-in / fix-out ตรง ๆ จะได้ค่าว่างเมื่อผู้ใช้เลือกจากตารางเวลา
+ *     (กติกา "มีที่เดียว" — ห้ามแตกเป็นสองสำเนา) */
+function fixช่องเวลา(ด้าน) {
+  const g = document.getElementById('fix-' + ด้าน + '-grid');
+  const t = document.getElementById('fix-' + ด้าน);
+  if (g && g.style.display !== 'none') return g;
+  return t;
+}
+
+function fixอ่านเวลา(ด้าน) {
+  const e = fixช่องเวลา(ด้าน);
+  return e ? String(e.value || '').trim() : '';
+}
+
+function fixล้างเวลา(ด้าน) {
+  const g = document.getElementById('fix-' + ด้าน + '-grid');
+  const t = document.getElementById('fix-' + ด้าน);
+  if (g) g.value = '';
+  if (t) t.value = '';
+}
+
+/** เติมตารางเวลาจากฐานข้อมูลลงช่องเลือก · ไม่มีตารางเวลา = ถอยไปช่องพิมพ์
+ *  ⚠️ เรียกหลัง fixDays ตอบกลับทุกครั้ง เพราะตารางเวลาขึ้นกับกะของคนนั้น */
+function fixเติมตารางเวลา() {
+  const เวลา = (FIXDAYS && Array.isArray(FIXDAYS.grid)) ? FIXDAYS.grid : null;
+  ['in', 'out'].forEach(function (ด้าน) {
+    const g = document.getElementById('fix-' + ด้าน + '-grid');
+    const t = document.getElementById('fix-' + ด้าน);
+    if (!g || !t) return;
+    if (!เวลา || !เวลา.length) {
+      // ⚠️ ฐานข้อมูลไม่มีตารางเวลา (ยังไม่ได้ติดตั้ง SQL 82) → ใช้ช่องพิมพ์เดิม
+      g.style.display = 'none';
+      t.style.display = '';
+      return;
+    }
+    g.innerHTML = '<option value="">เลือกเวลา</option>' +
+      เวลา.map(function (x) {
+        const v = String(x || '').trim();
+        return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+      }).join('');
+    g.style.display = '';
+    t.style.display = 'none';
+  });
+}
+
 function fixSend() {
   const btn = document.getElementById('fix-send');
   const วัน = String((document.getElementById('fix-date') || {}).value || '').trim();
-  const เข้า = String((document.getElementById('fix-in') || {}).value || '').trim();
-  const ออก = String((document.getElementById('fix-out') || {}).value || '').trim();
+  const เข้า = fixอ่านเวลา('in');
+  const ออก = fixอ่านเวลา('out');
   const เหตุ = String((document.getElementById('fix-reason') || {}).value || '').trim();
 
   if (!วัน)  { showToast('กรุณาเลือกวันที่'); return; }
@@ -5351,7 +5439,10 @@ function fixSend() {
   }, 40000)
     .withSuccessHandler(function (r) {
       if (btn) { btn.disabled = false; btn.textContent = 'ส่งคำขอ'; }
-      showToast((r && r.message) || (r && r.success ? 'ส่งคำขอเรียบร้อย' : 'ส่งคำขอไม่สำเร็จ'));
+      // ⚠️⚠️ ต้องส่ง ok ด้วย ไม่งั้นข้อความสำเร็จขึ้นสีแดงและไม่หายเอง
+      //    (ED ทัก 11 พ.ย. 2569 — ต้องกด x เองทั้งที่ยื่นคำขอสำเร็จ)
+      showToast((r && r.message) || (r && r.success ? 'ส่งคำขอเรียบร้อย' : 'ส่งคำขอไม่สำเร็จ'),
+                !!(r && r.success));
       if (r && r.success) {
         sbMarkLvStale();
         go('fix-history');
@@ -5448,7 +5539,8 @@ function fixHistoryRender(box, rows) {
       b.disabled = true;
       gasRunNoRetry('fixCancel', { hrToken: S.hrToken, requestId: req }, 30000)
         .withSuccessHandler(function (r) {
-          showToast((r && r.message) || 'ยกเลิกแล้ว');
+          // ⚠️⚠️ ต้องส่ง ok ด้วย (ดูเหตุที่ fixSend)
+          showToast((r && r.message) || 'ยกเลิกแล้ว', !!(r && r.success));
           sbMarkLvStale();
           loadFixHistory();
         })
@@ -5529,7 +5621,9 @@ function fixApproveRender(box, rows) {
     b.disabled = true;
     gasRunNoRetry(action, Object.assign({ hrToken: S.hrToken }, payload), 40000)
       .withSuccessHandler(function (r) {
-        showToast((r && r.message) || (r && r.success ? 'สำเร็จ' : 'ไม่สำเร็จ'));
+        // ⚠️⚠️ ต้องส่ง ok ด้วย (ดูเหตุที่ fixSend)
+        showToast((r && r.message) || (r && r.success ? 'สำเร็จ' : 'ไม่สำเร็จ'),
+                  !!(r && r.success));
         sbMarkLvStale();
         loadFixApprove();
       })
@@ -5561,10 +5655,87 @@ function fixApproveRender(box, rows) {
 
 /* ───────────── หน้าที่ 4: รายงาน ───────────── */
 
+// ── ช่องเลือกพนักงานของหน้ารายงาน (ED ขอ 11 พ.ย. 2569) ──
+// ⚠️⚠️ รายชื่อนี้เป็น "ตัวกรอง" ไม่ใช่การให้สิทธิ์
+//    ขอบเขตจริงตัดสินที่ emp_scope ในฐานข้อมูล (SQL 80) ที่เดียว
+//    🚫 ห้ามเอารายชื่อนี้ไปใช้ตัดสินว่าใครเห็นอะไรได้
+var FIXR = { team: [], เลือก: {}, โหลดแล้ว: false };
+
 function loadFixReport() {
   const box = document.getElementById('fixr-result');
   if (box) box.innerHTML = '';
-  fixReportSearch();
+
+  // ⚠️ โหลดรายชื่อครั้งเดียว ไม่โหลดซ้ำทุกครั้งที่เข้าหน้า
+  //    และต้องค้นหาต่อให้ได้แม้รายชื่อโหลดไม่สำเร็จ (รายงานสำคัญกว่าตัวกรอง)
+  if (FIXR.โหลดแล้ว) { fixrRenderTeam(); fixReportSearch(); return; }
+
+  gasRun('leaveGetMyTeam', { hrToken: S.hrToken }, 30000)
+    .withSuccessHandler(function (r) {
+      FIXR.team = (r && r.success && r.team) ? r.team : [];
+      FIXR.โหลดแล้ว = true;
+      fixrRenderTeam();
+      fixReportSearch();
+    })
+    .withFailureHandler(function () {
+      FIXR.team = [];
+      FIXR.โหลดแล้ว = true;
+      const l = document.getElementById('fixr-emp-list');
+      if (l) {
+        l.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--tx3)">' +
+          'โหลดรายชื่อไม่สำเร็จ · ค้นหาได้ตามปกติ (จะเห็นทุกคนที่คุณมีสิทธิ์เห็น)</div>';
+      }
+      fixReportSearch();
+    });
+}
+
+function fixrRenderTeam() {
+  const l = document.getElementById('fixr-emp-list');
+  if (!l) return;
+  const คำค้น = String((document.getElementById('fixr-emp-search') || {}).value || '')
+                  .trim().toLowerCase();
+  const รายชื่อ = FIXR.team.filter(function (t) {
+    if (!คำค้น) return true;
+    return (String(t.id || '') + ' ' + String(t.name || '')).toLowerCase().indexOf(คำค้น) >= 0;
+  });
+  if (!FIXR.team.length) {
+    l.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--tx3)">ไม่มีรายชื่อให้เลือก</div>';
+  } else if (!รายชื่อ.length) {
+    l.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--tx3)">ไม่พบชื่อที่ค้น</div>';
+  } else {
+    l.innerHTML = รายชื่อ.map(function (t) {
+      const id = String(t.id || '');
+      return '<label style="display:flex;align-items:center;gap:8px;padding:5px 4px;cursor:pointer">' +
+        '<input type="checkbox" class="fixr-emp-cb" value="' + esc(id) + '"' +
+        (FIXR.เลือก[id] ? ' checked' : '') + '>' +
+        '<span style="font-size:13px">' + esc(id) + ' · ' + esc(String(t.name || '')) + '</span>' +
+        '</label>';
+    }).join('');
+    l.querySelectorAll('.fixr-emp-cb').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        if (cb.checked) FIXR.เลือก[cb.value] = 1;
+        else delete FIXR.เลือก[cb.value];
+        fixrบอกจำนวน();
+      });
+    });
+  }
+  fixrบอกจำนวน();
+}
+
+function fixrบอกจำนวน() {
+  const c = document.getElementById('fixr-emp-count');
+  if (!c) return;
+  const n = Object.keys(FIXR.เลือก).length;
+  c.textContent = n ? '(เลือก ' + n + ' คน)' : '(ไม่เลือก = ทุกคน)';
+}
+
+function fixrEmpAll() {
+  FIXR.team.forEach(function (t) { FIXR.เลือก[String(t.id || '')] = 1; });
+  fixrRenderTeam();
+}
+
+function fixrEmpNone() {
+  FIXR.เลือก = {};
+  fixrRenderTeam();
 }
 
 function fixReportSearch() {
@@ -5573,6 +5744,9 @@ function fixReportSearch() {
   box.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3)">กำลังโหลด…</div>';
   gasRun('fixReport', {
     hrToken: S.hrToken,
+    // ⚠️ ไม่เลือกใคร = ส่งอาร์เรย์ว่าง → ฐานข้อมูลตีความว่า "ไม่กรอง"
+    //    ไม่ใช่ "ไม่ตรงกับใครเลย" (SQL 80 จัดการกรณีนี้ไว้)
+    empIds:   Object.keys(FIXR.เลือก),
     dateFrom: String((document.getElementById('fixr-f-from') || {}).value || ''),
     dateTo:   String((document.getElementById('fixr-f-to') || {}).value || ''),
     status:   String((document.getElementById('fixr-f-status') || {}).value || '')
@@ -8907,12 +9081,30 @@ applyLogo();
   on('hr-menu-incomplete', 'click', function() { go('att-incomplete'); });
   on('empr-back',      'click', function() { go('hr-dash'); });
   on('hr-menu-setting', 'click', function() { go('hr-setting'); loadSettingPage(); });
-  // ⚠️⚠️ การ์ดในหน้าเมนูงานบุคคลต้องผูกปุ่มเองทุกใบ ไม่มีตัวผูกอัตโนมัติ
-  //    เจอว่าสี่ใบนี้ไม่มี handler เลยมาก่อน: hr-menu-leave-approve ·
-  //    hr-menu-ot-approve · hr-menu-leave-report · hr-menu-ot-report
-  //    (กดแล้วไม่เกิดอะไร — รายงานให้ ED แล้ว 11 พ.ย. 2569)
-  //    ของใหม่จึงผูกไว้ตั้งแต่ต้น ไม่ให้เพิ่มการ์ดตายใบที่ห้า
-  on('hr-menu-fix-report', 'click', function() { go('fix-report'); });
+  // ══════⚠️⚠️ การ์ดในหน้า "เมนูงานบุคคล" ต้องผูกปุ่มเองทุกใบ ══════
+  //
+  //  ไม่มีตัวผูกอัตโนมัติที่นี่ (ต่างจากแผ่นในหน้าหลัก ซึ่ง homeFillGrid
+  //  ผูก go(item.p) ให้เองทุกใบ) → การ์ดที่ลืมผูกจะ "กดแล้วไม่เกิดอะไร"
+  //
+  //  ⚠️⚠️ 11 พ.ย. 2569 เจอว่ามีถึงเจ็ดใบที่ไม่มีตัวรับคลิกเลย:
+  //     อนุมัติการลา · อนุมัติ OT · รายงานการลา · รายงาน OT ·
+  //     อัปโหลดเวลา · สลิปเงินเดือน · รายงานเงินเดือน
+  //     ⚠️ ผมรายงาน ED ว่า "สี่ใบ" แต่ของจริงเจ็ดใบ · และ ED ทักว่ากดได้
+  //        ปกติ ซึ่งก็จริงของเขา เพราะทางเข้าที่เขาใช้คือแท็บล่าง/แผ่น
+  //        หน้าหลัก ไม่ใช่การ์ดพวกนี้ → ผูกให้หมด กดทางไหนก็ต้องได้
+  //  🚫 เพิ่มการ์ดใบใหม่ในหน้านี้ ต้องผูกปุ่มในก้อนนี้ทันที
+  //     (ชุดทดสอบ attest/menu.js ข้อ ฑ ตรึงไว้ว่าทุกใบต้องมีตัวรับคลิก)
+  on('hr-menu-leave-approve', 'click', function() { go('leave-approve'); });
+  on('hr-menu-ot-approve',    'click', function() { go('ot-approve'); });
+  on('hr-menu-leave-report',  'click', function() { go('leave-report'); });
+  on('hr-menu-ot-report',     'click', function() { go('ot-report'); });
+  on('hr-menu-finger',        'click', function() { go('finger'); });
+  on('hr-menu-payroll',       'click', function() { go('pay-periods'); });
+  on('hr-menu-payreport',     'click', function() { go('pay-report'); });
+  // ⚠️⚠️ ฝ่ายบุคคลเป็นขั้นอนุมัติสุดท้าย (PENDING_HR) ของขอบันทึกเวลา
+  //    ไม่มีเมนูนี้ = ใบที่ถึงขั้นฝ่ายบุคคลค้างถาวร ไม่มีใครอนุมัติได้
+  on('hr-menu-fix-approve',   'click', function() { go('fix-approve'); });
+  on('hr-menu-fix-report',    'click', function() { go('fix-report'); });
 
   // ── โมดูล 10 ขอบันทึกเวลา — ผูกครั้งเดียวตอนเปิดแอป ──
   // ⚠️ ผูกที่นี่ไม่ใช่ตอนเข้าหน้า ไม่งั้น handler จะซ้อนทุกครั้งที่เข้าหน้า
@@ -8925,6 +9117,12 @@ applyLogo();
   on('fix-approve-refresh','click', loadFixApprove);
   on('fix-send',           'click', fixSend);
   on('fixr-search',        'click', fixReportSearch);
+  // ── ช่องเลือกพนักงานของหน้ารายงาน (ED ขอ 11 พ.ย. 2569) ──
+  // ⚠️ ผูกที่นี่ครั้งเดียวตอนเปิดแอป ไม่ผูกตอนเข้าหน้า
+  //    ไม่งั้น handler จะซ้อนทับทุกครั้งที่เข้าหน้า แล้วกดหนึ่งครั้งยิงหลายรอบ
+  on('fixr-emp-all',       'click', fixrEmpAll);
+  on('fixr-emp-none',      'click', fixrEmpNone);
+  on('fixr-emp-search',    'input', function() { fixrRenderTeam(); });
   // ⚠️⚠️ เปลี่ยนวันแล้วต้องปรับช่องทันที — วันนั้นขาดอะไรก็กรอกได้แค่นั้น
   on('fix-date',           'change', fixปรับช่อง);
   // ⚠️ ผูกครั้งเดียวตอนเริ่ม ไม่ผูกใหม่ทุกครั้งที่เข้าหน้า (จะได้ handler ซ้อน)
