@@ -1920,10 +1920,20 @@ textarea.inp{resize:vertical;min-height:60px}
       <div id="fix-time-note" style="font-size:12px;color:#b45309;margin-bottom:12px"></div>
     </div>
 
+    <!-- ⚠️⚠️ เหตุผลเป็น dropdown เหมือนหน้าคีย์มือของฝ่ายบุคคล (ED ขอ 12 พ.ย. 2569)
+         ใช้ตาราง ATT_NOTE และ ATT_NOTE_DETAIL ตัวเดียวกัน ไม่เขียนรายการใหม่
+         🚫 ด่านจริงอยู่ที่ฐานข้อมูล (att_note_codes · SQL 84) ที่นี่แค่บอกผู้ใช้เร็วขึ้น
+            ถ้ากันแต่ที่นี่ ใครเรียกผ่าน API ตรงก็ยื่นโดยไม่มีเหตุผลได้ -->
     <div class="field" style="margin-bottom:12px">
-      <label>เหตุผล</label>
-      <textarea class="inp" id="fix-reason" rows="3"
-        placeholder="เช่น ลืมสแกนออกเพราะรีบไปส่งของ"></textarea>
+      <label>เหตุผล <span style="color:var(--er)">*</span></label>
+      <select class="inp" id="fix-note"></select>
+    </div>
+
+    <!-- ช่องรายละเอียด โผล่เฉพาะเหตุผลที่ต้องการข้อมูลเพิ่ม (นอกสถานที่ · อบรม · อื่น ๆ) -->
+    <div class="field" id="fix-reason-wrap" style="margin-bottom:12px;display:none">
+      <label id="fix-reason-label">รายละเอียด</label>
+      <textarea class="inp" id="fix-reason" rows="3" maxlength="200"
+        placeholder=""></textarea>
     </div>
 
     <button class="btn p" id="fix-send" style="width:100%">ส่งคำขอ</button>
@@ -2797,7 +2807,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.48.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.49.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5281,6 +5291,11 @@ function loadFixForm() {
   if (hint) hint.textContent = 'กำลังตรวจวันที่ขอได้…';
   const fd = document.getElementById('fix-date');
   if (fd) fd.value = '';
+  // ⚠️ เติมตัวเลือกเหตุผลและล้างค่าเดิม ไม่ให้ค้างไปกับใบใหม่
+  fixBuildNoteOptions();
+  const fn = document.getElementById('fix-note');
+  if (fn) fn.value = '';
+  fixNoteChanged();
   // ⚠️ ต้องล้างทั้งช่องเลือกและช่องพิมพ์ ไม่งั้นค่าที่ซ่อนอยู่ค้างแล้วถูกส่งไป
   fixล้างเวลา('in');
   fixล้างเวลา('out');
@@ -5421,21 +5436,60 @@ function fixเติมตารางเวลา() {
   });
 }
 
+/** เติมตัวเลือกเหตุผลจากตาราง ATT_NOTE — ไม่เขียนรายการซ้ำใน HTML
+ *  ⚠️ ใช้ตารางเดียวกับหน้าคีย์มือของฝ่ายบุคคล · เพิ่มเหตุผลที่เดียวได้ครบสองหน้า */
+function fixBuildNoteOptions() {
+  const sel = document.getElementById('fix-note');
+  if (!sel || sel.options.length) return;
+  let html = '<option value="">— เลือกเหตุผล —</option>';
+  Object.keys(ATT_NOTE).forEach(function (k) {
+    html += '<option value="' + k + '">' + esc(ATT_NOTE[k]) + '</option>';
+  });
+  sel.innerHTML = html;
+}
+
+/** เปิด/ปิดช่องรายละเอียดตามเหตุผลที่เลือก (กติกาเดียวกับหน้าคีย์มือ) */
+function fixNoteChanged() {
+  const code = String((document.getElementById('fix-note') || {}).value || '');
+  const wrap = document.getElementById('fix-reason-wrap');
+  const lbl  = document.getElementById('fix-reason-label');
+  const inp  = document.getElementById('fix-reason');
+  if (!wrap || !lbl || !inp) return;
+  const need = ATT_NOTE_DETAIL[code];
+  if (need) {
+    lbl.innerHTML = esc(need) + ' <span style="color:var(--er)">*</span>';
+    inp.placeholder = esc(need);
+    wrap.style.display = '';
+  } else {
+    // ⚠️ ล้างค่าด้วย ไม่ใช่แค่ซ่อน — ไม่งั้นพิมพ์ไว้แล้วเปลี่ยนเหตุผล
+    //    ข้อความเก่าจะติดไปกับเหตุผลใหม่ที่ไม่เกี่ยวกันเลย
+    inp.value = '';
+    wrap.style.display = 'none';
+  }
+}
+
 function fixSend() {
   const btn = document.getElementById('fix-send');
   const วัน = String((document.getElementById('fix-date') || {}).value || '').trim();
   const เข้า = fixอ่านเวลา('in');
   const ออก = fixอ่านเวลา('out');
+  const รหัสเหตุ = String((document.getElementById('fix-note') || {}).value || '').trim();
   const เหตุ = String((document.getElementById('fix-reason') || {}).value || '').trim();
 
   if (!วัน)  { showToast('กรุณาเลือกวันที่'); return; }
-  if (!เหตุ) { showToast('กรุณากรอกเหตุผล'); return; }
+  if (!รหัสเหตุ) { showToast('กรุณาเลือกเหตุผล'); return; }
+  // ⚠️ บังคับรายละเอียดเฉพาะเหตุผลที่ต้องการ — กติกาเดียวกับหน้าคีย์มือ
+  //    🚫 ด่านจริงอยู่ที่ฐานข้อมูล (SQL 84) ที่นี่แค่บอกผู้ใช้เร็วขึ้น
+  if (ATT_NOTE_DETAIL[รหัสเหตุ] && !เหตุ) {
+    showToast('กรุณาระบุ' + ATT_NOTE_DETAIL[รหัสเหตุ]); return;
+  }
   if (!เข้า && !ออก) { showToast('กรุณากรอกเวลาเข้าหรือเวลาออก'); return; }
 
   if (btn) { btn.disabled = true; btn.textContent = 'กำลังส่ง…'; }
   // ⚠️ ไม่ส่ง empId — Edge Function เอารหัสจากตั๋วเท่านั้น
   gasRunNoRetry('fixSubmit', {
-    hrToken: S.hrToken, workDate: วัน, reqIn: เข้า, reqOut: ออก, reason: เหตุ
+    hrToken: S.hrToken, workDate: วัน, reqIn: เข้า, reqOut: ออก,
+    reason: เหตุ, noteCode: รหัสเหตุ
   }, 40000)
     .withSuccessHandler(function (r) {
       if (btn) { btn.disabled = false; btn.textContent = 'ส่งคำขอ'; }
@@ -5507,7 +5561,14 @@ function fixHistoryRender(box, rows) {
     }
     h += '</div>';
 
-    if (x.reason) {
+    // ⚠️⚠️ โชว์เหตุผลบนการ์ด (ED ขอ 12 พ.ย. 2569)
+    //    ใช้ attNoteLabel ตัวเดียวกับที่หน้าลงเวลาใช้ ไม่เขียนตัวแปลงใหม่
+    //    ว่าง = ใบเก่าที่ยื่นก่อนมีช่องเหตุผล → ถอยไปโชว์ข้อความเดิม
+    var ป้ายเหตุ = attNoteLabel(x.noteCode, x.reason);
+    if (ป้ายเหตุ) {
+      h += '<div style="font-size:12px;color:var(--tx3);margin-top:6px">เหตุผล: ' +
+           esc(ป้ายเหตุ) + '</div>';
+    } else if (x.reason) {
       h += '<div style="font-size:12px;color:var(--tx3);margin-top:6px">เหตุผล: ' +
            esc(x.reason) + '</div>';
     }
@@ -5598,7 +5659,14 @@ function fixApproveRender(box, rows) {
          'เข้า ' + esc(x.scanIn || '-') + ' · ออก ' + esc(x.scanOut || '-') + '</div></div>';
     h += '</div>';
 
-    if (x.reason) {
+    // ⚠️⚠️ โชว์เหตุผลบนการ์ด (ED ขอ 12 พ.ย. 2569)
+    //    ใช้ attNoteLabel ตัวเดียวกับที่หน้าลงเวลาใช้ ไม่เขียนตัวแปลงใหม่
+    //    ว่าง = ใบเก่าที่ยื่นก่อนมีช่องเหตุผล → ถอยไปโชว์ข้อความเดิม
+    var ป้ายเหตุ = attNoteLabel(x.noteCode, x.reason);
+    if (ป้ายเหตุ) {
+      h += '<div style="font-size:12px;color:var(--tx2);margin-top:8px">เหตุผล: ' +
+           esc(ป้ายเหตุ) + '</div>';
+    } else if (x.reason) {
       h += '<div style="font-size:12px;color:var(--tx2);margin-top:8px">เหตุผล: ' +
            esc(x.reason) + '</div>';
     }
@@ -5804,6 +5872,13 @@ function fixReportRender(box, r) {
     h += '<div style="font-size:12px;color:var(--tx2);margin-top:6px">' +
          esc(fixประเภทไทย(x.kind)) + ' · ขอ เข้า ' + esc(x.reqIn || '-') +
          ' ออก ' + esc(x.reqOut || '-') + '</div>';
+    // ⚠️⚠️ โชว์เหตุผลในรายงานด้วย (ED ขอ 12 พ.ย. 2569)
+    //    ใช้ attNoteLabel ตัวเดียวกัน · ใบเก่าที่ไม่มีรหัสถอยไปโชว์ข้อความเดิม
+    var ป้ายเหตุรายงาน = attNoteLabel(x.noteCode, x.reason);
+    if (ป้ายเหตุรายงาน || x.reason) {
+      h += '<div style="font-size:11.5px;color:var(--tx3);margin-top:4px">เหตุผล: ' +
+           esc(ป้ายเหตุรายงาน || x.reason) + '</div>';
+    }
     // ⚠️ บอกว่าเขียนลงตารางแล้วหรือยัง — ใบที่อนุมัติแล้วแต่ยังไม่เขียนคือของที่ต้องตาม
     if (String(x.status || '').trim() === 'APPROVED') {
       if (x.writtenAt) {
@@ -9123,6 +9198,8 @@ applyLogo();
   on('fixr-emp-all',       'click', fixrEmpAll);
   on('fixr-emp-none',      'click', fixrEmpNone);
   on('fixr-emp-search',    'input', function() { fixrRenderTeam(); });
+  // ⚠️ ผูกที่นี่ครั้งเดียวตอนเปิดแอป ไม่ผูกตอนเข้าหน้า (กัน handler ซ้อนทับ)
+  on('fix-note',           'change', fixNoteChanged);
   // ⚠️⚠️ เปลี่ยนวันแล้วต้องปรับช่องทันที — วันนั้นขาดอะไรก็กรอกได้แค่นั้น
   on('fix-date',           'change', fixปรับช่อง);
   // ⚠️ ผูกครั้งเดียวตอนเริ่ม ไม่ผูกใหม่ทุกครั้งที่เข้าหน้า (จะได้ handler ซ้อน)
