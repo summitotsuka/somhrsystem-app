@@ -356,16 +356,20 @@ textarea.inp{resize:vertical;min-height:60px}
     <div style="font-size:24px;font-weight:600">Summit Otsuka Manufacturing Co., Ltd.</div>
     <div style="font-size:13px;color:var(--tx2);margin-top:4px">ระบบลงเวลาเข้า-ออกงาน</div>
   </div>
+
+  <div class="card">
     <!-- ⚠️ ปุ่มสลับภาษา — อยู่หน้าเข้าสู่ระบบเท่านั้น เลือกก่อนเข้าระบบ
          ค่าที่เลือกเก็บในเครื่องผู้ใช้ จำไว้ครั้งหน้าไม่ต้องเลือกซ้ำ
          🚫 ห้ามแปลสองคำนี้ จึงไม่ใส่ไว้ในพจนานุกรม -->
-    <div id="lang-switch" style="text-align:center;margin-top:14px;font-size:12px;color:var(--tx3)">
-      <span id="lang-th" style="cursor:pointer;padding:2px 8px">ไทย</span>
-      <span style="opacity:.4">|</span>
-      <span id="lang-en" style="cursor:pointer;padding:2px 8px">English</span>
+    <div class="sec" style="display:flex; justify-content:space-between; align-items:center;">
+      <span>เข้าสู่ระบบ</span>
+      
+      <div id="lang-switch" style="font-size:12px; color:var(--tx3)">
+        <span id="lang-th" style="cursor:pointer;padding:2px 8px">ไทย</span>
+        <span style="opacity:.4">|</span>
+        <span id="lang-en" style="cursor:pointer;padding:2px 8px">English</span>
+      </div>
     </div>
-  <div class="card">
-    <div class="sec">เข้าสู่ระบบ</div>
     <div class="field">
       <label>รหัสพนักงาน</label>
       <input class="inp" id="login-id" placeholder="เช่น EMP001" autocomplete="off"
