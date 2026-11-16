@@ -2826,7 +2826,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.51.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.51.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -9333,9 +9333,18 @@ applyLogo();
 
   // LOGIN
   on('btn-login', 'click', doLogin);
-  // ⚠️ ปุ่มสลับภาษา — กดแล้วโหลดหน้าใหม่ (ชั้นแปลทำงานทางเดียว)
-  on('lang-th', 'click', function () { if (typeof I18N !== 'undefined') I18N.set('th'); });
-  on('lang-en', 'click', function () { if (typeof I18N !== 'undefined') I18N.set('en'); });
+
+  // ── ปุ่มสลับภาษา ──
+  // ⚠️⚠️ บล็อก bindAll นี้อยู่ในสคริปต์ฝังหน้า ซึ่งทำงาน "ก่อน" แท็ก
+  //    <script src="i18n.js"> ท้ายไฟล์ → ตอนนี้ I18N ยังไม่เกิด
+  //    จึงผูก handler ไว้ก่อนเสมอ แล้วค่อยเช็ก I18N ตอน "กด" (ตอนนั้นโหลดเสร็จแล้ว)
+  //    🚫 ห้ามย้ายมาเช็ก typeof I18N ตรงนี้ — ปุ่มจะหายทั้งที่ไฟล์ครบ (เคยพลาดมาแล้ว)
+  on('lang-th', 'click', function () {
+    if (typeof I18N !== 'undefined' && I18N.get() !== 'th') I18N.set('th');
+  });
+  on('lang-en', 'click', function () {
+    if (typeof I18N !== 'undefined' && I18N.get() !== 'en') I18N.set('en');
+  });
   on('btn-logout', 'click', function() {
     if (confirm('ออกจากระบบ?')) logout();
   });
@@ -9515,8 +9524,8 @@ applyLogo();
 -->
 <!-- ⚠️ ชั้นแปลภาษาอังกฤษ (สำหรับผู้บริหารชาวต่างชาติ) — พจนานุกรมต้องมาก่อนตัวทำงาน
      🚫 ไม่แตะข้อความไทยเดิมสักคำ · ผู้ใช้ภาษาไทยไม่มีภาระเพิ่ม -->
-<script src="i18n-dict.js?v=8.51.0"></script>
-<script src="i18n.js?v=8.51.0"></script>
+<script src="i18n-dict.js?v=8.51.1"></script>
+<script src="i18n.js?v=8.51.1"></script>
 <script src="leave.js?v=8.29.0"></script>
 <script src="ot.js?v=8.15.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
@@ -9525,6 +9534,21 @@ applyLogo();
   if (typeof initLeaveBindings === 'function') initLeaveBindings();
   if (typeof initOTBindings === 'function') initOTBindings();
   if (typeof initPayrollBindings === 'function') initPayrollBindings();
+
+  // ⚠️⚠️ ปุ่มสลับภาษา — ตัดสินใจ "ตรงนี้" เพราะ i18n.js โหลดเสร็จแล้วแน่นอน
+  //    (ในบล็อก bindAll ข้างบน I18N ยังไม่เกิด จะเช็กที่นั่นไม่ได้)
+  //  🚫🚫 ถ้าไฟล์ i18n.js / i18n-dict.js ยังไม่ขึ้นเซิร์ฟเวอร์ ให้ "ซ่อนปุ่ม"
+  //     ไม่ใช่ปล่อยให้โผล่แล้วกดไม่ติดเงียบ ๆ
+  //     เกิดจริง 16 พ.ย. 2569: อัปเดต index.html อย่างเดียว ปุ่มขึ้นแต่กดไม่ได้
+  //     และไม่มีอะไรฟ้องเลย หาสาเหตุยากมาก
+  (function ปุ่มภาษา() {
+    var กล่อง = document.getElementById('lang-switch');
+    if (!กล่อง) return;
+    if (typeof I18N === 'undefined') { กล่อง.style.display = 'none'; return; }
+    // ⚠️ ทำตัวหนาที่ภาษาปัจจุบัน ผู้ใช้จะได้รู้ว่าตอนนี้อยู่ภาษาไหน
+    var el = document.getElementById(I18N.get() === 'en' ? 'lang-en' : 'lang-th');
+    if (el) { el.style.fontWeight = '600'; el.style.color = 'var(--ac)'; }
+  })();
   // แสดงเวอร์ชันบน UI + เตือนถ้าไฟล์ .js ที่โหลดมาไม่ตรงรุ่นกับ index.html
   // (เกิดเมื่ออัปโหลดไม่ครบ หรือเบราว์เซอร์ยังใช้ไฟล์เก่าค้างอยู่)
   (function(){
