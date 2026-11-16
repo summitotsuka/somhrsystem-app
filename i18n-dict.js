@@ -20,6 +20,33 @@ var I18N_MONTH = {
   'ก.ค.':'Jul','ส.ค.':'Aug','ก.ย.':'Sep','ต.ค.':'Oct','พ.ย.':'Nov','ธ.ค.':'Dec'
 };
 
+/**
+ * ⚠️⚠️ ข้อความที่มี "ตัวเลขหรือชื่อปนอยู่ในบรรทัดเดียวกัน"
+ *    เช่น "เลือกแล้ว 3 คน" — เทียบตรงทั้งข้อความไม่ได้ เพราะเลขเปลี่ยนทุกครั้ง
+ *    จึงใช้รูปแบบ (regex) แทน · $1 $2 คือค่าที่จับได้จากวงเล็บ
+ *
+ *  ⚠️ ทำงาน "หลัง" การเทียบตรงทั้งข้อความเสมอ — ถ้าตรงเป๊ะอยู่แล้วจะไม่มาถึงตรงนี้
+ *  🚫 ระวังรูปแบบที่กว้างเกินไป จะไปจับข้อมูลของผู้ใช้โดยไม่ตั้งใจ
+ *     ทุกรูปแบบต้องยึดหัวหรือท้ายบรรทัด (^ $) ไม่ใช่จับลอย ๆ กลางข้อความ
+ */
+var I18N_PAT = [
+  [/^เลือกแล้ว (\d+) คน$/,                      '$1 selected'],
+  [/^รวม (\d+) รายการ$/,                        '$1 records in total'],
+  [/^พบ (\d+) รายการ$/,                         '$1 records found'],
+  [/^ทั้งหมด (\d+) รายการ$/,                     '$1 records'],
+  [/^(\d+) รายการ$/,                            '$1 records'],
+  [/^(\d+(?:\.\d+)?) ชั่วโมง$/,                 '$1 hours'],
+  [/^(\d+(?:\.\d+)?) ชม\.$/,                   '$1 h'],
+  [/^(\d+) วัน$/,                               '$1 days'],
+  [/^(\d+) คน$/,                                '$1 people'],
+  [/^ข้อมูลลงเวลาไม่สมบูรณ์ (\d+) รายการ$/,        'Incomplete attendance — $1 records'],
+  [/^และอีก (\d+) รายการ$/,                      'and $1 more'],
+  [/^เกิดข้อผิดพลาด: (.+)$/,                     'Something went wrong: $1'],
+  [/^กำลังอนุมัติ (\d+)\/(\d+)$/,               'Approving $1 of $2'],
+  [/^สวัสดี (.+)$/,                              'Hello $1'],
+  [/^วันหยุดเดือน(.+)$/,                         'Holidays in $1']
+];
+
 var I18N_EN = {
   // ── เข้าสู่ระบบ / ลงทะเบียน ──
   'ระบบลงเวลาเข้า-ออกงาน':'Attendance System',
@@ -188,6 +215,68 @@ var I18N_EN = {
   'กรุณาเลือกเวลาเริ่ม-สิ้นสุด':'Please select a start and end time',
   'กรุณาเลือกเวลาเริ่มและสิ้นสุด':'Please select a start and end time',
   'กรุณากรอกรายละเอียดงานที่ทำ':'Please describe the work done',
+
+
+  // ── ป้ายไทล์บนหน้าแรก (พนักงานและหัวหน้า) ──
+  'เช็คอิน':'Check in','เช็คเอาต์':'Check out','เช็คเวลา':'My attendance',
+  'ขอลางาน':'Request leave','ขอโอที':'Request OT','ปฏิทินวันหยุด':'Holiday calendar',
+  'ประวัติการลา':'Leave history','ประวัติโอที':'OT history',
+  'ขอบันทึกเวลา':'Time correction','ประวัติขอบันทึกเวลา':'Correction history',
+  'อนุมัติลา':'Approve leave','อนุมัติโอที':'Approve OT','อนุมัติบันทึกเวลา':'Approve corrections',
+  'รายงานลงเวลา':'Attendance report','รายงานโอที':'OT report',
+  'รายงานขอบันทึกเวลา':'Correction report','เมนูงานบุคคล':'HR menu',
+  'รายงานทีมของฉัน':'My team reports',
+
+  // ── ป้ายไทล์ในเมนูงานบุคคล (ฝ่ายบุคคล 23 เมนู) ──
+  'ภาพรวมรายวัน':'Daily overview','อัปโหลดเวลา':'Upload attendance',
+  'รายงานบันทึกดิบ':'Raw scan log','Export เวลา':'Export attendance',
+  'จัดการข้อมูลเวลา':'Attendance data','อนุมัติการลา':'Approve leave',
+  'อนุมัติ OT':'Approve OT','อนุมัติขอลงเวลา':'Approve corrections',
+  'จัดการพนักงาน':'Employees','ลงเวลาไม่สมบูรณ์':'Incomplete attendance',
+  'รายงานข้อมูลพนักงาน':'Employee report','ตั้งค่าระบบ':'System settings',
+  'จัดการวันหยุด':'Holidays','จัดการประกาศ':'Announcements',
+  'ส่ง Telegram':'Send Telegram','ลงทะเบียนใบหน้า':'Face registration',
+  'โหมด Kiosk':'Kiosk mode','รายงานเงินเดือน':'Payroll report',
+  'งวดเงินเดือน':'Payroll periods',
+
+  // ── ป้ายสถานะในรายงาน ──
+  'ปกติ':'Normal','ไม่มา':'Absent','ไม่มีการลงเวลา':'No attendance record',
+  'ไม่มีเวลาเข้า':'No check-in time','ไม่มีเวลาออก':'No check-out time',
+  'ขาดงาน':'Absent','ลา':'On leave','สาย':'Late','ออกก่อน':'Left early',
+  'วันหยุด':'Holiday','วันอาทิตย์':'Sunday','รอก่อนลองใหม่':'Please wait and try again',
+
+
+  // ── ข้อความจากฝั่งฐานข้อมูล (โมดูลขอบันทึกเวลา และด่านทั่วไป) ──
+  //    ⚠️ ข้อความพวกนี้มาจาก SQL ไม่ได้อยู่ในหน้าเว็บ แต่ขึ้นให้ผู้ใช้เห็น
+  //    จึงต้องแปลด้วย — และยังแก้ที่ไฟล์นี้ที่เดียวเหมือนเดิม
+  'กรุณาเข้าสู่ระบบ':'Please sign in',
+  'กรุณาระบุวันที่':'Please specify a date',
+  'ไม่พบคำขอ':'Request not found',
+  'ไม่พบข้อมูลพนักงาน':'Employee not found',
+  'วันที่ไม่ถูกต้อง (ต้องเป็น ปปปป-ดด-วว)':'Invalid date (must be YYYY-MM-DD)',
+  'ยื่นคำขอบันทึกเวลาเรียบร้อย รออนุมัติ':'Time correction submitted — pending approval',
+  'บันทึกเวลาลงระบบเรียบร้อย':'Time recorded successfully',
+  'คำขอนี้ถูกบันทึกไว้แล้ว (ไม่ได้บันทึกซ้ำ)':'This request was already saved (not duplicated)',
+  'คำขอนี้ถูกยกเลิก/ปฏิเสธไปแล้ว':'This request was already cancelled or rejected',
+  'คำขอนี้ไม่อยู่ในสถานะที่ยกเลิกได้แล้ว':'This request can no longer be cancelled',
+  'คำขอยังไม่ได้อนุมัติครบทุกขั้น':'This request has not completed all approval steps',
+  'คุณไม่มีสิทธิ์ดำเนินการคำขอนี้ หรือคำขอถูกดำเนินการไปแล้ว':'You are not authorised for this request, or it has already been actioned',
+  'คุณไม่มีสิทธิ์อนุมัติคำขอนี้ หรือคำขอถูกดำเนินการไปแล้ว':'You are not authorised to approve this request, or it has already been actioned',
+  'คุณไม่มีสิทธิ์ยกเลิกคำขอนี้':'You are not authorised to cancel this request',
+  'ยกเลิกได้เฉพาะคำขอของตัวเอง':'You can only cancel your own requests',
+  'ไม่สามารถอนุมัติคำขอบันทึกเวลาของตัวเองได้':'You cannot approve your own time correction request',
+  'วันนี้ขาดเวลาออก กรุณากรอกเวลาออก':'Check-out time is missing for this day — please enter it',
+  'วันนี้ขาดเวลาเข้า กรุณากรอกเวลาเข้า':'Check-in time is missing for this day — please enter it',
+  'กรุณากรอกเวลาเข้าหรือเวลาออกอย่างน้อยหนึ่งช่อง':'Please enter at least a check-in or check-out time',
+  'เวลาออกต้องหลังเวลาเข้า':'Check-out must be after check-in',
+  'รูปแบบเวลาไม่ถูกต้อง (ต้องเป็น ชช:นน)':'Invalid time format (must be HH:MM)',
+  'มีคำขอ "เวลาเข้า" ที่ยังไม่จบอยู่แล้ว':'You already have an open check-in request',
+  'มีคำขอ "เวลาออก" ที่ยังไม่จบอยู่แล้ว':'You already have an open check-out request',
+  'วันนี้ยังทำงานไม่จบ ขอได้ตั้งแต่วันทำงานถัดไป':'Today is not finished yet — you can request from the next working day',
+  'ไม่มีรายการลงเวลาไม่สมบูรณ์ในวันที่เลือก':'No incomplete attendance on the selected day',
+  'ข้อมูลของวันนั้นไม่ตรงกับคำขอแล้ว (อาจมีข้อมูลเข้ามาภายหลัง) จึงไม่เขียนทับ':'That day no longer matches the request (data may have arrived since) — nothing was overwritten',
+  'ตรวจรายการลงเวลาไม่สมบูรณ์ไม่สำเร็จ':'Could not check incomplete attendance',
+  'กรุณายกเลิกคำขอนี้แทน':'Please cancel this request instead',
 
   // ── ตัวเลือกในรายการ ──
   '— เลือกประเภท —':'— Select type —','— เลือกรูปแบบ —':'— Select mode —',
