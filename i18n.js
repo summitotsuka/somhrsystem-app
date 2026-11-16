@@ -31,6 +31,7 @@ var I18N = (function () {
 
   var MONTH = (typeof I18N_MONTH !== 'undefined') ? I18N_MONTH : {};
   var EN    = (typeof I18N_EN    !== 'undefined') ? I18N_EN    : {};
+  var PAT   = (typeof I18N_PAT   !== 'undefined') ? I18N_PAT   : [];
 
   /** แปลข้อความเดียว — ตรงทั้งข้อความเท่านั้น ไม่ตรงก็ลองแปลงวันที่ */
   function one(s) {
@@ -40,6 +41,19 @@ var I18N = (function () {
     if (!k) return s;
     var hit = EN[k];
     if (hit !== undefined) return t.replace(k, hit);
+    // ⚠️ ไม่ตรงเป๊ะ → ลองรูปแบบที่มีค่าปนอยู่ (เช่น "เลือกแล้ว 3 คน")
+    //    🚫 ลองหลังการเทียบตรงเสมอ ของที่ตรงเป๊ะจะไม่มาถึงตรงนี้
+    for (var i = 0; i < PAT.length; i++) {
+      if (!PAT[i][0].test(k)) continue;
+      // ⚠️ ส่วนที่จับได้ลองแปลต่ออีกชั้น เผื่อเป็นคำที่มีในพจนานุกรม
+      //    เช่น "เกิดข้อผิดพลาด: ไม่พบคำขอ" → ส่วนหลังโคลอนแปลได้ด้วย
+      //    🚫 ไม่เรียกตัวเองซ้ำ (ชั้นเดียวพอ) กันวนไม่รู้จบ
+      var แทน = PAT[i][1].replace(/\$(\d)/g, function (m, n) {
+        var cap = k.replace(PAT[i][0], '$' + n);
+        return EN[cap.trim()] !== undefined ? EN[cap.trim()] : cap;
+      });
+      return t.replace(k, แทน);
+    }
     return แปลงวันที่(t);
   }
 
