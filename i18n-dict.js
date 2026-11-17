@@ -278,6 +278,24 @@ var I18N_EN = {
   'ตรวจรายการลงเวลาไม่สมบูรณ์ไม่สำเร็จ':'Could not check incomplete attendance',
   'กรุณายกเลิกคำขอนี้แทน':'Please cancel this request instead',
 
+
+  // ── เหตุผลของคำขอบันทึกเวลา (คำไทยมาจากตาราง att_note ไฟล์ SQL 87) ──
+  //    ⚠️ ถ้า HR เพิ่มเหตุผลใหม่ในตาราง ต้องมาเติมคำอังกฤษที่นี่ด้วย
+  //       ไม่งั้นผู้ใช้ภาษาอังกฤษจะเห็นคำไทย (ไม่พัง แต่ไม่ครบ)
+  'ลืมสแกน':'Forgot to scan',
+  'สแกนไม่สำเร็จ':'Scan failed',
+  'ไม่มีลายนิ้วมือ/ข้อมูลใบหน้า':'No fingerprint / face data',
+  'เครื่องสแกนเสีย':'Scanner out of order',
+  'ทำงานนอกสถานที่':'Working offsite',
+  'เข้าอบรม/สัมมนา':'Training / seminar',
+  'อื่น ๆ':'Other',
+  'ไปทำงานที่ไหน':'Where did you work?',
+  'อบรมเรื่องอะไร ที่ไหน':'What training, and where?',
+  'ระบุเหตุผล':'Give a reason',
+  'เหตุผลที่เลือกต้องระบุรายละเอียดเพิ่มด้วย':'This reason requires additional details',
+  'เหตุผลที่เลือกไม่ถูกต้อง':'Invalid reason selected',
+  'กรุณาเลือกเหตุผลในการคีย์เวลาย้อนหลัง':'Please select a reason for the manual entry',
+
   // ── ตัวเลือกในรายการ ──
   '— เลือกประเภท —':'— Select type —','— เลือกรูปแบบ —':'— Select mode —',
   '— เลือกเวลา —':'— Select time —','— เลือกประเภทการลาก่อน —':'— Select a leave type first —',
