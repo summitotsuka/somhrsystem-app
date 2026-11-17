@@ -360,11 +360,13 @@ textarea.inp{resize:vertical;min-height:60px}
   <div class="card">
     <!-- ⚠️ ปุ่มสลับภาษา — อยู่หน้าเข้าสู่ระบบเท่านั้น เลือกก่อนเข้าระบบ
          ค่าที่เลือกเก็บในเครื่องผู้ใช้ จำไว้ครั้งหน้าไม่ต้องเลือกซ้ำ
-         🚫 ห้ามแปลสองคำนี้ จึงไม่ใส่ไว้ในพจนานุกรม -->
-    <div class="sec" style="display:flex; justify-content:space-between; align-items:center;">
+         🚫 ห้ามแปลสองคำนี้ จึงไม่ใส่ไว้ในพจนานุกรม
+         ⚠️ ตำแหน่งนี้ ED ย้ายมาเองเมื่อ 17 พ.ย. 2569 — ขึ้นมาอยู่แถวหัวการ์ด
+            คู่กับคำว่า "เข้าสู่ระบบ" เห็นง่ายกว่าเดิมที่ซ่อนอยู่ใต้ปุ่ม
+         🚫 ห้ามถอด id ออก — ด่าน ก7/ก8 ยึด id ไม่ได้ยึดตำแหน่ง -->
+    <div class="sec" style="display:flex;justify-content:space-between;align-items:center">
       <span>เข้าสู่ระบบ</span>
-      
-      <div id="lang-switch" style="font-size:12px; color:var(--tx3)">
+      <div id="lang-switch" style="font-size:12px;color:var(--tx3)">
         <span id="lang-th" style="cursor:pointer;padding:2px 8px">ไทย</span>
         <span style="opacity:.4">|</span>
         <span id="lang-en" style="cursor:pointer;padding:2px 8px">English</span>
@@ -384,7 +386,6 @@ textarea.inp{resize:vertical;min-height:60px}
     <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--tx3)">
       <span style="color:var(--ac);cursor:pointer;text-decoration:underline">ลืมรหัสผ่าน?</span>
     </div>
-
   </div>
 
   <div style="text-align:center;font-size:12px;color:var(--tx3);margin:2px 0 14px">— หรือ —</div>
@@ -2830,7 +2831,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.52.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.53.1';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3376,6 +3377,14 @@ function saveSession(loginResult) {
       expire:  Date.now() + SESSION_TTL_MS,
     };
     localStorage.setItem('ws6_session', JSON.stringify(sess));
+  } catch(e) {}
+
+  // ⚠️⚠️ รายการเหตุผลของคำขอบันทึกเวลา — มาจากตาราง att_note (ไฟล์ SQL 87)
+  //    ไม่เก็บลง localStorage โดยเจตนา: ต้องได้ของสดจากฐานข้อมูลทุกครั้งที่ล็อกอิน
+  //    ถ้าเก็บไว้ แล้ว HR แก้รายการ คนที่ยังไม่ล็อกอินใหม่จะเห็นของเก่าค้าง
+  //  🚫 ไม่ห่วงว่า noteList จะไม่มี — ยังไม่รันไฟล์ 87 ก็ใช้ตัวสำรองในโค้ดต่อ
+  try {
+    if (typeof attNoteรับรายการ === 'function') attNoteรับรายการ(loginResult.noteList);
   } catch(e) {}
 }
 
@@ -4336,6 +4345,16 @@ var TH_DOW_S = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
  * ⚠️ รายชื่อรหัสต้องตรงกับ ATT_NOTE_CODES ใน Code.gs
  *    (ฝั่งนั้นเป็นด่านจริง ฝั่งนี้แค่ทำให้ผู้ใช้เลือกได้สะดวก)
  */
+/**
+ * ⚠️⚠️ ตั้งแต่ไฟล์ SQL 87 เป็นต้นไป สองตารางนี้เป็นเพียง "ตัวสำรอง"
+ *    ของจริงมาจากตาราง att_note ในฐานข้อมูล ส่งมากับคำตอบตอนล็อกอิน (noteList)
+ *    แล้ว attNoteรับรายการ() เขียนทับให้
+ *
+ *    ใช้ตัวสำรองเมื่อ: ยังไม่ได้รันไฟล์ 87 · ฐานข้อมูลตอบไม่ทัน · เปิดหน้าโดยยังไม่ล็อกอิน
+ *
+ *  🚫 อยากเพิ่ม/แก้/ปิดเหตุผล ให้ไปแก้ที่ "ตาราง att_note" ที่เดียว
+ *     ห้ามแก้ที่นี่ เพราะแก้แล้วจะถูกเขียนทับทันทีที่ล็อกอินครั้งถัดไป
+ */
 var ATT_NOTE = {
   FORGOT:      'ลืมสแกน',
   SCAN_FAIL:   'สแกนไม่สำเร็จ',
@@ -4352,6 +4371,36 @@ var ATT_NOTE_DETAIL = {
   TRAINING: 'อบรมเรื่องอะไร ที่ไหน',
   OTHER:    'ระบุเหตุผล',
 };
+
+/**
+ * รับรายการเหตุผลจากฐานข้อมูล (มากับคำตอบตอนล็อกอิน) มาเขียนทับตัวสำรอง
+ *
+ * ⚠️⚠️ เขียนทับทั้งก้อน ไม่ใช่ผสมกับของเดิม
+ *    เพราะถ้า HR "ปิด" เหตุผลตัวหนึ่งในตาราง แล้วเรายังผสมของเดิมไว้
+ *    ตัวที่ถูกปิดจะยังโผล่ให้เลือก แล้วพอยื่นจริงฐานข้อมูลจะปฏิเสธ — งงหนักกว่าเดิม
+ *
+ * ⚠️ รายการว่างหรือรูปแบบไม่ถูก = ไม่ทำอะไร ใช้ตัวสำรองต่อ
+ *    (ดีกว่าล้างรายการจนผู้ใช้เลือกอะไรไม่ได้เลย)
+ */
+function attNoteรับรายการ(list) {
+  if (!Array.isArray(list) || !list.length) return false;
+  var ชื่อ = {}, รายละเอียด = {}, n = 0;
+  for (var i = 0; i < list.length; i++) {
+    var r = list[i] || {};
+    var code = String(r.code || '').trim().toUpperCase();
+    var label = String(r.label || '').trim();
+    if (!code || !label) continue;
+    ชื่อ[code] = label;
+    if (r.needsText) รายละเอียด[code] = String(r.detail || '').trim() || 'ระบุรายละเอียด';
+    n++;
+  }
+  if (!n) return false;
+  ATT_NOTE = ชื่อ;
+  ATT_NOTE_DETAIL = รายละเอียด;
+  // ⚠️ ถ้าหน้าขอบันทึกเวลาเปิดอยู่ ต้องสร้างตัวเลือกใหม่ ไม่งั้นยังเห็นรายการเก่า
+  try { if (typeof fixBuildNoteOptions === 'function') fixBuildNoteOptions(); } catch (e) {}
+  return true;
+}
 
 /** รหัส + รายละเอียด → ข้อความเดียวสำหรับแสดงผล (ว่าง = ไม่ใช่แถวคีย์มือ) */
 function attNoteLabel(code, text) {
@@ -9528,8 +9577,8 @@ applyLogo();
 -->
 <!-- ⚠️ ชั้นแปลภาษาอังกฤษ (สำหรับผู้บริหารชาวต่างชาติ) — พจนานุกรมต้องมาก่อนตัวทำงาน
      🚫 ไม่แตะข้อความไทยเดิมสักคำ · ผู้ใช้ภาษาไทยไม่มีภาระเพิ่ม -->
-<script src="i18n-dict.js?v=8.52.0"></script>
-<script src="i18n.js?v=8.52.0"></script>
+<script src="i18n-dict.js?v=8.53.1"></script>
+<script src="i18n.js?v=8.53.1"></script>
 <script src="leave.js?v=8.29.0"></script>
 <script src="ot.js?v=8.15.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
