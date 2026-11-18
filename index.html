@@ -1005,10 +1005,22 @@ textarea.inp{resize:vertical;min-height:60px}
         </select></div>
       <div class="field"><label>Payroll_ID (รหัสเงินเดือน)</label>
         <input class="inp" id="hremp-f-payrollid" placeholder="รหัสในโปรแกรมเงินเดือน"></div>
-      <div class="field"><label>ผู้อนุมัติขั้น 1 (รหัสหัวหน้าแผนก)</label>
-        <input class="inp" id="hremp-f-approverl1" placeholder="เช่น 501001 (เว้นว่าง = ข้ามขั้น)" style="text-transform:uppercase"></div>
-      <div class="field"><label>ผู้อนุมัติขั้น 2 (รหัสผู้จัดการฝ่าย)</label>
-        <input class="inp" id="hremp-f-approverl2" placeholder="เช่น 501002 (เว้นว่าง = ข้ามขั้น)" style="text-transform:uppercase"></div>
+      <!-- ⚠️⚠️ เลือกจากรายชื่อ ไม่ใช่พิมพ์รหัสเอง (เปลี่ยน 18 พ.ย. 2569)
+           ของเดิมเป็นช่องพิมพ์ พิมพ์ผิดแล้วใบคำขอค้างตลอดกาล
+           เพราะ lv_first_step() ไม่ได้ตรวจว่ารหัสผู้อนุมัติมีตัวตนจริง
+           หัวหน้าไม่เห็นเพราะรหัสไม่ตรงกับใคร
+           ฝ่ายบุคคลไม่เห็นเพราะสถานะไม่ใช่ PENDING_HR
+           🚫 ห้ามเปลี่ยนกลับเป็น input -->
+      <div class="field"><label>ผู้อนุมัติขั้น 1 (หัวหน้าแผนก)</label>
+        <select class="inp" id="hremp-f-approverl1">
+          <option value="">— ไม่มี (ข้ามขั้นนี้) —</option>
+        </select>
+        <div id="hremp-appr1-note" style="display:none;font-size:11px;margin-top:4px"></div></div>
+      <div class="field"><label>ผู้อนุมัติขั้น 2 (ผู้จัดการฝ่าย)</label>
+        <select class="inp" id="hremp-f-approverl2">
+          <option value="">— ไม่มี (ข้ามขั้นนี้) —</option>
+        </select>
+        <div id="hremp-appr2-note" style="display:none;font-size:11px;margin-top:4px"></div></div>
       <div class="field"><label>Telegram Chat ID</label>
         <input class="inp" id="hremp-f-telegramid" placeholder="สำหรับแจ้งเตือน (เว้นว่างได้)" inputmode="numeric"></div>
       <div class="field"><label>สิทธิ์ (Role)</label>
@@ -1743,6 +1755,13 @@ textarea.inp{resize:vertical;min-height:60px}
   <div class="res-card" style="text-align:left;max-width:340px">
     <div style="font-size:16px;font-weight:600;margin-bottom:4px">พ้นสภาพการเป็นพนักงาน</div>
     <div id="hremp-end-who" style="font-size:12px;color:var(--tx3);margin-bottom:14px">—</div>
+
+    <!-- ⚠️⚠️ กล่องเตือนว่าคนนี้เป็นผู้อนุมัติของใครอยู่ (18 พ.ย. 2569)
+         ปิดบัญชีหัวหน้าแล้วใบลาของลูกน้องค้างทันที ไม่มีอะไรฟ้อง
+         🚫 ห้ามถอดกล่องนี้ออก — ด่าน ฒ ใน attest/approver.js ยึดไว้ -->
+    <div id="hremp-end-appr-warn" style="display:none;font-size:11px;line-height:1.6;
+         background:rgba(232,89,12,.08);border:1px solid rgba(232,89,12,.3);
+         border-radius:8px;padding:8px 10px;margin-bottom:14px"></div>
 
     <div class="field"><label>วันสุดท้ายที่ทำงาน</label>
       <input class="inp" id="hremp-end-date" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10"></div>
@@ -2831,7 +2850,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.54.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.55.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -7720,6 +7739,9 @@ function fillEmployeeForm(emp, mode) {
   document.getElementById('hremp-f-startdate').value  = emp.startDate ? thaiDateDisplay(emp.startDate) : '';
   document.getElementById('hremp-f-shift').value      = emp.shift || 'A';
   document.getElementById('hremp-f-payrollid').value  = emp.payrollId || '';
+  // ⚠️⚠️ ต้องเติมรายชื่อก่อนตั้งค่า ไม่งั้น select จะไม่มี option ให้เลือก
+  //    แล้วค่าที่มีอยู่จะกลายเป็นค่าว่างเงียบ ๆ แล้วหายตอนกดบันทึก
+  ใส่รายชื่อผู้อนุมัติ(emp.approverL1 || '', emp.approverL2 || '', emp.empId || '');
   document.getElementById('hremp-f-approverl1').value = emp.approverL1 || '';
   document.getElementById('hremp-f-approverl2').value = emp.approverL2 || '';
   document.getElementById('hremp-f-telegramid').value = emp.telegramId || '';
@@ -7948,6 +7970,47 @@ function hrOpenEndDialog() {
     (document.getElementById('hremp-f-fullname').value || '');
   hrEndSyncClose();
   document.getElementById('hremp-end-overlay').style.display = 'flex';
+
+  // ══════════════════════════════════════════════════════════
+  //  ⚠️⚠️ เตือนถ้าคนนี้เป็นผู้อนุมัติของคนอื่นอยู่
+  //
+  //  ปิดบัญชีหัวหน้าแล้วลูกน้องทั้งแผนกส่งใบลาไม่ได้ทันที
+  //  และไม่มีอะไรฟ้องเลย — ใบไปค้างที่ PENDING_L1 รอคนที่ลาออกไปแล้ว
+  //  หัวหน้าไม่เห็น ฝ่ายบุคคลไม่เห็น พนักงานคิดว่าส่งแล้ว
+  //
+  //  🚫 เตือนอย่างเดียว ไม่ห้าม — การลาออกเป็นเรื่องจริงที่ต้องบันทึกได้
+  //     แต่ต้องรู้ก่อนว่าจะมีใครค้าง เพื่อไปเปลี่ยนผู้อนุมัติให้เขาก่อน
+  // ══════════════════════════════════════════════════════════
+  const กล่อง = document.getElementById('hremp-end-appr-warn');
+  if (กล่อง) {
+    กล่อง.style.display = 'none';
+    กล่อง.innerHTML = '';
+    หาคนที่พึ่งผู้อนุมัติ(
+      document.getElementById('hremp-empid-locked').value,
+      function (คน) {
+        if (คน === null) {
+          // ⚠️ ตรวจไม่ได้ ต้องบอก ห้ามเงียบแล้วให้เข้าใจผิดว่าไม่มีใครพึ่ง
+          กล่อง.style.display = 'block';
+          กล่อง.innerHTML = '<b>⚠️ ตรวจไม่ได้ว่าคนนี้เป็นผู้อนุมัติของใครอยู่</b><br>' +
+            'โหลดรายชื่อพนักงานไม่สำเร็จ — ถ้าคนนี้เป็นหัวหน้า ' +
+            'ควรตรวจก่อนปิดบัญชี ไม่งั้นใบคำขอของลูกน้องจะค้าง';
+          return;
+        }
+        if (!คน.length) return;
+        let h = '<b>⚠️ คนนี้เป็นผู้อนุมัติของพนักงาน ' + คน.length + ' คน</b><br>' +
+                'ปิดบัญชีแล้ว <b>ใบลาและใบโอทีของคนเหล่านี้จะค้าง</b> ' +
+                'ไม่มีใครอนุมัติได้ และฝ่ายบุคคลจะไม่เห็นในคิวด้วย<br>' +
+                'ควรเปลี่ยนผู้อนุมัติให้พวกเขาก่อน:<ul style="margin:4px 0 0 16px;padding:0">';
+        คน.slice(0, 12).forEach(function (x) {
+          h += '<li>' + esc(x.empId) + ' · ' + esc(x.name || '') +
+               ' <span style="opacity:.7">(' + esc(x.ขั้น) + ')</span></li>';
+        });
+        if (คน.length > 12) h += '<li>… อีก ' + (คน.length - 12) + ' คน</li>';
+        h += '</ul>';
+        กล่อง.style.display = 'block';
+        กล่อง.innerHTML = h;
+      });
+  }
 }
 
 function hrCloseEndDialog() {
@@ -8388,6 +8451,147 @@ var _empListCache = null, _empListAt = 0, _empListPending = null;
 var EMP_LIST_TTL_MS = 5 * 60 * 1000;
 
 function clearEmpListCache() { _empListCache = null; _empListAt = 0; }
+
+// ══════════════════════════════════════════════════════════════
+//  ช่องผู้อนุมัติแบบเลือกจากรายชื่อ (18 พ.ย. 2569)
+//
+//  ⚠️⚠️ กับดักใหญ่ของการเปลี่ยน input เป็น select
+//     select เก็บได้แต่ค่าที่มี option อยู่
+//     ถ้าคนที่เป็นผู้อนุมัติอยู่เดิมไม่อยู่ในรายชื่อ (เช่นถูกปิดบัญชีไปแล้ว)
+//     ค่าจะกลายเป็นว่างทันทีที่เปิดฟอร์ม แล้ว "หายจริง" ตอนฝ่ายบุคคล
+//     กดบันทึกเรื่องอื่น — ลูกน้องทั้งแผนกส่งใบลาไม่ได้โดยไม่มีใครรู้
+//
+//  🚫 ฉะนั้นค่าที่มีอยู่เดิมต้องถูกใส่เป็น option เสมอ แม้ไม่อยู่ในรายชื่อ
+//     และต้องติดป้ายบอกให้เห็นว่าคนนั้นมีปัญหา
+// ══════════════════════════════════════════════════════════════
+var _รายชื่ออนุมัติ = null;
+
+/**
+ * ⚠️ เติมว่าใครลงทะเบียนแล้วลงในรายชื่อที่มีอยู่ (ฝ่ายบุคคลเท่านั้น)
+ *
+ * 🚫🚫 แยกจาก hrGetEmployeeList เพราะปลายทางนั้น EXEC เรียกได้
+ *    ปลายทางนี้ใช้ requireHR_ จึงอ่านคอลัมน์รหัสผ่านมาแปลงเป็น true/false ได้
+ * 🚫 ล้มก็ไม่เป็นไร — รายชื่อยังเลือกได้ แค่ไม่มีป้ายเตือน
+ */
+var _ป้ายลงทะเบียน = null;
+function เติมป้ายลงทะเบียน(onDone) {
+  function ใส่() {
+    if (!_ป้ายลงทะเบียน || !_รายชื่ออนุมัติ) return;
+    const m = {};
+    _ป้ายลงทะเบียน.forEach(function (f) {
+      m[String(f.empId || '').trim().toUpperCase()] = f['ลงทะเบียนแล้ว'];
+    });
+    _รายชื่ออนุมัติ.forEach(function (e) {
+      const v = m[String(e.empId || '').trim().toUpperCase()];
+      if (typeof v === 'boolean') e['ลงทะเบียนแล้ว'] = v;
+    });
+  }
+  if (_ป้ายลงทะเบียน) { ใส่(); if (onDone) onDone(); return; }
+  try {
+    gasRun('hrGetApproverFlags', { hrToken: S.hrToken })
+      .withSuccessHandler(function (r) {
+        if (r && r.success) { _ป้ายลงทะเบียน = r.flags || []; ใส่(); }
+        if (onDone) onDone();
+      })
+      .withFailureHandler(function () { if (onDone) onDone(); });
+  } catch (e) { if (onDone) onDone(); }
+}
+
+function ใส่รายชื่อผู้อนุมัติ(ค่า1, ค่า2, รหัสตัวเอง) {
+  const ช่อง = [
+    { sel: document.getElementById('hremp-f-approverl1'),
+      note: document.getElementById('hremp-appr1-note'), ค่า: ค่า1 },
+    { sel: document.getElementById('hremp-f-approverl2'),
+      note: document.getElementById('hremp-appr2-note'), ค่า: ค่า2 },
+  ];
+
+  function วาด(รายชื่อ) {
+    ช่อง.forEach(function (c) {
+      if (!c.sel) return;
+      const เดิม = String(c.ค่า || '').trim().toUpperCase();
+      let h = '<option value="">— ไม่มี (ข้ามขั้นนี้) —</option>';
+      let เจอเดิม = false;
+      (รายชื่อ || []).forEach(function (e) {
+        const id = String(e.empId || '').trim().toUpperCase();
+        if (!id) return;
+        // ⚠️ ตัวเองเป็นผู้อนุมัติตัวเองไม่ได้ — ระบบจะข้ามขั้นนั้นให้
+        //    แปลว่าไม่มีหัวหน้าตรวจจริง จึงไม่ให้เลือกตั้งแต่ต้น
+        if (id === String(รหัสตัวเอง || '').trim().toUpperCase()) return;
+        if (id === เดิม) เจอเดิม = true;
+        const ป้าย = e.ลงทะเบียนแล้ว === false ? '  ⚠️ ยังไม่ลงทะเบียน' : '';
+        h += '<option value="' + esc(id) + '">' + esc(id) + ' · ' +
+             esc(e.name || '') + ป้าย + '</option>';
+      });
+      // 🚫 ค่าที่มีอยู่เดิมแต่ไม่อยู่ในรายชื่อ ต้องใส่ไว้ ห้ามให้หาย
+      if (เดิม && !เจอเดิม) {
+        h += '<option value="' + esc(เดิม) + '">' + esc(เดิม) +
+             '  ⛔ ไม่อยู่ในรายชื่อ (ปิดบัญชีแล้ว?)</option>';
+      }
+      c.sel.innerHTML = h;
+      c.sel.value = เดิม;
+
+      if (เดิม && !เจอเดิม) {
+        c.note.style.display = 'block';
+        c.note.style.color = '#b45309';
+        c.note.textContent = '⛔ ผู้อนุมัติคนนี้ไม่อยู่ในรายชื่อที่ใช้งานอยู่ — ' +
+                             'ใบคำขอของพนักงานคนนี้จะค้าง ควรเปลี่ยนเป็นคนอื่น';
+      } else {
+        const ตัว = (รายชื่อ || []).filter(function (e) {
+          return String(e.empId || '').trim().toUpperCase() === เดิม; })[0];
+        if (ตัว && ตัว.ลงทะเบียนแล้ว === false) {
+          c.note.style.display = 'block';
+          c.note.style.color = '#b45309';
+          c.note.textContent = '⚠️ ผู้อนุมัติคนนี้ยังไม่ได้ลงทะเบียนเข้าใช้งาน — ' +
+                               'ใบคำขอจะรออยู่จนกว่าเขาจะลงทะเบียน';
+        } else {
+          c.note.style.display = 'none';
+          c.note.textContent = '';
+        }
+      }
+    });
+  }
+
+  if (_รายชื่ออนุมัติ) { วาด(_รายชื่ออนุมัติ); return; }
+  // ⚠️ วาดด้วยรายชื่อว่างก่อน เพื่อให้ค่าเดิมไม่หายระหว่างรอ server ตอบ
+  วาด([]);
+  fetchEmployeeList(function (r) {
+    if (r && r.success) {
+      _รายชื่ออนุมัติ = r.employees || [];
+      วาด(_รายชื่ออนุมัติ);
+      // ⚠️⚠️ ป้าย "ยังไม่ลงทะเบียน" มาจากปลายทางของฝ่ายบุคคลแยกอีกตัว
+      //    เพราะ hrGetEmployeeList ผู้บริหาร (EXEC) เรียกได้
+      //    จึงห้ามให้มันไปแตะคอลัมน์รหัสผ่าน (ด่าน ง2 ใน attest/role.js)
+      // 🚫 ถ้าดึงป้ายไม่สำเร็จ ก็แค่ไม่มีป้าย — รายชื่อต้องใช้งานได้ต่อ
+      เติมป้ายลงทะเบียน(function () { วาด(_รายชื่ออนุมัติ); });
+    }
+  }, function () { /* โหลดไม่ได้ก็ยังเห็นค่าเดิม ไม่หาย */ });
+}
+
+/**
+ * ใครมีคนนี้เป็นผู้อนุมัติอยู่บ้าง — ใช้ตอนจะปิดบัญชี
+ *
+ * ⚠️⚠️ ตอนนี้ระบบไม่มีการเตือนเลยเวลาปิดบัญชีคนที่เป็นผู้อนุมัติของคนอื่น
+ *    หัวหน้าลาออก → ลูกน้องทั้งแผนกส่งใบลาแล้วค้างทันที โดยไม่มีอะไรฟ้อง
+ *    (ยืนยันแล้วว่าไม่มีด่านไหนกันไว้ 18 พ.ย. 2569)
+ */
+function หาคนที่พึ่งผู้อนุมัติ(รหัส, onDone) {
+  const id = String(รหัส || '').trim().toUpperCase();
+  if (!id) { onDone([]); return; }
+  fetchEmployeeList(function (r) {
+    if (!r || !r.success) { onDone(null); return; }   // null = ตรวจไม่ได้
+    const ผล = [];
+    (r.employees || []).forEach(function (e) {
+      const เป็น = [];
+      if (String(e.approverL1 || '').trim().toUpperCase() === id) เป็น.push('ขั้น 1');
+      if (String(e.approverL2 || '').trim().toUpperCase() === id) เป็น.push('ขั้น 2');
+      // ⚠️ ไม่นับตัวเอง — ตั้งตัวเองเป็นผู้อนุมัติระบบข้ามขั้นให้อยู่แล้ว
+      if (เป็น.length && String(e.empId || '').trim().toUpperCase() !== id) {
+        ผล.push({ empId: e.empId, name: e.name, ขั้น: เป็น.join(' + ') });
+      }
+    });
+    onDone(ผล);
+  }, function () { onDone(null); });
+}
 
 function fetchEmployeeList(onOk, onErr) {
   // ยังไม่หมดอายุ → ใช้ของเดิมทันที ไม่ต้องรอ server
@@ -9577,8 +9781,8 @@ applyLogo();
 -->
 <!-- ⚠️ ชั้นแปลภาษาอังกฤษ (สำหรับผู้บริหารชาวต่างชาติ) — พจนานุกรมต้องมาก่อนตัวทำงาน
      🚫 ไม่แตะข้อความไทยเดิมสักคำ · ผู้ใช้ภาษาไทยไม่มีภาระเพิ่ม -->
-<script src="i18n-dict.js?v=8.54.0"></script>
-<script src="i18n.js?v=8.54.0"></script>
+<script src="i18n-dict.js?v=8.55.0"></script>
+<script src="i18n.js?v=8.55.0"></script>
 <script src="leave.js?v=8.29.0"></script>
 <script src="ot.js?v=8.15.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
