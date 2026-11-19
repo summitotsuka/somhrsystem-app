@@ -985,16 +985,31 @@ textarea.inp{resize:vertical;min-height:60px}
         <input class="inp" id="hremp-f-empid" disabled style="opacity:.6"></div>
       <div class="field"><label>ชื่อ-นามสกุล</label>
         <input class="inp" id="hremp-f-fullname" placeholder="ชื่อ นามสกุล"></div>
+      <!-- ⚠️ คำนำหน้าอยู่คอลัมน์ C แยกจากชื่อ-นามสกุล (B)
+           ของจริงฝ่ายบุคคลบางคนพิมพ์ "นาย มงคล ศรีไทยสุข" ลงช่องชื่อด้วย
+           หน้าจอจึงเคยขึ้น "นาย นาย มงคล ศรีไทยสุข"
+           🚫 ไม่ไปแก้ข้อมูลเดิมของ 87 คน (เสี่ยงสูง ได้ผลน้อย)
+              แก้ที่ "ตอนแสดง" แทน — ดู ชื่อเต็มไม่ซ้ำคำนำหน้า() -->
       <div class="field"><label>คำนำหน้า</label>
         <input class="inp" id="hremp-f-title" placeholder="นาย / นาง / นางสาว"></div>
+      <div class="field"><label>ชื่อเล่น</label>
+        <input class="inp" id="hremp-f-nickname" placeholder="ชื่อที่เรียกกันในที่ทำงาน"></div>
+      <div class="field"><label>ชื่อ-นามสกุล (อังกฤษ)</label>
+        <input class="inp" id="hremp-f-fullnameen" placeholder="Mongkol Srithaisuk"></div>
       <div class="field"><label>แผนก</label>
         <input class="inp" id="hremp-f-department" placeholder="แผนก"></div>
+      <div class="field"><label>ตำแหน่ง</label>
+        <input class="inp" id="hremp-f-position" placeholder="ตำแหน่งงาน"></div>
       <div class="field"><label>เบอร์โทร</label>
         <input class="inp" id="hremp-f-phone" inputmode="tel" placeholder="08x-xxx-xxxx"></div>
       <div class="field"><label>อีเมล</label>
         <input class="inp" id="hremp-f-email" type="email" placeholder="email@example.com"></div>
       <div class="field"><label>วันที่เริ่มงาน</label>
         <input class="inp" id="hremp-f-startdate" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10"></div>
+      <!-- ⚠️ วันเกิดเป็นข้อมูลส่วนบุคคล เปิดเฉพาะหน้านี้ (ฝ่ายบุคคล)
+           🚫 ห้ามเติมลงรายงานที่ส่งต่อ หรือหน้าจอฝั่งพนักงาน -->
+      <div class="field"><label>วันเกิด</label>
+        <input class="inp" id="hremp-f-birthdate" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10"></div>
       <div class="field"><label>กะ</label>
         <select class="inp" id="hremp-f-shift">
           <option value="A">A — เช้า (08:30–18:00)</option>
@@ -2850,7 +2865,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.55.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.56.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -6359,6 +6374,34 @@ function empRepRedraw() {
   if (empRepData) empRepRender(empRepData);
 }
 
+
+/**
+ * ⚠️⚠️ ต่อคำนำหน้ากับชื่อ โดยไม่ให้ซ้ำ
+ *
+ *  ของจริง (18 พ.ย. 2569): คอลัมน์ C = คำนำหน้า "นาย"
+ *  แต่ฝ่ายบุคคลบางคนพิมพ์ "นาย มงคล ศรีไทยสุข" ลงคอลัมน์ B ด้วย
+ *  ของเดิมต่อตรง ๆ จึงขึ้น "นาย นาย มงคล ศรีไทยสุข"
+ *
+ *  🚫 ตั้งใจ "ไม่" ไปล้างข้อมูลเดิมของพนักงาน 87 คน
+ *     การแยกคำนำหน้าออกจากชื่อด้วยโค้ดต้องเดา และเดาผิดแล้วชื่อคนเสีย
+ *     เช่น "นางสาว" กับ "นาง" ขึ้นต้นเหมือนกัน · บางคนไม่มีคำนำหน้าเลย
+ *     แก้ที่ "ตอนแสดง" ปลอดภัยกว่า และย้อนกลับได้ทุกเมื่อ
+ *
+ *  ⚠️ เทียบแบบตัดช่องว่างหัวท้าย เพราะในชีตมีทั้ง "นาย" และ "นาย "
+ */
+function ชื่อเต็มไม่ซ้ำคำนำหน้า(คำนำหน้า, ชื่อ) {
+  const ค = String(คำนำหน้า || '').trim();
+  const ช = String(ชื่อ || '').trim();
+  if (!ค) return ช;
+  if (!ช) return ค;
+  // ชื่อขึ้นต้นด้วยคำนำหน้าอยู่แล้ว → ไม่ต้องเติม
+  // ⚠️ ต้องเช็กว่าตัวถัดไปเป็นช่องว่าง ไม่งั้น "นาง" จะไปตรงกับ "นางสาว ..."
+  //    แล้วคนที่เป็น "นางสาว" จะถูกมองว่าซ้ำทั้งที่คำนำหน้าคนละคำ
+  if (ช === ค) return ช;
+  if (ช.indexOf(ค) === 0 && /^\s/.test(ช.slice(ค.length))) return ช;
+  return ค + ' ' + ช;
+}
+
 function empRepRender(r) {
   const c = r.counts || {};
   document.getElementById('empr-s-total').textContent   = c.total      != null ? c.total      : '—';
@@ -6383,7 +6426,7 @@ function empRepRender(r) {
   rows.forEach(e => {
     body += '<tr>'
       + '<td>' + e.empId + '</td>'
-      + '<td style="white-space:nowrap">' + dash((e.title ? e.title + ' ' : '') + (e.name || '')) + '</td>'
+      + '<td style="white-space:nowrap">' + dash(ชื่อเต็มไม่ซ้ำคำนำหน้า(e.title, e.name)) + '</td>'
       + '<td>' + dash(e.dept) + '</td>'
       + '<td>' + dash(e.position) + '</td>'
       + '<td style="text-align:center">' + dash(e.shift) + '</td>'
@@ -7737,6 +7780,11 @@ function fillEmployeeForm(emp, mode) {
   document.getElementById('hremp-f-email').value      = emp.email || '';
   // วันที่: yyyy-MM-dd → วว/ดด/ปปปป
   document.getElementById('hremp-f-startdate').value  = emp.startDate ? thaiDateDisplay(emp.startDate) : '';
+  // ── เพิ่ม 19 พ.ย. 2569 ──
+  document.getElementById('hremp-f-position').value   = emp.position || '';
+  document.getElementById('hremp-f-nickname').value   = emp.nickname || '';
+  document.getElementById('hremp-f-fullnameen').value = emp.fullNameEn || '';
+  document.getElementById('hremp-f-birthdate').value  = emp.birthDate ? thaiDateDisplay(emp.birthDate) : '';
   document.getElementById('hremp-f-shift').value      = emp.shift || 'A';
   document.getElementById('hremp-f-payrollid').value  = emp.payrollId || '';
   // ⚠️⚠️ ต้องเติมรายชื่อก่อนตั้งค่า ไม่งั้น select จะไม่มี option ให้เลือก
@@ -7815,14 +7863,74 @@ function hrCollectFields() {
     approverL1: document.getElementById('hremp-f-approverl1').value.trim(),
     approverL2: document.getElementById('hremp-f-approverl2').value.trim(),
     telegramId: document.getElementById('hremp-f-telegramid').value.trim(),
+    // ── เพิ่ม 19 พ.ย. 2569 ──
+    // ⚠️⚠️ ต้องมีไฟล์ 91 ฝั่งฐานข้อมูลคู่กัน ไม่งั้นค่าจะ "เงียบหาย"
+    //    (บันทึกสำเร็จ ไม่มี error แต่ค่าไม่เปลี่ยน — อันตรายกว่าฟ้อง)
+    position:   document.getElementById('hremp-f-position').value.trim(),
+    nickname:   document.getElementById('hremp-f-nickname').value.trim(),
+    fullNameEn: document.getElementById('hremp-f-fullnameen').value.trim(),
+    // ⚠️ วันเกิดส่งเป็น ค.ศ. yyyy-MM-dd เหมือนช่องวันที่อื่น ไม่ส่งข้อความดิบ
+    birthDate:  hrThaiToISO(document.getElementById('hremp-f-birthdate').value),
     // ⚠️ ไม่ส่ง endDate/endReason/endNote ตรงนี้โดยเจตนา
     //    ข้อมูลพ้นสภาพแก้ได้ทางเดียวคือหน้าต่างที่เปิดจากปุ่ม "ปิดบัญชี (ลาออก)"
     //    ถ้าส่งมาด้วย ปุ่ม "บันทึกข้อมูล" จะทับข้อมูลลาออกทุกครั้งที่กด
   };
 }
 
+/**
+ * ⚠️⚠️ ด่านตรวจก่อนบันทึก — แยกสองระดับโดยเจตนา
+ *
+ *  บล็อก (ไม่ให้บันทึก) = ว่างแล้ว "ระบบทำงานผิด" ไม่ใช่แค่ข้อมูลไม่ครบ
+ *    · ชื่อ-นามสกุล    — ว่างแล้วทุกรายงานและทุกหน้าจอขึ้นเป็นช่องว่าง
+ *    · วันที่เริ่มงาน   — ว่างแล้ว syncVacationCycle_ คำนวณรอบพักร้อนไม่ได้
+ *                        → การ์ดประวัติลาพักร้อนของคนนั้นว่างเปล่า (ตรวจแล้ว)
+ *
+ *  เตือน (บันทึกได้) = ข้อมูลไม่ครบ แต่ระบบยังทำงานถูก
+ *    🚫🚫 เหตุที่ "ไม่" บล็อกช่องพวกนี้
+ *       พนักงานเดิม 87 คนอาจมีบางช่องว่างอยู่ก่อนแล้ว
+ *       ถ้าบล็อก ฝ่ายบุคคลจะแก้แค่เบอร์โทรของคนเก่าก็ไม่ได้
+ *       จนกว่าจะไปตามหาข้อมูลเก่ามากรอกให้ครบ — งานค้างทั้งกอง
+ *
+ *  ⚠️ วันที่ต้องแปลงเป็น ค.ศ. ได้ด้วย ไม่ใช่แค่ "ไม่ว่าง"
+ *     พิมพ์ 32/13/2569 ก็ไม่ว่าง แต่แปลงไม่ได้ → ส่งไปแล้วค่าจะเพี้ยน
+ */
+/**
+ * ⚠️ เตือน "หลัง" บันทึกสำเร็จ ไม่ขัดการบันทึก
+ *    ของที่ยังขาดควรรู้ แต่ไม่ควรกันฝ่ายบุคคลไม่ให้แก้ของอื่น
+ * ⚠️ หน่วงไว้ให้ข้อความ "บันทึกสำเร็จ" ขึ้นก่อน ไม่งั้นทับกันแล้วอ่านไม่ทัน
+ */
+function เตือนของที่ยังขาด(ตรวจ) {
+  if (!ตรวจ || !ตรวจ.เตือน || !ตรวจ.เตือน.length) return;
+  setTimeout(function () {
+    showToast('บันทึกแล้ว · ยังไม่ได้กรอก: ' + ตรวจ.เตือน.join(' · '));
+  }, 2200);
+}
+
+function ตรวจฟอร์มพนักงาน(f) {
+  const บล็อก = [], เตือน = [];
+  if (!String(f.fullName || '').trim()) บล็อก.push('ชื่อ-นามสกุล');
+  const วันเริ่ม = document.getElementById('hremp-f-startdate').value.trim();
+  if (!วันเริ่ม) บล็อก.push('วันที่เริ่มงาน');
+  else if (!hrThaiToISO(วันเริ่ม)) บล็อก.push('วันที่เริ่มงาน (รูปแบบไม่ถูก ต้องเป็น วว/ดด/ปปปป)');
+
+  const วันเกิด = document.getElementById('hremp-f-birthdate').value.trim();
+  if (วันเกิด && !hrThaiToISO(วันเกิด)) บล็อก.push('วันเกิด (รูปแบบไม่ถูก ต้องเป็น วว/ดด/ปปปป)');
+
+  if (!String(f.department || '').trim()) เตือน.push('แผนก');
+  if (!String(f.position   || '').trim()) เตือน.push('ตำแหน่ง');
+  if (!String(f.payrollId  || '').trim()) เตือน.push('Payroll_ID');
+  if (!วันเกิด)                            เตือน.push('วันเกิด');
+  return { บล็อก: บล็อก, เตือน: เตือน };
+}
+
 function hrSaveEmployee() {
   const fields = hrCollectFields();
+  // ⚠️ ตรวจก่อนปิดปุ่ม ไม่งั้นปุ่มค้างเป็น "บันทึก..." แล้วกดอีกไม่ได้
+  const ตรวจ = ตรวจฟอร์มพนักงาน(fields);
+  if (ตรวจ.บล็อก.length) {
+    showToast('ยังกรอกไม่ครบ: ' + ตรวจ.บล็อก.join(' · '));
+    return;
+  }
   const btn = document.getElementById('hremp-save');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> บันทึก...';
 
@@ -7833,7 +7941,7 @@ function hrSaveEmployee() {
       .withSuccessHandler(r => {
         btn.disabled = false; btn.textContent = 'บันทึกข้อมูล';
         showToast(r.message, r.success);
-        if (r.success) { clearEmpListCache(); document.getElementById('hremp-result').style.display = 'none'; document.getElementById('hremp-search').value = ''; }
+        if (r.success) { clearEmpListCache(); document.getElementById('hremp-result').style.display = 'none'; document.getElementById('hremp-search').value = ''; เตือนของที่ยังขาด(ตรวจ); }
         if (r.authError) authBounce(r);
       })
       .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'บันทึกข้อมูล'; showToast(e.message); });
@@ -7843,7 +7951,10 @@ function hrSaveEmployee() {
       .withSuccessHandler(r => {
         btn.disabled = false; btn.textContent = 'บันทึกข้อมูล';
         showToast(r.message, r.success);
-        if (r.success) clearEmpListCache();
+        if (r.success) {
+          clearEmpListCache();
+          เตือนของที่ยังขาด(ตรวจ);
+        }
         if (r.authError) authBounce(r);
       })
       .withFailureHandler(e => { btn.disabled = false; btn.textContent = 'บันทึกข้อมูล'; showToast(e.message); });
@@ -7921,12 +8032,25 @@ function hrTodayThai() {
   return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
 }
 
-// ── แปลง วว/ดด/ปปปป → yyyy-MM-dd (คืนค่าว่างถ้ายังกรอกไม่ครบ) ──
+// ── แปลง วว/ดด/ปปปป → yyyy-MM-dd (คืนค่าว่างถ้ากรอกไม่ครบหรือไม่มีวันนั้นจริง) ──
+//
+// ⚠️⚠️ แก้ 19 พ.ย. 2569 — ของเดิมตรวจแต่ "รูปร่าง" ไม่ได้ตรวจว่าวันนั้นมีจริง
+//    พิมพ์ 32/13/2569 ของเดิมคืน '2026-13-32' ซึ่งเป็นวันที่ที่ไม่มีอยู่จริง
+//    ผลที่ตามมา
+//      · หน้าคีย์ประวัติ: ส่งค่าเพี้ยนขึ้นฐานข้อมูล
+//      · หน้าปิดบัญชี: new Date('2026-13-32') เป็น Invalid Date
+//        แล้วการเทียบ "ออกไปแล้วหรือยัง" ให้ผลมั่ว → ติ๊กปิดบัญชีผิด
+//    🚫 ตรวจแค่ไม่ว่างไม่พอ ต้องให้วันที่กลับมาเท่าที่กรอกจริง
 function hrThaiToISO(v) {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v || '').trim());
   if (!m) return '';
   let y = Number(m[3]);
   if (y > 2400) y -= 543;   // เผลอกรอกเป็น พ.ศ.
+  const mo = Number(m[2]), dd = Number(m[1]);
+  // ⚠️ ให้ Date ตรวจให้ แล้วเทียบย้อนกลับ — จับ 31 ก.พ. กับปีอธิกสุรทินได้ด้วย
+  //    (เทียบเฉพาะช่วงเลขไม่พอ: 31/02 อยู่ในช่วงทุกตัวแต่ไม่มีวันนั้น)
+  const d = new Date(y, mo - 1, dd);
+  if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== dd) return '';
   return y + '-' + m[2] + '-' + m[1];
 }
 
@@ -9546,6 +9670,13 @@ applyLogo();
   on('hremp-search', 'keydown', function(e) { if (e.key === 'Enter') hrSearchEmployee(); });
   on('hremp-f-empid', 'input', function() { this.value = this.value.toUpperCase(); });
   on('hremp-f-startdate', 'input', function() { maskDate(this); });
+  // ── เพิ่ม 19 พ.ย. 2569 — ปฏิทินที่ช่องวันเริ่มงานและวันเกิด ──
+  // ⚠️ ใช้ attachDayPicker ตัวเดิมที่ช่องวันลาออกใช้อยู่ ไม่เขียนกลไกที่สอง
+  //    (สองกลไกแปลงวันที่ = แก้ที่เดียวอีกที่ไม่ตาม ซึ่งเคยเกิดแล้ว)
+  attachDayPicker('hremp-f-startdate');
+  on('hremp-f-birthdate', 'input', function() { maskDate(this); });
+  on('hremp-f-birthdate', 'keydown', function(e) { allowDateKeys(e); });
+  attachDayPicker('hremp-f-birthdate');
   // ── หน้าต่างพ้นสภาพ ──
   on('hremp-end-date', 'input', function () { maskDate(this); hrEndSyncClose(); });
   on('hremp-end-date', 'keydown', allowDateKeys);
@@ -9781,8 +9912,8 @@ applyLogo();
 -->
 <!-- ⚠️ ชั้นแปลภาษาอังกฤษ (สำหรับผู้บริหารชาวต่างชาติ) — พจนานุกรมต้องมาก่อนตัวทำงาน
      🚫 ไม่แตะข้อความไทยเดิมสักคำ · ผู้ใช้ภาษาไทยไม่มีภาระเพิ่ม -->
-<script src="i18n-dict.js?v=8.55.0"></script>
-<script src="i18n.js?v=8.55.0"></script>
+<script src="i18n-dict.js?v=8.56.0"></script>
+<script src="i18n.js?v=8.56.0"></script>
 <script src="leave.js?v=8.29.0"></script>
 <script src="ot.js?v=8.15.0"></script>
 <script src="payroll.js?v=8.17.1"></script>
