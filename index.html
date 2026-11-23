@@ -871,6 +871,10 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(16,185,129,.15);color:#059669">☷</div></div>
         <div class="home-lb">จัดการพนักงาน</div>
       </button>
+      <button class="home-item" id="hr-menu-shift" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(99,102,241,.15);color:#4f46e5">◱</div></div>
+        <div class="home-lb">กำหนดกะการทำงาน</div>
+      </button>
       <button class="home-item" id="hr-menu-incomplete" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(239,68,68,.15);color:#dc2626">⚠</div></div>
         <div class="home-lb">ลงเวลาไม่สมบูรณ์</div>
@@ -1554,6 +1558,59 @@ textarea.inp{resize:vertical;min-height:60px}
   </div>
   <div id="hrhol-loading" style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
   <div id="hrhol-list"></div>
+</div>
+
+<!-- ═══════════════ HR — กำหนดกะการทำงาน ═══════════════ -->
+<!--
+  ⚠️⚠️ หน้านี้เขียนลงตาราง shift_schedule ซึ่งเป็น "ตัวตัดสิน" ว่าวันไหนอยู่กะอะไร
+     ฉะนั้นกระทบทั้งประวัติ · รายงาน · หน้าต่างเช็คอิน · ตารางชั่วโมงลา/โอที
+  🚫 ห้ามให้หน้าเว็บคำนวณเองว่า "วันนี้อยู่กะอะไร" — ต้องถามจาก todayShift ที่เซิร์ฟเวอร์ส่งมา
+     (กติกาการตัดสินอยู่ใน shift_on ที่เดียว ทำสำเนาที่สองแล้วจะตอบไม่ตรงกัน)
+-->
+<div class="page" id="page-hr-shift">
+  <button id="hrsh-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
+
+  <div style="margin-bottom:14px">
+    <div style="font-size:20px;font-weight:700">กำหนดกะการทำงาน</div>
+    <div style="font-size:13px;color:var(--tx3);margin-top:2px">ระบุว่าใครอยู่กะอะไร ตั้งแต่วันไหนถึงวันไหน · ประวัติและรายงานจะคิดจากตารางนี้ก่อนทะเบียน</div>
+  </div>
+
+  <div class="card" style="padding:14px">
+    <div style="font-size:14px;color:var(--tx2);margin-bottom:10px;font-weight:700">กำหนดกะใหม่</div>
+
+    <div class="field"><label>พนักงาน</label>
+      <select class="inp" id="hrsh-emp"><option value="">— เลือกพนักงาน —</option></select></div>
+
+    <!-- ⚠️ เตือนเรื่อง "ยังไม่มีกะหลัก" — กับดักที่พบจากการทดลอง 23 พ.ย. 2569 -->
+    <div id="hrsh-base-warn" style="display:none;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);border-radius:9px;padding:10px 12px;margin:0 0 12px;font-size:12.5px;line-height:1.55;color:var(--tx2)"></div>
+
+    <div class="field"><label>กะ</label>
+      <select class="inp" id="hrsh-shift">
+        <option value="A">A — เช้า (08:30–18:00)</option>
+        <option value="B">B — กลางคืน (20:30–06:00)</option>
+        <option value="CLEANING">CLEANING — แม่บ้าน</option>
+        <option value="FLEX">FLEX — ยืดหยุ่น</option>
+        <option value="DRIVER">DRIVER — คนขับรถผู้บริหาร</option>
+      </select></div>
+
+    <div class="field"><label>วันที่เริ่ม</label>
+      <input class="inp" id="hrsh-from" placeholder="วว/ดด/ปปปป" inputmode="numeric" maxlength="10"></div>
+
+    <div class="field"><label>วันที่สิ้นสุด <span style="color:var(--tx3);font-weight:400">(เว้นว่าง = ไม่มีกำหนดสิ้นสุด)</span></label>
+      <input class="inp" id="hrsh-to" placeholder="เว้นว่างได้" inputmode="numeric" maxlength="10"></div>
+
+    <div class="field"><label>หมายเหตุ (ไม่บังคับ)</label>
+      <input class="inp" id="hrsh-note" placeholder="เช่น สลับกะชั่วคราวแทนคนลา" maxlength="120"></div>
+
+    <button class="btn p" id="hrsh-save" style="margin-top:6px">บันทึกกะ</button>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;gap:10px">
+    <div style="font-size:14px;color:var(--tx2);font-weight:700">รายการที่กำหนดไว้ (<span id="hrsh-count">0</span>)</div>
+    <select id="hrsh-filter" style="padding:7px 12px;border:1px solid var(--bd2);border-radius:9px;font-family:var(--fn);font-size:14px;background:var(--sf);max-width:62%"><option value="">ทุกคน</option></select>
+  </div>
+  <div id="hrsh-loading" style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+  <div id="hrsh-list"></div>
 </div>
 
 <!-- ═══════════════ HR ลงทะเบียนใบหน้า ═══════════════ -->
@@ -2427,6 +2484,13 @@ const SB = {
               // ⚠️ คนละตัวกับ attAbsentList ที่กั้นด้วยรหัสลับ (ใช้โดย Absent.gs)
               //    ตัวนี้เอารหัสพนักงานจากตั๋ว แล้ว emp_scope ตัดสินว่าเห็นของใคร
               hrAbsentReport: 1,
+              // ── กำหนดกะการทำงาน (SQL 65 + 98 · Edge 5.55) ──
+              // ⚠️⚠️ สามตัวนี้มีแต่ใน Supabase ไม่มีฝั่ง GAS
+              //    เพราะตารางรอบกะอยู่ใน Supabase เท่านั้น ชีตไม่มีตารางนี้
+              //    ทำฝั่ง GAS ด้วยจะกลายเป็นกติกาที่สอง — ถ้า Supabase ล่ม
+              //    หน้าจอจะบอกตรง ๆ ว่าใช้ไม่ได้
+              // ⚠️ รหัสผู้สั่งมาจากตั๋วที่ Edge Function ตรวจแล้ว ไม่รับจากหน้าเว็บ
+              shiftList: 1, shiftSet: 1, shiftDel: 1,
     // ── โมดูล 10 ขอบันทึกเวลา (SQL 77 + 78 · Edge 5.50) ──
     // ⚠️⚠️ ทุกตัวเอารหัสพนักงานจากตั๋วที่ Edge Function ตรวจแล้ว
     //    ไม่มีตัวไหนรับรหัสจากหน้าเว็บ จึงปลอมในชื่อคนอื่นไม่ได้
@@ -2873,7 +2937,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.57.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.58.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3697,7 +3761,7 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport','hr-setting','fix-form','fix-history','fix-approve','fix-report'];
+  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport','hr-setting','hr-shift','fix-form','fix-history','fix-approve','fix-report'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
@@ -7303,6 +7367,300 @@ function hrDeleteHoliday(date) {
     .withFailureHandler(e => { showToast(e.message); loadHolidayPage(); });
 }
 
+// ══════════════════════════════════════════════════════════════
+//  HR — กำหนดกะการทำงาน (ตารางรอบกะ · Edge 5.55 · SQL 65 + 98)
+//
+//  ⚠️⚠️ กติกาที่ต้องรู้ก่อนแก้หน้านี้ (ทดลองยืนยันแล้ว 23 พ.ย. 2569)
+//     shift_on เลือก "รายการที่วันเริ่มใหม่ที่สุด" ที่คลุมวันนั้น
+//     → รายการที่เริ่มทีหลังจะบังรายการที่เริ่มก่อน
+//     → "กะหลัก" (ไม่มีกำหนดสิ้นสุด) ต้องเริ่มก่อนรายการชั่วคราวทุกตัว
+//        ไม่งั้นมันจะไปบังรายการชั่วคราวเสียเอง จึงใช้ 01/01/2000
+//
+//  🚫 ห้ามคำนวณ "วันนี้อยู่กะอะไร" ในหน้าเว็บ — ใช้ค่า todayShift จากเซิร์ฟเวอร์
+//     เพราะกติกาการตัดสินอยู่ใน shift_on ที่เดียว
+// ══════════════════════════════════════════════════════════════
+var SH_ROWS = [];          // รายการกะทั้งหมดที่อ่านมาได้
+var SH_TODAY = {};         // รหัส → กะของวันนี้ (เซิร์ฟเวอร์ตัดสินมาแล้ว)
+var SH_EMPS = [];          // รายชื่อพนักงาน (ไว้ทำ dropdown + รู้กะในทะเบียน)
+var SH_WANT_EMP = '';      // รหัสที่ต้องให้เห็นรอบถัดไป (ตั้งตอนบันทึก/ลบ)
+
+/** ไม่มีกำหนดสิ้นสุด = วันสิ้นสุดตั้งแต่ปี 2990 ขึ้นไป */
+function shIsOpenEnded(iso) { return String(iso || '') >= '2990-01-01'; }
+
+function shIsoToThai(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return String(iso || '');
+  return m[3] + '/' + m[2] + '/' + (Number(m[1]) + 543);
+}
+
+function loadShiftPage() {
+  document.getElementById('hrsh-from').value = '';
+  document.getElementById('hrsh-to').value   = '';
+  document.getElementById('hrsh-note').value = '';
+  document.getElementById('hrsh-base-warn').style.display = 'none';
+  document.getElementById('hrsh-loading').style.display = 'block';
+  document.getElementById('hrsh-list').innerHTML = '';
+
+  // รายชื่อพนักงานใช้แคชร่วมกับหน้าอื่น (ไม่ยิงซ้ำถ้ายังไม่หมดอายุ)
+  fetchEmployeeList(function (r) {
+    SH_EMPS = (r && r.success) ? (r.employees || []) : [];
+    shFillEmpPickers();
+    shFetchRows();
+  }, function () {
+    // 🚫 รายชื่อล้มก็ยังอ่านรายการกะได้ แต่ dropdown จะว่าง ต้องบอกให้รู้
+    SH_EMPS = [];
+    shFillEmpPickers();
+    showToast('โหลดรายชื่อพนักงานไม่ได้ — เลือกพนักงานไม่ได้ชั่วคราว');
+    shFetchRows();
+  });
+}
+
+function shFillEmpPickers() {
+  const sel = document.getElementById('hrsh-emp');
+  const flt = document.getElementById('hrsh-filter');
+  const เรียง = SH_EMPS.slice().sort(function (a, b) {
+    return String(a.empId || '').localeCompare(String(b.empId || ''));
+  });
+  let o1 = '<option value="">— เลือกพนักงาน —</option>';
+  let o2 = '<option value="">ทุกคน</option>';
+  เรียง.forEach(function (e) {
+    const id = String(e.empId || '').trim();
+    if (!id) return;
+    const ชื่อ = esc(id + ' · ' + String(e.name || '').trim());
+    o1 += '<option value="' + esc(id) + '">' + ชื่อ + '</option>';
+    o2 += '<option value="' + esc(id) + '">' + ชื่อ + '</option>';
+  });
+  const จำ1 = sel.value, จำ2 = flt.value;
+  sel.innerHTML = o1; flt.innerHTML = o2;
+  if (จำ1) sel.value = จำ1;
+  if (SH_WANT_EMP) flt.value = SH_WANT_EMP; else if (จำ2) flt.value = จำ2;
+  sel.onchange = shOnPickEmp;
+  flt.onchange = renderShiftList;
+}
+
+function shFetchRows() {
+  gasRun('shiftList', { hrToken: S.hrToken })
+    .withSuccessHandler(function (r) {
+      document.getElementById('hrsh-loading').style.display = 'none';
+      if (!r || !r.success) {
+        showToast((r && r.message) || 'อ่านตารางกะไม่สำเร็จ');
+        if (r && r.authError) authBounce(r);
+        return;
+      }
+      SH_ROWS  = r.rows || [];
+      SH_TODAY = r.todayShift || {};
+      SH_WANT_EMP = '';
+      shOnPickEmp();
+      renderShiftList();
+    })
+    .withFailureHandler(function (e) {
+      document.getElementById('hrsh-loading').style.display = 'none';
+      showToast(e.message);
+    });
+}
+
+/** รายการของคนนั้น เรียงวันเริ่มใหม่→เก่า (ลำดับเดียวกับที่ shift_on มอง) */
+function shRowsOf(empId) {
+  const id = String(empId || '').trim().toUpperCase();
+  return SH_ROWS.filter(function (x) {
+    return String(x.empId || '').trim().toUpperCase() === id;
+  }).sort(function (a, b) { return String(b.from).localeCompare(String(a.from)); });
+}
+
+/** ⚠️ เตือนเรื่องกะหลัก — กับดักที่ทำให้พนักงานค้างกะเดิมตลอดไป */
+function shOnPickEmp() {
+  const box = document.getElementById('hrsh-base-warn');
+  const id  = document.getElementById('hrsh-emp').value;
+  if (!id) { box.style.display = 'none'; return; }
+
+  const คน  = SH_EMPS.filter(function (e) { return String(e.empId) === id; })[0] || {};
+  const กะทะเบียน = String(คน.shift || 'A').trim().toUpperCase() || 'A';
+  const มีกะหลัก  = shRowsOf(id).some(function (x) { return shIsOpenEnded(x.to); });
+  const กะวันนี้  = SH_TODAY[id] ? String(SH_TODAY[id]) : '';
+
+  if (มีกะหลัก) {
+    box.style.display = 'none';
+    return;
+  }
+  box.innerHTML =
+    '⚠️ <b>' + esc(id) + ' ยังไม่มี “กะหลัก”</b><br>' +
+    'ถ้ากำหนดกะแบบมีวันสิ้นสุดให้คนนี้ พอพ้นวันสิ้นสุดแล้ว ' +
+    'ระบบจะไม่มีรายการไหนคลุมวันนั้น แล้วจะไปอ่านกะจากทะเบียน ' +
+    'ซึ่งถูกเปลี่ยนเป็นกะใหม่ไปแล้ว → <b>พนักงานจะค้างกะใหม่ตลอดไป</b>' +
+    (กะวันนี้ ? '<br>วันนี้ระบบตัดสินว่าอยู่กะ <b>' + esc(กะวันนี้) + '</b>' : '') +
+    '<br><button class="btn o sm" id="hrsh-mkbase" style="margin-top:8px">' +
+    'สร้างกะหลัก ' + esc(กะทะเบียน) + ' (ตั้งแต่เริ่มต้น ไม่มีกำหนดสิ้นสุด)</button>';
+  box.style.display = 'block';
+  const b = document.getElementById('hrsh-mkbase');
+  if (b) b.addEventListener('click', function () { shMakeBase(id, กะทะเบียน); });
+}
+
+/**
+ * สร้างกะหลัก — เริ่ม 01/01/2000 โดยเจตนา
+ * 🚫 ห้ามเปลี่ยนเป็น "วันนี้" — ทดลองแล้วมันจะไปบังรายการชั่วคราวที่เริ่มก่อนวันนี้
+ *    (ใส่ B 16–30 พ.ย. แล้วสร้างกะหลักวันที่ 23 → 25 พ.ย. จะกลายเป็น A)
+ */
+function shMakeBase(empId, กะ) {
+  if (!confirm('สร้างกะหลัก ' + กะ + ' ให้ ' + empId + ' ตั้งแต่เริ่มต้นถึงไม่มีกำหนด?\n\n' +
+               'กะหลักคือ "กะปกติ" ของคนนี้ · กะชั่วคราวที่กำหนดทีหลังจะบังเฉพาะช่วงของมัน ' +
+               'แล้วพอหมดช่วงจะกลับมากะหลักเอง')) return;
+  SH_WANT_EMP = empId;
+  shSaveRow(empId, กะ, '2000-01-01', '2999-12-31', 'กะหลัก', null);
+}
+
+function shSaveRow(empId, กะ, fromIso, toIso, note, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> บันทึก...'; }
+  // ⚠️ gasRunNoRetry: คำสั่งเขียนห้ามยิงซ้ำอัตโนมัติ ยิงซ้ำจะได้รายการซ้ำสองแถว
+  gasRunNoRetry('shiftSet', {
+    hrToken: S.hrToken, empId: empId, shift: กะ,
+    dateFrom: fromIso, dateTo: toIso, note: note || ''
+  })
+    .withSuccessHandler(function (r) {
+      if (btn) { btn.disabled = false; btn.textContent = 'บันทึกกะ'; }
+      if (!r || !r.success) {
+        showToast((r && r.message) || 'บันทึกไม่สำเร็จ');
+        if (r && r.authError) authBounce(r);
+        return;
+      }
+      showToast('บันทึกกะ ' + กะ + ' ให้ ' + empId + ' แล้ว', true);
+      // ⚠️ กะในทะเบียนอาจถูกอัปเดตไปด้วย (เมื่อช่วงคลุมวันนี้) → แคชรายชื่อเก่าแล้ว
+      if (r.updatedRegistry) clearEmpListCache();
+      document.getElementById('hrsh-from').value = '';
+      document.getElementById('hrsh-to').value   = '';
+      document.getElementById('hrsh-note').value = '';
+      loadShiftPage();
+    })
+    .withFailureHandler(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'บันทึกกะ'; }
+      showToast(e.message);
+      // ไม่รู้ว่าคำขอถึงเซิร์ฟเวอร์หรือยัง — โหลดใหม่ให้เห็นของจริง
+      loadShiftPage();
+    });
+}
+
+function shSave() {
+  const empId = document.getElementById('hrsh-emp').value;
+  const กะ    = document.getElementById('hrsh-shift').value;
+  const fRaw  = document.getElementById('hrsh-from').value.trim();
+  const tRaw  = document.getElementById('hrsh-to').value.trim();
+  const note  = document.getElementById('hrsh-note').value.trim();
+
+  if (!empId) { showToast('กรุณาเลือกพนักงาน'); return; }
+  const fIso = hrThaiToISO(fRaw);
+  if (!fIso) { showToast('วันที่เริ่มต้องเป็น วว/ดด/ปปปป และต้องมีวันนั้นจริง'); return; }
+  // เว้นว่าง = ไม่มีกำหนดสิ้นสุด → ส่งว่างไป ให้เซิร์ฟเวอร์เติม 2999-12-31
+  // 🚫 ไม่เติมที่นี่ด้วย ไม่งั้นมีกติกาสองชุด
+  let tIso = '';
+  if (tRaw !== '') {
+    tIso = hrThaiToISO(tRaw);
+    if (!tIso) { showToast('วันที่สิ้นสุดต้องเป็น วว/ดด/ปปปป และต้องมีวันนั้นจริง'); return; }
+    if (tIso < fIso) { showToast('วันสิ้นสุดต้องไม่มาก่อนวันเริ่ม'); return; }
+  }
+
+  // ── ⚠️ เตือนเรื่องช่วงทับกัน (ED เลือก "เตือนแต่บันทึกได้" 23 พ.ย. 2569) ──
+  //    บอกให้ชัดว่า "รายการไหนจะชนะ" ไม่ใช่แค่บอกว่าทับ
+  //    เพราะ shift_on เลือกรายการที่วันเริ่มใหม่ที่สุด ไม่ใช่รายการที่เพิ่งบันทึก
+  const ปลายจริง = tIso || '2999-12-31';
+  const ทับ = shRowsOf(empId).filter(function (x) {
+    return String(x.from) <= ปลายจริง && String(x.to) >= fIso;
+  });
+  if (ทับ.length) {
+    const บัง = ทับ.filter(function (x) { return String(x.from) > fIso; });
+    let ถาม = 'ช่วงวันที่นี้ทับกับรายการเดิม ' + ทับ.length + ' รายการ:\n';
+    ทับ.slice(0, 6).forEach(function (x) {
+      ถาม += '  • ' + x.shift + '  ' + shIsoToThai(x.from) + ' – ' +
+             (shIsOpenEnded(x.to) ? 'ไม่มีกำหนด' : shIsoToThai(x.to)) + '\n';
+    });
+    ถาม += '\nระบบเลือก "รายการที่วันเริ่มใหม่ที่สุด" ของแต่ละวัน\n';
+    ถาม += บัง.length
+      ? '🚫 รายการที่กำลังบันทึกเริ่มก่อนรายการเดิม ' + บัง.length +
+        ' รายการ จึงจะถูกบังบางช่วง (ไม่มีผลในช่วงนั้น)\n\nบันทึกต่อไหม?'
+      : '✅ รายการที่กำลังบันทึกเริ่มทีหลัง จึงจะชนะในช่วงที่ทับกัน\n\nบันทึกต่อไหม?';
+    if (!confirm(ถาม)) return;
+  }
+
+  SH_WANT_EMP = empId;
+  shSaveRow(empId, กะ, fIso, tIso, note, document.getElementById('hrsh-save'));
+}
+
+function renderShiftList() {
+  const flt  = document.getElementById('hrsh-filter');
+  const only = flt ? flt.value : '';
+  const list = document.getElementById('hrsh-list');
+  const แสดง = only ? shRowsOf(only) : SH_ROWS.slice();
+
+  document.getElementById('hrsh-count').textContent = แสดง.length;
+  if (!แสดง.length) {
+    list.innerHTML = '<div style="text-align:center;padding:24px 0;color:var(--tx3);font-size:13px">' +
+      (only ? 'คนนี้ยังไม่มีรายการกะ' : 'ยังไม่มีการกำหนดกะ — ทุกคนใช้กะจากทะเบียน') + '</div>';
+    return;
+  }
+
+  // จัดกลุ่มตามคน เพื่อให้เห็น "กะวันนี้" ของแต่ละคนครั้งเดียว ไม่ใช่ซ้ำทุกแถว
+  const กลุ่ม = {};
+  แสดง.forEach(function (x) {
+    const id = String(x.empId || '').trim().toUpperCase();
+    (กลุ่ม[id] = กลุ่ม[id] || []).push(x);
+  });
+
+  let html = '';
+  Object.keys(กลุ่ม).sort().forEach(function (id) {
+    const แถว = กลุ่ม[id].slice().sort(function (a, b) {
+      return String(b.from).localeCompare(String(a.from));
+    });
+    const ชื่อ = String(แถว[0].name || '').trim();
+    const วันนี้ = SH_TODAY[id] ? String(SH_TODAY[id]) : '';
+    html += '<div style="margin:14px 2px 6px;display:flex;justify-content:space-between;' +
+            'align-items:baseline;gap:8px;flex-wrap:wrap">' +
+            '<div style="font-size:13.5px;font-weight:700">' + esc(id) +
+            (ชื่อ ? ' · ' + esc(ชื่อ) : '') + '</div>' +
+            (วันนี้
+              ? '<div style="font-size:12px;color:var(--tx3)">กะวันนี้: <b style="color:var(--tx2)">' +
+                esc(วันนี้) + '</b></div>'
+              : '') +
+            '</div>';
+    แถว.forEach(function (x) {
+      const เปิดปลาย = shIsOpenEnded(x.to);
+      html += '<div class="hd-row">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="hd-name"><span class="hd-d1">' + esc(x.shift || '') + '</span>' +
+            esc(shIsoToThai(x.from)) + ' – ' +
+            (เปิดปลาย ? '<span style="color:var(--tx3)">ไม่มีกำหนด</span>'
+                      : esc(shIsoToThai(x.to))) +
+          '</div>' +
+          ((x.note || x.by)
+            ? '<div style="font-size:11.5px;color:var(--tx3);margin-top:2px">' +
+              (x.note ? esc(x.note) : '') +
+              (x.note && x.by ? ' · ' : '') +
+              (x.by ? 'โดย ' + esc(x.by) : '') + '</div>'
+            : '') +
+        '</div>' +
+        '<button class="btn o sm hrsh-del" data-id="' + esc(String(x.id)) +
+          '" data-emp="' + esc(id) + '" style="color:var(--er);border-color:var(--er)">ลบ</button>' +
+      '</div>';
+    });
+  });
+  list.innerHTML = html;
+  list.querySelectorAll('.hrsh-del').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      shDelete(btn.dataset.id, btn.dataset.emp);
+    });
+  });
+}
+
+function shDelete(id, empId) {
+  if (!confirm('ลบรายการกะนี้?\n\nพอลบแล้ว วันในช่วงนั้นจะกลับไปใช้รายการอื่นที่คลุมอยู่ ' +
+               'หรือกะจากทะเบียนถ้าไม่มีรายการไหนคลุม')) return;
+  SH_WANT_EMP = empId || '';
+  gasRunNoRetry('shiftDel', { hrToken: S.hrToken, id: Number(id) })
+    .withSuccessHandler(function (r) {
+      showToast((r && r.message) || (r && r.success ? 'ลบแล้ว' : 'ลบไม่สำเร็จ'), r && r.success);
+      if (r && r.authError) authBounce(r);
+      loadShiftPage();
+    })
+    .withFailureHandler(function (e) { showToast(e.message); loadShiftPage(); });
+}
+
 // ========== FACE-API.JS LOADER (โหลดครั้งเดียว แบบ lazy) ==========
 // ไม่ pin เวอร์ชัน (ใช้ latest) — jsdelivr redirect ไป version ล่าสุดที่มีจริง
 const FACEAPI_CDN = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js';
@@ -9708,6 +10066,9 @@ applyLogo();
   on('hr-menu-bulletin',  'click', hrBulOpen);
   on('hr-menu-broadcast', 'click', function() { go('hr-broadcast'); });
   on('hr-menu-holiday',   'click', function() { go('hr-holiday'); });
+  // ── กำหนดกะการทำงาน ──
+  // ⚠️ โหลดข้อมูลตอนกดเข้าหน้า ไม่ใช่ตอนเปิดแอป (ฝ่ายบุคคลไม่ได้เข้าหน้านี้ทุกวัน)
+  on('hr-menu-shift',     'click', function() { go('hr-shift'); loadShiftPage(); });
   on('hr-menu-empreport', 'click', function() { go('hr-empreport'); loadEmpReportPage(); });
   // ⚠️ ED ทักว่าไม่มีเมนูเข้าหน้านี้ มีแต่ลิงก์บนการ์ดหน้าหลัก
   //    ถ้าการ์ดซ่อนตัวเอง (เช่นคำขอล้ม) ฝ่ายบุคคลจะไม่มีทางเข้าเลย
@@ -9793,6 +10154,10 @@ applyLogo();
 
   // HR จัดการวันหยุด
   on('hrhol-back', 'click', function() { go('hr-dash'); });
+  on('hrsh-back',  'click', function() { go('hr-dash'); });
+  on('hrsh-save',  'click', shSave);
+  attachDayPicker('hrsh-from');
+  attachDayPicker('hrsh-to');
   on('hrhol-date', 'input', function() { maskDate(this); });
   on('hrhol-date', 'keydown', function(e) { allowDateKeys(e); });
   on('hrhol-add', 'click', hrAddHoliday);
