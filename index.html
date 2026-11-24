@@ -1616,6 +1616,48 @@ textarea.inp{resize:vertical;min-height:60px}
   <div id="hrsh-list"></div>
 </div>
 
+<!-- ═══════════════ สรุปสถิติการลา ═══════════════ -->
+<!-- ⚠️ หน้านี้เปิดให้ ฝ่ายบุคคล · ผู้บริหาร · แอดมิน เท่านั้น
+     ด่านจริงอยู่ที่ is_stats_viewer ในฐานข้อมูล (ไฟล์ 103) ไม่ใช่การซ่อนเมนู
+     🚫 ห้ามใช้ is_hr หรือ is_viewer แทน และห้ามขยายสองตัวนั้นให้รวม ADMIN -->
+<div class="page" id="page-stats-leave">
+  <button id="stl-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← หน้าหลัก</button>
+
+  <div style="margin-bottom:14px">
+    <div style="font-size:20px;font-weight:700">สรุปสถิติการลา</div>
+    <div style="font-size:13px;color:var(--tx3);margin-top:2px">นับเฉพาะใบที่อนุมัติแล้ว · ใบที่ยังรออนุมัติแสดงแยกเป็นแถบเตือน</div>
+  </div>
+
+  <div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <label for="stl-year" style="font-size:13px;color:var(--tx2);font-weight:700">ปี</label>
+    <select id="stl-year" style="padding:7px 12px;border:1px solid var(--bd2);border-radius:9px;font-family:var(--fn);font-size:14px;background:var(--sf)"></select>
+    <div id="stl-asof" style="font-size:12px;color:var(--tx3);margin-left:auto;text-align:right"></div>
+  </div>
+
+  <div id="stl-loading" style="text-align:center;padding:26px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+  <div id="stl-body"></div>
+</div>
+
+<!-- ═══════════════ สรุปสถิติโอที ═══════════════ -->
+<div class="page" id="page-stats-ot">
+  <button id="sto-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← หน้าหลัก</button>
+
+  <div style="margin-bottom:14px">
+    <div style="font-size:20px;font-weight:700">สรุปสถิติการทำโอที</div>
+    <div style="font-size:13px;color:var(--tx3);margin-top:2px">นับเฉพาะใบที่อนุมัติแล้ว · ระบบนี้ไม่มีข้อมูลเงิน แสดงเป็นชั่วโมงเท่านั้น</div>
+  </div>
+
+  <div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <label for="sto-year" style="font-size:13px;color:var(--tx2);font-weight:700">ปี</label>
+    <select id="sto-year" style="padding:7px 12px;border:1px solid var(--bd2);border-radius:9px;font-family:var(--fn);font-size:14px;background:var(--sf)"></select>
+    <div id="sto-asof" style="font-size:12px;color:var(--tx3);margin-left:auto;text-align:right"></div>
+  </div>
+
+  <div id="sto-loading" style="text-align:center;padding:26px;color:var(--tx3);font-size:13px">กำลังโหลด...</div>
+  <div id="sto-body"></div>
+</div>
+
+
 <!-- ═══════════════ HR ลงทะเบียนใบหน้า ═══════════════ -->
 <div class="page" id="page-hr-face">
   <button id="hrface-back" style="background:none;border:none;color:var(--tx2);font-size:13px;cursor:pointer;padding:4px 0;margin-bottom:10px;font-family:var(--fn)">← เมนูงานบุคคล</button>
@@ -2483,6 +2525,8 @@ const SB = {
   URL: 'https://tauhfcanclelufuvtoud.supabase.co/functions/v1/rapid-task',   // ← ใส่ URL Edge Function
   KEY: 'sb_publishable_d_9y8jTjSeU2eF0I03_qSw_FtoRF_M8',                 // ← ใส่ publishable key (ห้ามใช้ secret key)
   ACTIONS:  { login: 1, getMyAttendance: 1, payGetMySlips: 1,
+              // ⚠️ หน้าสรุปสถิติ — ด่านสิทธิ์จริงคือ is_stats_viewer ในฐานข้อมูล (ไฟล์ 103)
+              leaveStatsYear: 1, otStatsYear: 1, lateStatsYear: 1,
               hrGetEmployeeList: 1, hrFindEmployee: 1,
               // ⚠️ สองตัวนี้มีแต่ใน Supabase ไม่มีฝั่ง GAS
               //    ถ้า Supabase ใช้ไม่ได้ หน้าจะบอกตรง ๆ (ดู hrEmpLoad)
@@ -2948,7 +2992,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.61.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.62.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3772,7 +3816,7 @@ function go(id) {
   if (id === 'welcome' || id === 'splash') hideEmpStrip();
 
   // หน้าที่แสดง nav-tabs: เมนูพนักงาน + หน้า HR
-  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport','hr-setting','hr-shift','fix-form','fix-history','fix-approve','fix-report'];
+  const navPages = ['home','holiday','checkin','checkout','history','hr-dash','hr-dashboard','hr-employees','hr-export','hr-broadcast','hr-datamgmt','hr-report','hr-rawlog','hr-holiday','hr-face','bulletin','hr-bulletin','hr-bulletin-edit','leave-form','leave-history','leave-approve','leave-report','finger','ot-form','ot-history','ot-approve','ot-report','pay-periods','pay-review','pay-telegram','pay-report','my-payslip','att-incomplete','hr-empreport','hr-setting','hr-shift','stats-leave','stats-ot','fix-form','fix-history','fix-approve','fix-report'];
   const tabs = document.getElementById('nav-tabs');
   if (tabs) tabs.style.display = navPages.includes(id) ? 'flex' : 'none';
 
@@ -4043,6 +4087,8 @@ function renderHomeMenu() {
   if (isHR) {
     homeFillGrid('home-grid-hr', [
       { p: 'hr-dashboard', t: 'ภาพรวมประจำวัน', ic: '▦', bg: 'rgba(59,130,246,.15)',  fg: '#2563eb' },
+      { p: 'stats-leave',  t: 'สถิติการลา',     ic: '▧', bg: 'rgba(16,185,129,.15)',  fg: '#059669' },
+      { p: 'stats-ot',     t: 'สถิติโอที',      ic: '▨', bg: 'rgba(245,158,11,.15)',  fg: '#d97706' },
       { p: 'hr-report',    t: 'รายงานลงเวลา',   ic: '▤', bg: 'rgba(245,158,11,.15)',  fg: '#d97706' },
       { p: 'hr-employees', t: 'จัดการพนักงาน',  ic: '☷', bg: 'rgba(16,185,129,.15)',  fg: '#059669' },
       { p: 'hr-bulletin',  t: 'จัดการประกาศ',   ic: '📋', bg: 'rgba(232,89,12,.15)',  fg: '#e8590c' },
@@ -4058,8 +4104,14 @@ function renderHomeMenu() {
     //    หรือเงินเดือน — ถ้าเปิด hr-dash ให้ ADMIN จะได้ของเหล่านั้นติดมาด้วย
     //    ซึ่งเป็นการขยายสิทธิ์ที่ไม่มีใครขอ (แบบเดียวกับที่ห้ามแก้ is_hr)
     // ⚠️ ด่านจริงอยู่ที่ is_setting_editor ในฐานข้อมูล ไม่ใช่การโชว์แผ่นนี้
+    // ⚠️⚠️ ED สั่งเอง 24 พ.ย. 2569 ว่า ADMIN ต้องเห็นหน้าสรุปสถิติด้วย
+    //    ไม่ขัดกับหลักข้างบน เพราะหน้าสรุปเป็นภาพรวมทั้งองค์กร ไม่ใช่ข้อมูลรายคนเชิงลึก
+    //    และไม่มีข้อมูลเงิน · ด่านจริงคือ is_stats_viewer ในฐานข้อมูล (ไฟล์ 103)
+    //    🚫 ยังไม่เปิด hr-dash ให้ ADMIN — ทะเบียนพนักงานกับเงินเดือนยังปิดอยู่เหมือนเดิม
     homeFillGrid('home-grid-hr', [
-      { p: 'hr-setting', t: 'ตั้งค่าระบบ', ic: '⚙', bg: 'rgba(100,116,139,.15)', fg: '#475569' },
+      { p: 'stats-leave', t: 'สถิติการลา',  ic: '▧', bg: 'rgba(16,185,129,.15)',  fg: '#059669' },
+      { p: 'stats-ot',    t: 'สถิติโอที',   ic: '▨', bg: 'rgba(245,158,11,.15)',  fg: '#d97706' },
+      { p: 'hr-setting',  t: 'ตั้งค่าระบบ', ic: '⚙', bg: 'rgba(100,116,139,.15)', fg: '#475569' },
     ]);
     if (hrSec) hrSec.style.display = '';
   } else if (isExec) {
@@ -4068,6 +4120,8 @@ function renderHomeMenu() {
     //    อนุมัติลา/โอที ไปอยู่กลุ่ม "งานอนุมัติ" ข้างบนแล้ว ไม่ซ้ำที่นี่
     homeFillGrid('home-grid-hr', [
       { p: 'hr-dashboard',  t: 'ภาพรวมประจำวัน', ic: '▦', bg: 'rgba(59,130,246,.15)', fg: '#2563eb' },
+      { p: 'stats-leave',   t: 'สถิติการลา',     ic: '▧', bg: 'rgba(16,185,129,.15)', fg: '#059669' },
+      { p: 'stats-ot',      t: 'สถิติโอที',      ic: '▨', bg: 'rgba(245,158,11,.15)', fg: '#d97706' },
       { p: 'hr-report',     t: 'รายงานลงเวลา',   ic: '▤', bg: 'rgba(245,158,11,.15)', fg: '#d97706' },
       { p: 'leave-report',  t: 'รายงานการลา',    ic: '✈', bg: 'rgba(16,185,129,.15)', fg: '#059669' },
       { p: 'ot-report',     t: 'รายงานโอที',     ic: '＋', bg: 'rgba(245,158,11,.12)', fg: '#d97706' },
@@ -4742,10 +4796,431 @@ function homeFillGrid(gridId, items) {
     //    ถ้าเรียก go() เฉย ๆ จอจะขึ้นว่า "กำลังโหลด..." ค้างไปตลอด
     b.addEventListener('click', function() {
       if (it.p === 'hr-bulletin') { hrBulOpen(); return; }
+      // ⚠️ สองหน้านี้ต้องยิงถามข้อมูลก่อน ไม่ใช่แค่สลับหน้า
+      //    ถ้าเรียก go() เฉย ๆ จอจะค้างที่ "กำลังโหลด..." ตลอดไป
+      if (it.p === 'stats-leave') { go('stats-leave'); loadStatsLeave(); return; }
+      if (it.p === 'stats-ot')    { go('stats-ot');    loadStatsOt();    return; }
       go(it.p);
     });
     g.appendChild(b);
   });
+}
+
+
+
+// ══════════════════════════════════════════════════════════════
+//  เฟส 5W — หน้าสรุปสถิติ (การลา · โอที · มาสาย)
+//
+//  ⚠️⚠️ หน้านี้ "ไม่คิดเลขเอง" เลยแม้แต่ข้อเดียว
+//     ฝั่งเซิร์ฟเวอร์ส่งชั่วโมงกับนาทีที่คิดเสร็จแล้วมา หน้าเว็บแค่จัดวาง
+//     🚫 ห้ามเขียนเลขชั่วโมงทำงานต่อวันไว้ที่นี่ — มันมาในช่อง perDay จาก Edge
+//        (ชุดทดสอบ statsui ข1 ตรวจว่าบล็อกนี้ไม่มีเลขนั้นอยู่เลย แม้ในคอมเมนต์)
+//        (ไฟล์ 103/104 มีด่านห้ามหารเป็นวันในฐานข้อมูลด้วย เพื่อให้มีที่เดียว)
+//
+//  ⚠️ "สายจริง" คิดที่ Edge ด้วย lateNet ซึ่งรู้เวลาของกะและเวลาพัก
+//     🚫 ห้ามให้หน้าเว็บคิดว่าใบลาคลุมความสายไหม — จะกลายเป็นกติกาที่สอง
+// ══════════════════════════════════════════════════════════════
+var ST = { leave: null, ot: null, late: null, busy: '' };
+
+// ── รายการปีให้เลือก — ปีนี้ย้อนไป 3 ปี ──
+// ⚠️ ไม่ยิงถามฐานข้อมูลว่ามีข้อมูลปีไหน เพราะเปิดหน้ามาต้องเห็นเลย
+//    ปีที่ไม่มีข้อมูลจะแสดงยอด 0 ซึ่งถูกต้องตามความจริง
+function stYearOptions(selId) {
+  var sel = document.getElementById(selId);
+  if (!sel || sel.options.length) return;
+  var now = new Date(Date.now() + 7 * 3600 * 1000);
+  var y = now.getUTCFullYear();
+  var html = '';
+  for (var i = 0; i < 4; i++) {
+    var yy = y - i;
+    // ⚠️ แสดงเป็น พ.ศ. ให้ตรงกับที่อื่นในระบบ แต่ส่งค่าเป็น ค.ศ.
+    html += '<option value="' + yy + '">' + (yy + 543) + '</option>';
+  }
+  sel.innerHTML = html;
+  sel.value = String(y);
+}
+
+// ── แปลงชั่วโมง → ข้อความ "กี่วัน" ──
+// ⚠️ perDay มาจากเซิร์ฟเวอร์เท่านั้น ถ้าไม่มีให้แสดงเป็นชั่วโมงไปตรง ๆ
+//    🚫 ห้ามใส่ค่าเผื่อเป็นตัวเลข — วันหน้ากฎหมายเปลี่ยนแล้วหน้านี้จะโกหกเงียบ ๆ
+function stDays(hours, perDay) {
+  var h = Number(hours) || 0;
+  if (!perDay) return stNum(h) + ' ชม.';
+  return stNum(h / perDay) + ' วัน';
+}
+function stNum(n) {
+  n = Number(n) || 0;
+  if (Math.abs(n - Math.round(n)) < 0.05) return String(Math.round(n));
+  return n.toFixed(1);
+}
+function stInt(n) { return (Number(n) || 0).toLocaleString('th-TH'); }
+
+// ── นาที → "X ชม. Y น." ──
+function stMin(m) {
+  m = Math.round(Number(m) || 0);
+  if (m < 60) return m + ' น.';
+  var h = Math.floor(m / 60), r = m % 60;
+  return h + ' ชม.' + (r ? ' ' + r + ' น.' : '');
+}
+
+// ── แถบเตือนใบค้างอนุมัติ แยกตามขั้น ──
+// ⚠️ แยกขั้นเพื่อให้ไล่ถูกคน — ไม่ใช่บอกแค่ยอดรวมแล้วไม่รู้ว่าค้างที่ใคร
+function stPendingBar(pending, หน้าอนุมัติ) {
+  var p = pending || {};
+  var l1 = Number(p.L1) || 0, l2 = Number(p.L2) || 0, hr = Number(p.HR) || 0;
+  var รวม = l1 + l2 + hr;
+  if (!รวม) return '';
+  var ชิ้น = [];
+  if (l1) ชิ้น.push('หัวหน้า <b>' + stInt(l1) + '</b>');
+  if (l2) ชิ้น.push('ผู้จัดการ <b>' + stInt(l2) + '</b>');
+  if (hr) ชิ้น.push('ฝ่ายบุคคล <b>' + stInt(hr) + '</b>');
+  return '<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);' +
+         'border-radius:10px;padding:11px 13px;margin-bottom:12px;font-size:12.5px;line-height:1.6;color:var(--tx2)">' +
+         '⚠️ ยังมีใบค้างอนุมัติ <b>' + stInt(รวม) + '</b> ใบ — ' + ชิ้น.join(' · ') +
+         '<div style="margin-top:7px"><button class="btn" style="padding:6px 13px;font-size:12px;width:auto" ' +
+         'onclick="go(\'' + หน้าอนุมัติ + '\')">ไปหน้าอนุมัติ</button></div>' +
+         '<div style="margin-top:6px;color:var(--tx3)">ใบค้างไม่ถูกนับในยอดด้านล่าง — ยอดจะเปลี่ยนเมื่ออนุมัติแล้ว</div></div>';
+}
+
+// ── แถบเตือนใบลาซ้อนกัน ──
+// ⚠️ ครึ่งเช้า+ครึ่งบ่ายวันเดียวกันไม่ใช่ปัญหา จึงเตือนเฉพาะที่น่าสงสัย (suspect)
+function stOverlapBar(ov) {
+  var s = Number(ov && ov.suspect) || 0;
+  if (!s) return '';
+  return '<div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);' +
+         'border-radius:10px;padding:11px 13px;margin-bottom:12px;font-size:12.5px;line-height:1.6;color:var(--tx2)">' +
+         '🚫 พบใบลาอนุมัติที่ <b>ซ้อนกันแบบน่าสงสัย ' + stInt(s) + ' คู่</b> ' +
+         '(โหมดเดียวกันซ้อนกัน หรือมีใบเต็มวันซ้อนอยู่)' +
+         '<div style="margin-top:6px;color:var(--tx3)">ยอดด้านล่างจะสูงกว่าความจริงจนกว่าจะยกเลิกใบซ้ำ ' +
+         'ตรวจด้วยไฟล์ <b>ขอดู-ใบลาซ้ำมาจากทางไหน.sql</b></div></div>';
+}
+
+// ── การ์ดเลขใหญ่ ──
+function stBigCard(หัว, ค่า, รอง) {
+  return '<div class="card" style="padding:16px;margin-bottom:12px">' +
+         '<div style="font-size:12px;color:var(--tx3);letter-spacing:.3px">' + หัว + '</div>' +
+         '<div style="font-size:30px;font-weight:700;line-height:1.25;margin-top:2px">' + ค่า + '</div>' +
+         (รอง ? '<div style="font-size:12.5px;color:var(--tx2);margin-top:3px">' + รอง + '</div>' : '') +
+         '</div>';
+}
+
+// ── การ์ดเล็กเรียงเป็นตาราง ──
+function stMiniCards(รายการ) {
+  if (!รายการ.length) return '';
+  var h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px;margin-bottom:12px">';
+  for (var i = 0; i < รายการ.length; i++) {
+    var r = รายการ[i];
+    h += '<div class="card" style="padding:12px">' +
+         '<div style="font-size:11.5px;color:var(--tx3);line-height:1.35;min-height:30px">' + esc(r.t) + '</div>' +
+         '<div style="font-size:19px;font-weight:700;margin-top:2px">' + r.v + '</div>' +
+         (r.s ? '<div style="font-size:11px;color:var(--tx3);margin-top:1px">' + esc(r.s) + '</div>' : '') +
+         '</div>';
+  }
+  return h + '</div>';
+}
+
+// ── แผนภูมิแท่งรายเดือน ──
+//
+//  ⚠️⚠️ เดือนที่ยังไม่มาถึงต้องเป็นแท่งว่าง ไม่ใช่แท่งศูนย์
+//     เซิร์ฟเวอร์ส่ง hours = null มาให้สำหรับเดือนเหล่านั้น (ไฟล์ 103/104)
+//     ถ้าวาดเป็น 0 จะอ่านได้ว่า "เดือนนั้นไม่มีใครลา" ซึ่งคนละความหมายกับ "ยังไม่ถึง"
+var ST_MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function stMonthChart(byMonth, perDay, หน่วย) {
+  var rows = byMonth || [];
+  var สูงสุด = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var v = rows[i] && rows[i].hours;
+    if (v !== null && v !== undefined && Number(v) > สูงสุด) สูงสุด = Number(v);
+  }
+  var h = '<div class="card" style="padding:14px;margin-bottom:12px">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--tx2);margin-bottom:10px">แยกตามเดือน</div>' +
+          '<div style="display:flex;align-items:flex-end;gap:4px;height:124px">';
+  for (var m = 0; m < rows.length; m++) {
+    var ชม = rows[m] && rows[m].hours;
+    var ยังไม่ถึง = (ชม === null || ชม === undefined);
+    var ส่วนสูง = (!ยังไม่ถึง && สูงสุด > 0) ? Math.max(2, Math.round(Number(ชม) / สูงสุด * 100)) : 0;
+    var ป้าย = ยังไม่ถึง ? '—'
+             : (หน่วย === 'ชม.' ? stNum(ชม) : stNum(Number(ชม) / (perDay || 1)));
+    h += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">' +
+         '<div style="font-size:9.5px;color:var(--tx3);margin-bottom:3px">' + ป้าย + '</div>' +
+         (ยังไม่ถึง
+            ? '<div style="width:100%;height:14px;border:1px dashed var(--bd2);border-radius:4px 4px 0 0"></div>'
+            : '<div style="width:100%;height:' + ส่วนสูง + '%;min-height:2px;background:var(--ac);opacity:.85;border-radius:4px 4px 0 0"></div>') +
+         '</div>';
+  }
+  h += '</div><div style="display:flex;gap:4px;margin-top:5px">';
+  for (var k = 0; k < rows.length; k++) {
+    h += '<div style="flex:1;text-align:center;font-size:9.5px;color:var(--tx3)">' + ST_MONTH_TH[k] + '</div>';
+  }
+  return h + '</div><div style="font-size:11px;color:var(--tx3);margin-top:8px">' +
+         'เดือนที่เป็นเส้นประ = ยังไม่ถึงเดือนนั้น ไม่ใช่ไม่มีข้อมูล</div></div>';
+}
+
+// ── แผนภูมิแท่งนอน แยกตามแผนก ──
+//
+//  ⚠️⚠️ เทียบเป็น "ต่อคน" ไม่ใช่ยอดรวม
+//     ถ้าโชว์ยอดรวม แผนกที่คนมากจะชนะทุกเดือนโดยอัตโนมัติ ซึ่งไม่ได้บอกอะไรเลย
+//     เซิร์ฟเวอร์ส่ง deptSize (จำนวนคนทั้งแผนก) มาให้หารเอง
+function stDeptChart(byDept, perDay, หน่วย) {
+  var rows = (byDept || []).slice();
+  for (var i = 0; i < rows.length; i++) {
+    var ขนาด = Number(rows[i].deptSize) || 0;
+    rows[i].__ต่อคน = ขนาด ? (Number(rows[i].hours) || 0) / ขนาด : 0;
+  }
+  rows.sort(function (a, b) { return b.__ต่อคน - a.__ต่อคน; });
+  var สูงสุด = rows.length ? rows[0].__ต่อคน : 0;
+  if (!rows.length) return '';
+  var h = '<div class="card" style="padding:14px;margin-bottom:12px">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--tx2);margin-bottom:3px">แยกตามแผนก</div>' +
+          '<div style="font-size:11px;color:var(--tx3);margin-bottom:11px">' +
+          'เทียบเป็น' + (หน่วย === 'ชม.' ? 'ชั่วโมง' : 'วัน') + '<b>ต่อคน</b> ' +
+          'ไม่ใช่ยอดรวม — ไม่งั้นแผนกที่คนมากจะสูงที่สุดเสมอ</div>';
+  for (var k = 0; k < rows.length; k++) {
+    var r = rows[k];
+    var กว้าง = สูงสุด > 0 ? Math.max(1, Math.round(r.__ต่อคน / สูงสุด * 100)) : 0;
+    var ค่า = (หน่วย === 'ชม.') ? stNum(r.__ต่อคน) + ' ชม.'
+                                : stNum(r.__ต่อคน / (perDay || 1)) + ' วัน';
+    h += '<div style="margin-bottom:9px">' +
+         '<div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px">' +
+         '<span style="color:var(--tx2)">' + esc(r.dept) + ' <span style="color:var(--tx3)">(' + stInt(r.deptSize) + ' คน)</span></span>' +
+         '<span style="font-weight:700">' + ค่า + '</span></div>' +
+         '<div style="height:7px;background:var(--bd);border-radius:4px;overflow:hidden">' +
+         '<div style="height:100%;width:' + กว้าง + '%;background:var(--ac);opacity:.8"></div></div>' +
+         '</div>';
+  }
+  return h + '</div>';
+}
+
+// ── ตาราง 10 อันดับ ──
+function stTopTable(หัว, rows, คอลัมน์, ว่างว่า) {
+  var h = '<div class="card" style="padding:14px;margin-bottom:12px">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--tx2);margin-bottom:10px">' + หัว + '</div>';
+  if (!rows || !rows.length) {
+    return h + '<div style="font-size:12.5px;color:var(--tx3);padding:6px 0">' + ว่างว่า + '</div></div>';
+  }
+  h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">' +
+       '<thead><tr style="color:var(--tx3);text-align:left">' +
+       '<th style="padding:5px 4px;font-weight:600">#</th>' +
+       '<th style="padding:5px 4px;font-weight:600">ชื่อ</th>';
+  for (var c = 0; c < คอลัมน์.length; c++) {
+    h += '<th style="padding:5px 4px;font-weight:600;text-align:right;white-space:nowrap">' + คอลัมน์[c].t + '</th>';
+  }
+  h += '</tr></thead><tbody>';
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    h += '<tr style="border-top:1px solid var(--bd)">' +
+         '<td style="padding:7px 4px;color:var(--tx3)">' + (i + 1) + '</td>' +
+         // ⚠️ ชื่อไทยไม่มีช่องว่างระหว่างคำ เบราว์เซอร์จึงตัดกลางคำได้ ("ปักมานั/ง")
+         //    ใส่ nowrap แล้วให้กล่องเลื่อนแนวนอนแทน อ่านง่ายกว่าชื่อที่ถูกหั่น
+         '<td style="padding:7px 4px;white-space:nowrap"><div style="font-weight:600">' + esc(r.name || r.empId) + '</div>' +
+         '<div style="font-size:10.5px;color:var(--tx3)">' + esc(r.empId) +
+         (r.dept ? ' · ' + esc(r.dept) : '') + '</div></td>';
+    for (var c2 = 0; c2 < คอลัมน์.length; c2++) {
+      h += '<td style="padding:7px 4px;text-align:right;white-space:nowrap' +
+           (คอลัมน์[c2].เน้น ? ';font-weight:700' : ';color:var(--tx2)') + '">' +
+           คอลัมน์[c2].f(r) + '</td>';
+    }
+    h += '</tr>';
+  }
+  return h + '</tbody></table></div></div>';
+}
+
+// ══════════ หน้าสถิติการลา ══════════
+function loadStatsLeave() {
+  stYearOptions('stl-year');
+  stFetchLeave();
+}
+function stFetchLeave() {
+  var ปี = document.getElementById('stl-year').value;
+  document.getElementById('stl-loading').style.display = 'block';
+  document.getElementById('stl-body').innerHTML = '';
+  ST.leave = null; ST.late = null;
+  var เสร็จ = 0;
+  function พร้อม() { if (++เสร็จ === 2) { document.getElementById('stl-loading').style.display = 'none'; stRenderLeave(); } }
+
+  gasRun('leaveStatsYear', { hrToken: S.hrToken, year: ปี })
+    .withSuccessHandler(function (r) {
+      if (!r || !r.success) {
+        showToast((r && r.message) || 'อ่านสถิติการลาไม่สำเร็จ');
+        if (r && r.authError) authBounce(r);
+      } else ST.leave = r;
+      พร้อม();
+    })
+    .withFailureHandler(function (e) { showToast(e.message); พร้อม(); });
+
+  // ⚠️ ยิงพร้อมกัน ไม่ใช่รอทีละตัว — สองคำถามไม่ขึ้นต่อกัน
+  gasRun('lateStatsYear', { hrToken: S.hrToken, year: ปี })
+    .withSuccessHandler(function (r) { if (r && r.success) ST.late = r; พร้อม(); })
+    .withFailureHandler(function () { พร้อม(); });
+}
+
+function stRenderLeave() {
+  var d = ST.leave;
+  var box = document.getElementById('stl-body');
+  if (!d) { box.innerHTML = '<div class="card" style="padding:16px;font-size:13px;color:var(--tx2)">อ่านข้อมูลไม่สำเร็จ</div>'; return; }
+
+  document.getElementById('stl-asof').innerHTML =
+    'ข้อมูลถึง ' + esc(d.asOf || '-') + '<br>ทำงานมาแล้ว <b>' + stInt(d.workedDays) + '</b> วันทำงาน';
+
+  var perDay = Number(d.perDay) || 0;
+  var คน = Number(d.empActive) || 0;
+  var h = '';
+  h += stPendingBar(d.pending, 'leave-approve');
+  h += stOverlapBar(d.overlap);
+
+  h += stBigCard('ลารวมทั้งปี',
+        stDays(d.totalHours, perDay),
+        'เฉลี่ย <b>' + (คน ? stDays(Number(d.totalHours) / คน, perDay) : '-') + '/คน</b>' +
+        ' · มีคนลาจริง ' + stInt(d.people) + ' คน จาก ' + stInt(คน) + ' คน' +
+        ' · ' + stInt(d.totalReqs) + ' ใบ');
+
+  var mini = [];
+  for (var i = 0; i < (d.byType || []).length && i < 6; i++) {
+    var t = d.byType[i];
+    mini.push({ t: t.name, v: stDays(t.hours, perDay), s: stInt(t.people) + ' คน · ' + stInt(t.reqs) + ' ใบ' });
+  }
+  h += stMiniCards(mini);
+
+  h += stMonthChart(d.byMonth, perDay, 'วัน');
+  h += stDeptChart(d.byDept, perDay, 'วัน');
+
+  h += stTopTable('10 อันดับ ลามากที่สุด', d.top,
+        [{ t: 'จำนวนวัน', เน้น: 1, f: function (r) { return stDays(r.hours, perDay); } },
+         { t: 'จำนวนใบ', f: function (r) { return stInt(r.reqs); } }],
+        'ยังไม่มีใบลาที่อนุมัติในปีนี้');
+
+  // ── ส่วนสถิติมาสาย ──
+  h += stLateSection();
+
+  // ── ประเภทที่ยกเว้น ──
+  // ⚠️ ไม่ซ่อนหายไป — แสดงเป็นหมายเหตุว่ามีอยู่แต่ไม่รวมในยอด
+  var ยกเว้น = d.excludedTypes || [];
+  if (ยกเว้น.length) {
+    var ชิ้น = [];
+    for (var k = 0; k < ยกเว้น.length; k++) {
+      ชิ้น.push(esc(ยกเว้น[k].name) + ' ' + stDays(ยกเว้น[k].hours, perDay) +
+                ' (' + stInt(ยกเว้น[k].people) + ' คน)');
+    }
+    h += '<div class="card" style="padding:13px;margin-bottom:12px;font-size:12px;line-height:1.65;color:var(--tx2)">' +
+         '<b>ไม่รวมในยอดด้านบน</b> — ' + ชิ้น.join(' · ') +
+         '<div style="color:var(--tx3);margin-top:5px">ลายาวที่นับวันหยุดเป็นวันลาด้วย ' +
+         'ถ้ารวมเข้าไปจะกลบภาพการลาปกติทั้งหมด</div></div>';
+  }
+
+  box.innerHTML = h;
+}
+
+// ── ส่วน "10 อันดับมาสาย" สามคอลัมน์ ──
+//
+//  ⚠️⚠️ เรียงด้วย "สายจริง" ตามที่ ED เลือก ไม่ใช่ยอดดิบ
+//     ถ้าเรียงด้วยยอดดิบ คนลาครึ่งเช้าหนเดียว (255 นาที) จะชนะคนสายจริง 20 ครั้ง
+//     แล้ว 10 อันดับจะกลายเป็นรายชื่อคนลาครึ่งวัน ไม่ใช่คนมาสาย
+//
+//  ⚠️ แสดงทั้งสามคอลัมน์ ไม่หักเงียบ ๆ — ฝ่ายบุคคลต้องตรวจย้อนได้
+function stLateSection() {
+  var L = ST.late;
+  if (!L) {
+    return '<div class="card" style="padding:13px;margin-bottom:12px;font-size:12.5px;color:var(--tx3)">' +
+           'อ่านสถิติมาสายไม่สำเร็จ — ส่วนอื่นของหน้านี้ยังใช้ได้ตามปกติ</div>';
+  }
+  var h = '<div style="font-size:14px;font-weight:700;color:var(--tx2);margin:18px 2px 9px">สถิติการมาสาย</div>';
+
+  h += stBigCard('มาสายรวมทั้งปี',
+        stMin(L.minNet),
+        'นับตามที่ระบบบันทึก ' + stMin(L.minRaw) +
+        ' · หักใบลาและเวลาพัก ' + stMin(L.minCovered) +
+        '<br>' + stInt(L.rows) + ' ครั้ง · ' + stInt(L.people) + ' คน' +
+        (Number(L.fullyCovered) ? ' · มี ' + stInt(L.fullyCovered) + ' ครั้งที่ใบลาคลุมหมด ไม่ถือว่าสาย' : ''));
+
+  h += stTopTable('10 อันดับ มาสายมากที่สุด', L.top,
+        [{ t: 'สายทั้งหมด', f: function (r) { return stMin(r.minRaw); } },
+         { t: 'ใบลา+พัก',  f: function (r) { return stMin(r.minCovered); } },
+         { t: 'สายจริง',   เน้น: 1, f: function (r) { return stMin(r.minNet) + '<div style="font-size:10px;color:var(--tx3);font-weight:400">' + stInt(r.timesNet) + ' ครั้ง</div>'; } }],
+        'ยังไม่มีใครมาสายในปีนี้');
+
+  h += '<div class="card" style="padding:13px;margin-bottom:12px;font-size:11.5px;line-height:1.7;color:var(--tx3)">' +
+       '<b style="color:var(--tx2)">อ่านตารางนี้อย่างไร</b><br>' +
+       '· <b>สายทั้งหมด</b> = ตัวเลขที่ระบบบันทึกไว้ตอนลงเวลา ตรงกับหน้ารายงานลงเวลา<br>' +
+       '· <b>ใบลา+พัก</b> = ส่วนที่มีใบลาอนุมัติคลุมอยู่ หรือเป็นเวลาพักซึ่งไม่ใช่เวลาทำงาน<br>' +
+       '· <b>สายจริง</b> = ส่วนที่เหลือ คือเวลาที่ขาดงานโดยไม่มีใบลา — เรียงอันดับด้วยคอลัมน์นี้<br>' +
+       '· <b>กี่ครั้ง</b> ใต้สายจริง นับเฉพาะครั้งที่ยังเหลือความสาย ครั้งที่ใบลาคลุมหมดไม่นับ<br>' +
+       '🚫 กะ FLEX และ DRIVER ไม่มีเวลาเข้างานที่กำหนด ระบบจึงไม่คิดมาสายให้ ' +
+       'คนกะเหล่านี้จะไม่ปรากฏในตารางนี้เลย' +
+       (Number(L.unparsed) ? '<br>⚠️ มี ' + stInt(L.unparsed) + ' แถวที่อ่านจำนวนนาทีจากสถานะไม่ออก ' +
+          'ไม่ถูกรวมในยอด — ตัวอย่างสถานะ: ' + esc(JSON.stringify(L.unparsedSample || [])) : '') +
+       '</div>';
+  return h;
+}
+
+// ══════════ หน้าสถิติโอที ══════════
+function loadStatsOt() {
+  stYearOptions('sto-year');
+  stFetchOt();
+}
+function stFetchOt() {
+  var ปี = document.getElementById('sto-year').value;
+  document.getElementById('sto-loading').style.display = 'block';
+  document.getElementById('sto-body').innerHTML = '';
+  gasRun('otStatsYear', { hrToken: S.hrToken, year: ปี })
+    .withSuccessHandler(function (r) {
+      document.getElementById('sto-loading').style.display = 'none';
+      if (!r || !r.success) {
+        showToast((r && r.message) || 'อ่านสถิติโอทีไม่สำเร็จ');
+        if (r && r.authError) authBounce(r);
+        return;
+      }
+      ST.ot = r;
+      stRenderOt();
+    })
+    .withFailureHandler(function (e) {
+      document.getElementById('sto-loading').style.display = 'none';
+      showToast(e.message);
+    });
+}
+
+function stRenderOt() {
+  var d = ST.ot;
+  var box = document.getElementById('sto-body');
+  if (!d) return;
+
+  document.getElementById('sto-asof').innerHTML = 'ข้อมูลถึง ' + esc(d.asOf || '-');
+
+  var คน = Number(d.empActive) || 0;
+  var ทำจริง = Number(d.people) || 0;
+  var h = '';
+  h += stPendingBar(d.pending, 'ot-approve');
+
+  // ⚠️ แสดงสองค่าเฉลี่ยคู่กัน — เฉลี่ยทั้งองค์กรกับจำนวนคนที่ทำจริง
+  //    โอทีกระจุกอยู่กับคนไม่กี่คน ถ้าโชว์แต่ค่าเฉลี่ยองค์กรจะอ่านผิดไปเลย
+  h += stBigCard('โอทีรวมทั้งปี',
+        stNum(d.totalHours) + ' ชม.',
+        'เฉลี่ย <b>' + (คน ? stNum(Number(d.totalHours) / คน) : '-') + ' ชม./คน</b>' +
+        ' · มีคนทำโอทีจริง ' + stInt(ทำจริง) + ' คน จาก ' + stInt(คน) + ' คน' +
+        (ทำจริง ? ' (เฉลี่ยในกลุ่มที่ทำจริง ' + stNum(Number(d.totalHours) / ทำจริง) + ' ชม./คน)' : '') +
+        ' · ' + stInt(d.totalReqs) + ' ใบ');
+
+  var mini = [];
+  for (var i = 0; i < (d.byType || []).length && i < 6; i++) {
+    var t = d.byType[i];
+    mini.push({ t: t.name, v: stNum(t.hours) + ' ชม.', s: stInt(t.people) + ' คน · ' + stInt(t.reqs) + ' ใบ' });
+  }
+  h += stMiniCards(mini);
+
+  h += stMonthChart(d.byMonth, 0, 'ชม.');
+  h += stDeptChart(d.byDept, 0, 'ชม.');
+
+  h += stTopTable('10 อันดับ ทำโอทีมากที่สุด', d.top,
+        [{ t: 'ชั่วโมง', เน้น: 1, f: function (r) { return stNum(r.hours) + ' ชม.'; } },
+         { t: 'จำนวนใบ', f: function (r) { return stInt(r.reqs); } }],
+        'ยังไม่มีใบโอทีที่อนุมัติในปีนี้');
+
+  h += '<div class="card" style="padding:13px;margin-bottom:12px;font-size:11.5px;line-height:1.7;color:var(--tx3)">' +
+       '🚫 ระบบนี้<b>ไม่มีข้อมูลเงิน</b> — ตัวเลขทั้งหมดเป็นชั่วโมง ไม่ใช่ค่าแรง<br>' +
+       '· ประเภทโอทีที่ยังไม่มีใครทำในปีนี้จะไม่ปรากฏเป็นการ์ด<br>' +
+       '· ใบค้างอนุมัติไม่ถูกนับในยอด — ยอดจะเปลี่ยนเมื่ออนุมัติแล้ว' +
+       '</div>';
+
+  box.innerHTML = h;
 }
 
 // ========== HR DASHBOARD ==========
@@ -10136,6 +10611,11 @@ applyLogo();
   // ── กำหนดกะการทำงาน ──
   // ⚠️ โหลดข้อมูลตอนกดเข้าหน้า ไม่ใช่ตอนเปิดแอป (ฝ่ายบุคคลไม่ได้เข้าหน้านี้ทุกวัน)
   on('hr-menu-shift',     'click', function() { go('hr-shift'); loadShiftPage(); });
+  // ── หน้าสรุปสถิติ ──
+  on('stl-back',  'click',  function() { go('home'); });
+  on('sto-back',  'click',  function() { go('home'); });
+  on('stl-year',  'change', function() { stFetchLeave(); });
+  on('sto-year',  'change', function() { stFetchOt(); });
   on('hr-menu-empreport', 'click', function() { go('hr-empreport'); loadEmpReportPage(); });
   // ⚠️ ED ทักว่าไม่มีเมนูเข้าหน้านี้ มีแต่ลิงก์บนการ์ดหน้าหลัก
   //    ถ้าการ์ดซ่อนตัวเอง (เช่นคำขอล้ม) ฝ่ายบุคคลจะไม่มีทางเข้าเลย
