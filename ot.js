@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.OT_JS_VERSION = '8.15.0';
+window.OT_JS_VERSION = '8.59.0';
 
 /* ═══════════════════════════════════════════════════════════════
  *  ot.js — Frontend ระบบ OT (SOM HR System)

@@ -1,5 +1,5 @@
 // รุ่นของไฟล์นี้ — ต้องตรงกับ APP_VERSION ใน index.html (ใช้ตรวจว่าโหลดไฟล์เก่าค้างอยู่ไหม)
-window.LEAVE_JS_VERSION = '8.29.0';
+window.LEAVE_JS_VERSION = '8.60.0';
 
 /*═══════════════════════════════════════════════════════════════
   leave.js — Frontend ระบบลางาน (เฟส 1)
@@ -185,6 +185,9 @@ function lvFillTimeChoices(typeId) {
 // ══════════════════════════════════════════════════════════════
 var LV_GRID_DATE = '';     // วันที่ที่ขอตารางไปแล้ว (กันยิงซ้ำวันเดิม)
 var LV_GRID_BUSY = false;
+// ⚠️⚠️ ช่วงเวลาของแต่ละโหมด ตามกะของวันที่ลา — เซิร์ฟเวอร์คิดมาให้
+//    null ในโหมดไหน = ระบบไม่ได้กำหนดช่วงนั้นไว้ (ห้ามเดา ดู lvFormatRange)
+var LV_WINDOWS = null;
 
 function lvShiftNote(ข้อความ) {
   const el = document.getElementById('lv-shift-note');
@@ -197,8 +200,11 @@ function lvShiftNote(ข้อความ) {
 function lvRefreshGridForDate() {
   const modeEl = document.getElementById('lv-mode');
   const mode = modeEl ? modeEl.value : '';
-  if (mode !== 'HOURLY') { lvShiftNote(''); return; }
 
+  // ⚠️⚠️ ยิงทุกโหมด ไม่ใช่แค่รายชั่วโมง (เปลี่ยน 24 พ.ย. 2569)
+  //    เพราะเต็มวัน/ครึ่งวันก็ต้องรู้ช่วงเวลาของกะไปแสดงบนพรีวิว
+  //    ของเดิมยิงแต่โหมดรายชั่วโมง พรีวิวจึงยังโชว์ 08:30–18:00 ของกะ A
+  //    ⚠️ ยังกันยิงซ้ำวันเดิมอยู่ จึงไม่ได้ยิงถี่ขึ้นเวลาสลับโหมดไปมา
   const d = String((document.getElementById('lv-date-from') || {}).value || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { lvShiftNote(''); return; }
   if (d === LV_GRID_DATE || LV_GRID_BUSY) return;
@@ -213,13 +219,16 @@ function lvRefreshGridForDate() {
         return;
       }
       LV_GRID_DATE = d;
+      // ⚠️ เก็บช่วงเวลาของทุกโหมดไว้ให้พรีวิวใช้ (เซิร์ฟเวอร์คิดมาแล้ว)
+      LV_WINDOWS = (r.windows && typeof r.windows === 'object') ? r.windows : null;
+      if (typeof lvUpdatePreview === 'function') lvUpdatePreview();
       const ใหม่ = {};
       (r.types || []).forEach(function (t) { ใหม่[t.id] = t.grid; });
       LV.types.forEach(function (t) {
         if (Object.prototype.hasOwnProperty.call(ใหม่, t.id)) t.grid = ใหม่[t.id];
       });
       const typeId = (document.getElementById('lv-type') || {}).value || '';
-      if (typeId) lvFillTimeChoices(typeId);
+      if (typeId && mode === 'HOURLY') lvFillTimeChoices(typeId);
       lvShiftNote(r.shiftFrom === 'วันที่ขอ'
         ? 'ตัวเลือกเวลาเป็นของกะ ' + (r.myShift || '?') + ' ตามกะของวันที่ลา'
         : 'ตัวเลือกเวลาเป็นของกะ ' + (r.myShift || '?') + ' (จากทะเบียน)');
@@ -382,11 +391,23 @@ function lvUpdatePreview() {
     const d2 = new Date(dt + 'T00:00:00');
     const days = Math.floor((d2 - d1) / 86400000) + 1;
     const dayText = (days > 1) ? ` · ${days} วัน` : '';
-    text = `${fmt(df)} (08:30) – ${fmt(dt)} (18:00) · เต็มวัน${dayText}`;
+    // ⚠️⚠️ ช่วงเวลามาจากเซิร์ฟเวอร์ (LV_WINDOWS) คิดจากกะของวันที่ลา
+    //    🚫 ของเดิมฝัง 08:30/18:00 ไว้ คนกะ B (20:30–06:00) จึงเห็นเวลาผิดทุกใบ
+    //    ⚠️ ไม่มีช่วงเวลา = ระบบไม่ได้กำหนดไว้ → แสดงแค่วันที่ ไม่เดาเวลา
+    const wF = LV_WINDOWS && LV_WINDOWS.FULL;
+    text = wF
+      ? `${fmt(df)} (${wF.from}) – ${fmt(dt)} (${wF.to}) · เต็มวัน${dayText}`
+      : `${fmt(df)} – ${fmt(dt)} · เต็มวัน${dayText}`;
   } else if (mode === 'HALF_AM') {
-    text = `${fmt(df)} (08:30) – ${fmt(df)} (12:00) · ครึ่งวันเช้า 3.5 ชม.`;
+    const wA = LV_WINDOWS && LV_WINDOWS.HALF_AM;
+    text = wA
+      ? `${fmt(df)} (${wA.from}) – ${fmt(df)} (${wA.to}) · ครึ่งวันเช้า 3.5 ชม.`
+      : `${fmt(df)} · ครึ่งวันเช้า 3.5 ชม.`;
   } else if (mode === 'HALF_PM') {
-    text = `${fmt(df)} (13:00) – ${fmt(df)} (18:00) · ครึ่งวันบ่าย 5 ชม.`;
+    const wP = LV_WINDOWS && LV_WINDOWS.HALF_PM;
+    text = wP
+      ? `${fmt(df)} (${wP.from}) – ${fmt(df)} (${wP.to}) · ครึ่งวันบ่าย 5 ชม.`
+      : `${fmt(df)} · ครึ่งวันบ่าย 5 ชม.`;
   } else if (mode === 'HOURLY') {
     const tf = document.getElementById('lv-time-from').value;
     const tt = document.getElementById('lv-time-to').value;
@@ -638,14 +659,30 @@ function lvStepper(status) {
 }
 
 // format ช่วงวันเวลาแบบ dd/mm/yyyy (HH:mm) ตามโหมด
+/**
+ * ช่วงวันเวลาบนการ์ด
+ *
+ * ⚠️⚠️ ช่วงเวลา (r.win) มาจากเซิร์ฟเวอร์ คิดจากกะของ "เจ้าของใบ" ในวันที่ลา
+ *    🚫 ของเดิมฝัง 08:30/12:00/13:00/18:00 ไว้ 4 บรรทัด ไม่ดูกะใครเลย
+ *       คนกะ B · DRIVER · แม่บ้าน จึงเห็นเวลาผิดทุกใบ (ED เจอ 24 พ.ย. 2569)
+ *    🚫 การ์ดนี้แสดงใบลาของคนอื่นด้วย (หน้าอนุมัติ) ห้ามใช้กะของคนที่กำลังดู
+ *
+ * ⚠️ ไม่มี r.win = ระบบไม่ได้กำหนดช่วงเวลานั้นไว้ เช่น
+ *    · FLEX / DRIVER — ไม่มีเวลาเข้าออกที่กำหนด (ไม่คิดมาสาย)
+ *    · ครึ่งวันของกะ B — พักเที่ยง 12:00–13:00 ไม่อยู่ในกะ 20:30–06:00
+ *    → แสดงแค่วันที่ ดีกว่าแสดงเวลาที่ไม่มีใครเคยกำหนด
+ */
 function lvFormatRange(r) {
   const fmt = (d) => { if (!d) return ''; const [y,m,dd] = d.split('-'); return `${dd}/${m}/${y}`; };
   const df = fmt(r.dateFrom), dt = fmt(r.dateTo);
-  if (r.mode === 'FULL')    return `${df} (08:30) – ${dt} (18:00)`;
-  if (r.mode === 'HALF_AM') return `${df} (08:30) – ${df} (12:00)`;
-  if (r.mode === 'HALF_PM') return `${df} (13:00) – ${df} (18:00)`;
-  if (r.mode === 'HOURLY')  return `${df} (${r.timeFrom || '?'}) – ${df} (${r.timeTo || '?'})`;
-  return `${df} – ${dt}`;
+  const w = r.win;
+  if (w && w.from && w.to) {
+    // เต็มวันอาจกินหลายวัน · ครึ่งวันกับรายชั่วโมงเป็นวันเดียวเสมอ
+    const จบ = (r.mode === 'FULL') ? dt : df;
+    return `${df} (${w.from}) – ${จบ} (${w.to})`;
+  }
+  if (r.mode === 'HOURLY') return `${df} (${r.timeFrom || '?'}) – ${df} (${r.timeTo || '?'})`;
+  return (r.dateFrom && r.dateFrom === r.dateTo) ? df : `${df} – ${dt}`;
 }
 
 
