@@ -820,7 +820,10 @@ textarea.inp{resize:vertical;min-height:60px}
       </button>
   </div>
 
-  <div class="home-sec">อนุมัติ · ลา · โอที</div>
+  <!-- ⚠️⚠️ ลำดับนี้ ED จัดเอง (24 พ.ย. 2569) — อนุมัติสามตัวติดกัน
+       แล้วรายงานสามตัวติดกัน (ลา · โอที · ขอบันทึกเวลา เรียงเหมือนกันทั้งสองแถว)
+       🚫 ห้ามแทรกของใหม่กลางแถว ให้ต่อท้ายแถวที่มันเป็นสมาชิก -->
+  <div class="home-sec">อนุมัติ · ลา · โอที · ขอบันทึกเวลา</div>
   <div class="home-grid">
       <button class="home-item" id="hr-menu-leave-approve" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(234,159,39,.15);color:#c47d0a">✔</div></div>
@@ -830,14 +833,6 @@ textarea.inp{resize:vertical;min-height:60px}
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(245,158,11,.15);color:#d97706">⏱</div></div>
         <div class="home-lb">อนุมัติ OT</div>
       </button>
-      <button class="home-item" id="hr-menu-leave-report" type="button">
-        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(55,138,221,.15);color:#2563eb">▥</div></div>
-        <div class="home-lb">รายงานการลา</div>
-      </button>
-      <button class="home-item" id="hr-menu-ot-report" type="button">
-        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(55,138,221,.15);color:#2563eb">▧</div></div>
-        <div class="home-lb">รายงาน OT</div>
-      </button>
       <!-- ⚠️⚠️ ED ทักว่าฝ่ายบุคคลไม่มีเมนูอนุมัติขอลงเวลา (11 พ.ย. 2569)
            ถูกต้อง — กลุ่ม "งานอนุมัติ" ที่หน้าหลักขึ้นเฉพาะ !isHR
            ฝ่ายบุคคลจึงต้องมีทางเข้าที่นี่ เหมือนอนุมัติลา/อนุมัติโอที
@@ -846,6 +841,14 @@ textarea.inp{resize:vertical;min-height:60px}
       <button class="home-item" id="hr-menu-fix-approve" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(14,165,233,.16);color:#0284c7">✓</div></div>
         <div class="home-lb">อนุมัติขอลงเวลา</div>
+      </button>
+      <button class="home-item" id="hr-menu-leave-report" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(55,138,221,.15);color:#2563eb">▥</div></div>
+        <div class="home-lb">รายงานการลา</div>
+      </button>
+      <button class="home-item" id="hr-menu-ot-report" type="button">
+        <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(55,138,221,.15);color:#2563eb">▧</div></div>
+        <div class="home-lb">รายงาน OT</div>
       </button>
       <button class="home-item" id="hr-menu-fix-report" type="button">
         <div class="home-ic-wrap"><div class="home-ic" style="background:rgba(14,165,233,.15);color:#0284c7">✎</div></div>
@@ -2945,7 +2948,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.60.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.61.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -3975,16 +3978,20 @@ function renderHomeMenu() {
     me.push({ p: 'checkout', t: 'เช็คเอาต์', ic: '⏻', bg: 'rgba(220,38,38,.12)',   fg: '#dc2626' });
   }
   me.push({ p: 'history',    t: 'เช็คเวลา',  ic: '▤', bg: 'rgba(100,116,139,.14)', fg: '#475569' });
+  // ⚠️⚠️ ลำดับนี้ ED จัดเอง (24 พ.ย. 2569) — กลุ่ม "ขอ" สามตัวติดกัน
+  //    แล้วกลุ่ม "ประวัติ" สามตัวติดกัน ปิดท้ายด้วยของส่วนตัว
+  //    🚫 ห้ามแทรกเมนูใหม่กลางกลุ่ม ให้ต่อท้ายกลุ่มที่มันเป็นสมาชิก
+  //    ⚠️ ED เลือกให้ขอบันทึกเวลาเป็น "สองการ์ดแยกกัน" (ขอ + ประวัติ)
+  //       ไม่รวมเป็นการ์ดเดียว และไม่เอาไปไว้ในหน้าลงเวลาไม่สมบูรณ์
+  //       เพราะพนักงานทั่วไปไม่เห็นหน้านั้น
   me.push({ p: 'leave-form', t: 'ขอลางาน',   ic: '✈', bg: 'rgba(16,185,129,.14)',  fg: '#059669' });
   me.push({ p: 'ot-form',    t: 'ขอโอที',    ic: '＋', bg: 'rgba(245,158,11,.16)',  fg: '#d97706' });
-  me.push({ p: 'my-payslip', t: 'สลิปเงินเดือน', ic: '฿', bg: 'rgba(168,85,247,.14)', fg: '#a855f7' });
-  me.push({ p: 'holiday',    t: 'ปฏิทินวันหยุด', ic: '◷', bg: 'rgba(236,72,153,.14)', fg: '#db2777' });
+  me.push({ p: 'fix-form',   t: 'ขอบันทึกเวลา', ic: '✎', bg: 'rgba(14,165,233,.14)', fg: '#0284c7' });
   me.push({ p: 'leave-history', t: 'ประวัติการลา', ic: '☰', bg: 'rgba(16,185,129,.10)', fg: '#059669' });
   me.push({ p: 'ot-history', t: 'ประวัติโอที', ic: '☰', bg: 'rgba(245,158,11,.10)', fg: '#d97706' });
-  // ⚠️ ED เลือกให้เป็น "สองการ์ดแยกกัน" ไม่รวมเป็นการ์ดเดียว
-  //    และไม่เอาไปไว้ในหน้าลงเวลาไม่สมบูรณ์ เพราะพนักงานไม่เห็นหน้านั้น
-  me.push({ p: 'fix-form',    t: 'ขอบันทึกเวลา', ic: '✎', bg: 'rgba(14,165,233,.14)', fg: '#0284c7' });
   me.push({ p: 'fix-history', t: 'ประวัติขอบันทึกเวลา', ic: '☰', bg: 'rgba(14,165,233,.10)', fg: '#0284c7' });
+  me.push({ p: 'my-payslip', t: 'สลิปเงินเดือน', ic: '฿', bg: 'rgba(168,85,247,.14)', fg: '#a855f7' });
+  me.push({ p: 'holiday',    t: 'ปฏิทินวันหยุด', ic: '◷', bg: 'rgba(236,72,153,.14)', fg: '#db2777' });
 
   // ⚠️ ผู้บริหารไม่ต้องเช็คเวลา ไม่ต้องขอลา ไม่ต้องขอโอที → ไม่สร้างปุ่มเลย
   //    เคยทำเป็น "สร้างแล้วซ่อน" — ปุ่มยังอยู่ในหน้า แค่มองไม่เห็น
