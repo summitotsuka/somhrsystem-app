@@ -1775,6 +1775,9 @@ textarea.inp{resize:vertical;min-height:60px}
           <input type="time" id="lv-time-to" class="inp" value="11:00">
         </div>
       </div>
+      <!-- ⚠️ บอกว่าตัวเลือกเวลาที่เห็นเป็นของกะไหน และของวันไหน
+           ไม่บอก = พนักงานเห็นตัวเลือกเปลี่ยนไปแล้วไม่รู้ว่าทำไม -->
+      <div id="lv-shift-note" style="display:none;font-size:12px;color:var(--tx3);margin-top:6px"></div>
     </div>
 
     <!-- สรุปช่วงเวลาที่จะลา (auto) -->
@@ -1916,6 +1919,9 @@ textarea.inp{resize:vertical;min-height:60px}
       <div class="field" style="flex:1"><label>เวลาสิ้นสุด</label><input class="inp" id="ot-time-to" type="time"></div>
     </div>
     <div style="font-size:11px;color:var(--tx3);margin:-4px 0 8px">วันสิ้นสุดเว้นว่าง = วันเดียวกัน (ใส่เมื่อ OT ข้ามวัน เช่น กะ B วันหยุด)</div>
+    <!-- ⚠️ บอกว่าตัวเลือกเวลาที่เห็นเป็นของกะไหน และมาจากวันที่ทำโอทีหรือจากทะเบียน
+         ไม่บอก = เห็นตัวเลือกเปลี่ยนไปแล้วไม่รู้ว่าทำไม -->
+    <div id="ot-shift-note" style="display:none;font-size:12px;color:var(--tx3);margin:-2px 0 8px"></div>
     <div id="ot-preview" style="font-size:13px;margin-bottom:10px;color:var(--ac)"></div>
     <div class="field"><label>รายละเอียดงานที่ทำ</label>
       <textarea class="inp" id="ot-detail" rows="3" placeholder="อธิบายงานที่ทำ"></textarea>
@@ -2032,6 +2038,8 @@ textarea.inp{resize:vertical;min-height:60px}
           <input class="inp" id="fix-out" type="time">
         </div>
       </div>
+      <!-- ⚠️ ตัวเลือกเวลาเป็นของกะในวันที่เลือก (SQL 99) ไม่ใช่กะวันนี้ -->
+      <div id="fix-shift-note" style="display:none;font-size:12px;color:var(--tx3);margin:-6px 0 10px"></div>
       <div id="fix-time-note" style="font-size:12px;color:#b45309;margin-bottom:12px"></div>
     </div>
 
@@ -2937,7 +2945,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.58.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.59.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -5497,6 +5505,10 @@ function loadFixForm() {
       }
       FIXDAYS = { days: r.days || [], from: r.from || '', to: r.to || '',
                   grid: Array.isArray(r.grid) ? r.grid : null,
+                  // ⚠️⚠️ เพิ่มใน SQL 99: ตารางเวลาแยกตามกะ + กะของแต่ละวัน
+                  //    เซิร์ฟเวอร์ตัดสินกะของแต่ละวันมาให้แล้ว (days[].shift)
+                  //    🚫 หน้าเว็บห้ามคิดเอง แค่เปิดดู
+                  grids: (r.grids && typeof r.grids === 'object') ? r.grids : null,
                   shift: r.shift || '', loaded: true };
       fixเติมตารางเวลา();
       fixแสดงวันที่ขอได้();
@@ -5538,6 +5550,10 @@ function fixปรับช่อง() {
   const วัน = String(d.value || '').trim();
   let แถว = null;
   (FIXDAYS.days || []).forEach(function (x) { if (x.date === วัน) แถว = x; });
+
+  // ⚠️ เปลี่ยนวันแล้วตารางเวลาต้องเปลี่ยนตามกะของวันนั้น
+  //    เรียกก่อนทางแยกข้างล่าง เพราะบางทางแยกจะล้างค่าในช่อง
+  fixเติมตารางเวลา();
 
   // ยังไม่เลือกวัน หรือวันที่ไม่อยู่ในรายการ → โชว์ทั้งสองช่อง ให้ฐานข้อมูลเป็นคนบอก
   if (!วัน || !แถว) {
@@ -5597,8 +5613,45 @@ function fixล้างเวลา(ด้าน) {
 
 /** เติมตารางเวลาจากฐานข้อมูลลงช่องเลือก · ไม่มีตารางเวลา = ถอยไปช่องพิมพ์
  *  ⚠️ เรียกหลัง fixDays ตอบกลับทุกครั้ง เพราะตารางเวลาขึ้นกับกะของคนนั้น */
+/**
+ * ตารางเวลาของ "วันที่เลือกไว้" — ไม่ใช่ของกะวันนี้
+ *
+ * ⚠️⚠️ วันที่ลงเวลาไม่สมบูรณ์อาจอยู่คร่อมช่วงที่ฝ่ายบุคคลย้ายกะ
+ *    ของเดิมส่งตารางมาชุดเดียวต่อคน → ตารางผิดสำหรับบางวัน
+ *    → เห็นตัวเลือกเวลาของกะอื่น แล้วยื่นคำขอไม่ได้
+ * 🚫 กะของแต่ละวันมาจากเซิร์ฟเวอร์ (days[].shift ตัดสินด้วย shift_on)
+ *    หน้าเว็บห้ามคิดเอง ไม่งั้นกติกาการตัดสินกะจะแตกเป็นสองสำเนา
+ * ⚠️ ไม่มี grids (หลังบ้านรุ่นเก่า) → ถอยไปใช้ grid ชุดเดียวเหมือนเดิม
+ */
+function fixตารางของวันที่เลือก() {
+  const เก่า = (FIXDAYS && Array.isArray(FIXDAYS.grid)) ? FIXDAYS.grid : null;
+  if (!FIXDAYS || !FIXDAYS.grids) return เก่า;
+  const วัน = String((document.getElementById('fix-date') || {}).value || '').trim();
+  if (!วัน) return เก่า;
+  let แถว = null;
+  (FIXDAYS.days || []).forEach(function (x) { if (x.date === วัน) แถว = x; });
+  const กะ = แถว ? String(แถว.shift || '').toUpperCase() : '';
+  if (!กะ) return เก่า;
+  const g = FIXDAYS.grids[กะ];
+  return (Array.isArray(g) && g.length) ? g : เก่า;
+}
+
+/** บอกว่าตัวเลือกเวลาที่เห็นเป็นของกะไหน (เฉพาะเมื่อรู้จากวันที่เลือก) */
+function fixบอกกะของวัน() {
+  const el = document.getElementById('fix-shift-note');
+  if (!el) return;
+  const วัน = String((document.getElementById('fix-date') || {}).value || '').trim();
+  let แถว = null;
+  (FIXDAYS.days || []).forEach(function (x) { if (x.date === วัน) แถว = x; });
+  const กะ = (แถว && แถว.shift) ? String(แถว.shift).toUpperCase() : '';
+  if (!วัน || !กะ) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = 'ตัวเลือกเวลาเป็นของกะ ' + กะ + ' ตามกะของวันที่เลือก';
+  el.style.display = '';
+}
+
 function fixเติมตารางเวลา() {
-  const เวลา = (FIXDAYS && Array.isArray(FIXDAYS.grid)) ? FIXDAYS.grid : null;
+  const เวลา = fixตารางของวันที่เลือก();
+  fixบอกกะของวัน();
   ['in', 'out'].forEach(function (ด้าน) {
     const g = document.getElementById('fix-' + ด้าน + '-grid');
     const t = document.getElementById('fix-' + ด้าน);
@@ -7384,6 +7437,13 @@ var SH_TODAY = {};         // รหัส → กะของวันนี้
 var SH_EMPS = [];          // รายชื่อพนักงาน (ไว้ทำ dropdown + รู้กะในทะเบียน)
 var SH_WANT_EMP = '';      // รหัสที่ต้องให้เห็นรอบถัดไป (ตั้งตอนบันทึก/ลบ)
 
+// ⚠️⚠️ ค่าแทน "ไม่มีกำหนดสิ้นสุด" — ต้องตรงกับที่ Edge Function เติม
+//    (ดู action shiftSet: toRaw === "" ? "2999-12-31")
+//    🚫 เขียนเลขนี้ที่เดียว ห้ามพิมพ์ซ้ำที่อื่น
+//       หน้าเว็บจำเป็นต้องรู้ค่านี้ เพราะต้องคิดเรื่องช่วงทับกันและแสดงผล
+//       แต่ "คนเติม" ต้องเป็น Edge Function เท่านั้น (ดู shSave)
+var SH_NO_END = '2999-12-31';
+
 /** ไม่มีกำหนดสิ้นสุด = วันสิ้นสุดตั้งแต่ปี 2990 ขึ้นไป */
 function shIsOpenEnded(iso) { return String(iso || '') >= '2990-01-01'; }
 
@@ -7505,7 +7565,7 @@ function shMakeBase(empId, กะ) {
                'กะหลักคือ "กะปกติ" ของคนนี้ · กะชั่วคราวที่กำหนดทีหลังจะบังเฉพาะช่วงของมัน ' +
                'แล้วพอหมดช่วงจะกลับมากะหลักเอง')) return;
   SH_WANT_EMP = empId;
-  shSaveRow(empId, กะ, '2000-01-01', '2999-12-31', 'กะหลัก', null);
+  shSaveRow(empId, กะ, '2000-01-01', SH_NO_END, 'กะหลัก', null);
 }
 
 function shSaveRow(empId, กะ, fromIso, toIso, note, btn) {
@@ -7560,7 +7620,7 @@ function shSave() {
   // ── ⚠️ เตือนเรื่องช่วงทับกัน (ED เลือก "เตือนแต่บันทึกได้" 23 พ.ย. 2569) ──
   //    บอกให้ชัดว่า "รายการไหนจะชนะ" ไม่ใช่แค่บอกว่าทับ
   //    เพราะ shift_on เลือกรายการที่วันเริ่มใหม่ที่สุด ไม่ใช่รายการที่เพิ่งบันทึก
-  const ปลายจริง = tIso || '2999-12-31';
+  const ปลายจริง = tIso || SH_NO_END;
   const ทับ = shRowsOf(empId).filter(function (x) {
     return String(x.from) <= ปลายจริง && String(x.to) >= fIso;
   });

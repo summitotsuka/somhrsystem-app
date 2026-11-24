@@ -166,6 +166,70 @@ function lvFillTimeChoices(typeId) {
   });
 }
 
+// ══════════════════════════════════════════════════════════════
+//  ตารางเวลาของลารายชั่วโมง ต้องเป็นของ "กะในวันที่ลา" (Edge 5.56)
+//
+//  ⚠️⚠️ ทำไมต้องถามใหม่ตอนเลือกวันเสร็จ
+//     ตอนเปิดฟอร์มระบบยังไม่รู้ว่าผู้ใช้จะลาวันไหน จึงได้ตารางของกะในทะเบียนมา
+//     ถ้าวันที่ลาเป็นวันที่ฝ่ายบุคคลย้ายกะไว้ ตารางจะผิดกะ
+//     → พนักงานเห็นตัวเลือกเวลาของกะอื่น แล้ว "ยื่นใบลาไม่ได้เลย"
+//        (submitLeave ตรวจว่าเวลาที่เลือกต้องอยู่ในตาราง)
+//
+//  🚫 ห้ามให้หน้าเว็บคิดเองว่าวันนั้นอยู่กะอะไร — ส่งวันที่ไปให้เซิร์ฟเวอร์ตัดสิน
+//     กติกาการตัดสินกะอยู่ใน shift_on ที่เดียว
+//
+//  ⚠️ อัปเดตแค่ช่อง grid ของแต่ละประเภท ไม่แทน LV.types ทั้งก้อน
+//     เพราะรายการประเภทไม่ได้ขึ้นกับกะ และการสร้าง dropdown ใหม่
+//     จะทำให้ประเภทที่ผู้ใช้เลือกไว้หลุด (บทเรียนช่องผู้อนุมัติ 18 พ.ย. 2569)
+//  ⚠️ ลารายชั่วโมงเป็นวันเดียวเสมอ จึงมี "วันเดียว" ที่ชัดเจนให้ส่งไปทุกกรณี
+// ══════════════════════════════════════════════════════════════
+var LV_GRID_DATE = '';     // วันที่ที่ขอตารางไปแล้ว (กันยิงซ้ำวันเดิม)
+var LV_GRID_BUSY = false;
+
+function lvShiftNote(ข้อความ) {
+  const el = document.getElementById('lv-shift-note');
+  if (!el) return;
+  if (!ข้อความ) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = ข้อความ;
+  el.style.display = '';
+}
+
+function lvRefreshGridForDate() {
+  const modeEl = document.getElementById('lv-mode');
+  const mode = modeEl ? modeEl.value : '';
+  if (mode !== 'HOURLY') { lvShiftNote(''); return; }
+
+  const d = String((document.getElementById('lv-date-from') || {}).value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { lvShiftNote(''); return; }
+  if (d === LV_GRID_DATE || LV_GRID_BUSY) return;
+
+  LV_GRID_BUSY = true;
+  gasRun('leaveGetTypes', { hrToken: S.hrToken, date: d })
+    .withSuccessHandler(function (r) {
+      LV_GRID_BUSY = false;
+      if (!r || !r.success) {
+        // 🚫 ถามไม่ได้ = คงตารางเดิมไว้ ไม่ล้างทิ้ง (ล้างแล้วจะยื่นไม่ได้เลย)
+        lvShiftNote('⚠️ ตรวจกะของวันที่ลาไม่ได้ — ตัวเลือกเวลาอาจไม่ใช่ของกะวันนั้น');
+        return;
+      }
+      LV_GRID_DATE = d;
+      const ใหม่ = {};
+      (r.types || []).forEach(function (t) { ใหม่[t.id] = t.grid; });
+      LV.types.forEach(function (t) {
+        if (Object.prototype.hasOwnProperty.call(ใหม่, t.id)) t.grid = ใหม่[t.id];
+      });
+      const typeId = (document.getElementById('lv-type') || {}).value || '';
+      if (typeId) lvFillTimeChoices(typeId);
+      lvShiftNote(r.shiftFrom === 'วันที่ขอ'
+        ? 'ตัวเลือกเวลาเป็นของกะ ' + (r.myShift || '?') + ' ตามกะของวันที่ลา'
+        : 'ตัวเลือกเวลาเป็นของกะ ' + (r.myShift || '?') + ' (จากทะเบียน)');
+    })
+    .withFailureHandler(function () {
+      LV_GRID_BUSY = false;
+      lvShiftNote('⚠️ ตรวจกะของวันที่ลาไม่ได้ — ตัวเลือกเวลาอาจไม่ใช่ของกะวันนั้น');
+    });
+}
+
 function lvOnTypeChange() {
   const typeId = document.getElementById('lv-type').value;
   const sel = document.getElementById('lv-mode');
@@ -1030,8 +1094,16 @@ function initLeaveBindings() {
 
   // หน้าขอลา
   on('lv-type', 'change', lvOnTypeChange);
-  on('lv-mode', 'change', lvOnModeChange);
-  on('lv-date-from', 'change', lvUpdatePreview);
+  on('lv-mode', 'change', function () {
+    lvOnModeChange();
+    // ⚠️ เพิ่งเปลี่ยนมาเป็นรายชั่วโมงทั้งที่เลือกวันไว้แล้ว ต้องถามกะด้วย
+    lvRefreshGridForDate();
+  });
+  on('lv-date-from', 'change', function () {
+    lvUpdatePreview();
+    // ⚠️ เลือกวันเสร็จแล้วค่อยถามกะของวันนั้น (ED เลือกวิธีนี้ 23 พ.ย. 2569)
+    lvRefreshGridForDate();
+  });
   on('lv-date-to', 'change', lvUpdatePreview);
   on('lv-time-from', 'change', lvUpdatePreview);
   on('lv-time-to', 'change', lvUpdatePreview);

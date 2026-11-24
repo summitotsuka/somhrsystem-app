@@ -140,6 +140,65 @@ function otTargetShift() {
   return OT.myShift || 'A';
 }
 
+// ══════════════════════════════════════════════════════════════
+//  ตารางเวลาของโอที ต้องเป็นของ "กะในวันที่ทำโอที" (Edge 5.56)
+//
+//  ⚠️⚠️ ทำไมต้องถามใหม่ตอนเลือกวันเสร็จ
+//     ตอนเปิดฟอร์มระบบยังไม่รู้ว่าจะทำโอทีวันไหน จึงได้ตารางของกะในทะเบียนมา
+//     ถ้าวันนั้นเป็นวันที่ฝ่ายบุคคลย้ายกะไว้ ตารางจะผิดกะ
+//  ⚠️ โอทีข้ามคืนยึด "วันเริ่ม" (ot-date-from) ระบบเติม ot-date-to ให้เอง
+//     จึงมี "วันเดียว" ที่ชัดเจนให้ส่งไปทุกกรณี
+//  🚫 ห้ามให้หน้าเว็บคิดเองว่าวันนั้นอยู่กะอะไร — ส่งวันที่ไปให้เซิร์ฟเวอร์ตัดสิน
+//  ⚠️ อัปเดตแค่ช่อง grid ไม่แทน OT.types ทั้งก้อน เพราะรายการประเภท
+//     ไม่ได้ขึ้นกับกะ และสร้าง dropdown ใหม่จะทำให้ประเภทที่เลือกไว้หลุด
+// ══════════════════════════════════════════════════════════════
+var OT_GRID_DATE = '';
+var OT_GRID_BUSY = false;
+
+function otShiftNote(ข้อความ) {
+  const el = document.getElementById('ot-shift-note');
+  if (!el) return;
+  if (!ข้อความ) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = ข้อความ;
+  el.style.display = '';
+}
+
+function otRefreshGridForDate() {
+  const d = String((document.getElementById('ot-date-from') || {}).value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { otShiftNote(''); return; }
+  if (d === OT_GRID_DATE || OT_GRID_BUSY) return;
+
+  OT_GRID_BUSY = true;
+  gasRun('otGetTypes', { hrToken: S.hrToken, date: d })
+    .withSuccessHandler(function (r) {
+      OT_GRID_BUSY = false;
+      if (!r || !r.success) {
+        // 🚫 ถามไม่ได้ = คงตารางเดิมไว้ ไม่ล้างทิ้ง (ล้างแล้วจะยื่นไม่ได้เลย)
+        otShiftNote('⚠️ ตรวจกะของวันที่ทำโอทีไม่ได้ — ตัวเลือกเวลาอาจไม่ใช่ของกะวันนั้น');
+        return;
+      }
+      OT_GRID_DATE = d;
+      const ใหม่ = {};
+      (r.types || []).forEach(function (t) { ใหม่[t.id] = t.grid; });
+      OT.types.forEach(function (t) {
+        if (Object.prototype.hasOwnProperty.call(ใหม่, t.id)) t.grid = ใหม่[t.id];
+      });
+      const otType = (document.getElementById('ot-type') || {}).value || '';
+      if (otType) {
+        const typeObj = OT.types.find(function (t) { return t.id === otType; });
+        OT._grid = (typeObj && typeObj.grid) ? typeObj.grid : null;
+        otSetupTimeInputs(OT._grid);
+      }
+      otShiftNote(r.shiftFrom === 'วันที่ขอ'
+        ? 'ตัวเลือกเวลาเป็นของกะ ' + (r.myShift || '?') + ' ตามกะของวันที่ทำโอที'
+        : 'ตัวเลือกเวลาเป็นของกะ ' + (r.myShift || '?') + ' (จากทะเบียน)');
+    })
+    .withFailureHandler(function () {
+      OT_GRID_BUSY = false;
+      otShiftNote('⚠️ ตรวจกะของวันที่ทำโอทีไม่ได้ — ตัวเลือกเวลาอาจไม่ใช่ของกะวันนั้น');
+    });
+}
+
 // วันนี้ / พรุ่งนี้ เป็น yyyy-MM-dd
 function otToday() { const d = new Date(); return d.toISOString().slice(0, 10); }
 function otTomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
@@ -927,7 +986,11 @@ function initOTBindings() {
   // ฟอร์ม
   on('ot-type', 'change', otApplyTypeDefaults);
   on('ot-emp', 'change', otApplyTypeDefaults);
-  on('ot-date-from', 'change', otUpdatePreview);
+  on('ot-date-from', 'change', function () {
+    otUpdatePreview();
+    // ⚠️ เลือกวันเสร็จแล้วค่อยถามกะของวันนั้น (ED เลือกวิธีนี้ 23 พ.ย. 2569)
+    otRefreshGridForDate();
+  });
   on('ot-time-from', 'change', otUpdatePreview);
   on('ot-date-to', 'change', otUpdatePreview);
   on('ot-time-to', 'change', otUpdatePreview);
