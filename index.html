@@ -1015,6 +1015,37 @@ textarea.inp{resize:vertical;min-height:60px}
         <div id="hremp-dept-note" style="display:none;font-size:11px;margin-top:4px"></div></div>
       <div class="field"><label>ตำแหน่ง</label>
         <input class="inp" id="hremp-f-position" placeholder="ตำแหน่งงาน"></div>
+      <!-- ══════════════════════════════════════════════════════
+           ฝ่าย + ประเภทค่าใช้จ่าย — เพิ่ม 26 พ.ย. 2569 (ไฟล์ 111/112)
+           ต้องมี Code.gs 2026-11-26a คู่กัน ไม่งั้นค่าจะเงียบหาย
+
+           ⚠️⚠️ สองช่องนี้ "ห้ามว่าง" (ED กำหนด 26 พ.ย. 2569)
+              อยู่ในกลุ่ม "บล็อก" ของ ตรวจฟอร์มพนักงาน() ไม่ใช่กลุ่ม "เตือน"
+              และมีด่านชั้นสองที่ฐานข้อมูล (emp_update ไฟล์ 111) กันซ้ำอีกชั้น
+              🚫 ด่านฝั่งหน้าเว็บอย่างเดียวไม่พอ ถ้าวันหนึ่งมีทางเขียนที่สอง
+
+           🚫🚫 ต้องเป็น select ห้ามเปลี่ยนเป็น input
+              ของจริงเคยพลาดมาแล้วกับช่องแผนก: พิมพ์เองทำให้มี Press กับ PRESS
+              เป็นสองแผนก แล้วรายงานแยกกลุ่มผิดโดยไม่มีใครรู้
+              ⚠️ ที่นี่มีแค่ 2 กับ 4 ค่า จึงฝังตัวเลือกไว้ตรง ๆ ไม่ต้องดึงจากชีต
+                 ถ้าวันหนึ่งค่าเปลี่ยน ต้องแก้ 4 ที่: ที่นี่ · emp_update ·
+                 emp_insert (ไฟล์ 111) · sync_patch_emp_profile (ไฟล์ 112)
+           ══════════════════════════════════════════════════════ -->
+      <div class="field"><label>ฝ่าย</label>
+        <select class="inp" id="hremp-f-division">
+          <option value="">— ยังไม่ระบุ —</option>
+          <option value="OFFICE">OFFICE — ฝ่ายสำนักงาน (จ่ายเดือนละ 1 ครั้ง)</option>
+          <option value="FACTORY">FACTORY — ฝ่ายโรงงาน (จ่ายเดือนละ 2 ครั้ง)</option>
+        </select></div>
+      <div class="field"><label>ประเภทค่าใช้จ่าย (บัญชี)</label>
+        <select class="inp" id="hremp-f-costtype">
+          <option value="">— ยังไม่ระบุ —</option>
+          <option value="SA">SA — ขายและบริหาร</option>
+          <option value="DL">DL — แรงงานตรง</option>
+          <option value="OH">OH — ค่าใช้จ่ายโรงงาน</option>
+          <option value="DI">DI — ค่าตอบแทนกรรมการ</option>
+        </select>
+        <div id="hremp-cost-note" style="display:none;font-size:11px;margin-top:4px"></div></div>
       <div class="field"><label>เบอร์โทร</label>
         <input class="inp" id="hremp-f-phone" inputmode="tel" placeholder="08x-xxx-xxxx"></div>
       <div class="field"><label>อีเมล</label>
@@ -2992,7 +3023,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.62.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.63.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -8696,6 +8727,16 @@ function fillEmployeeForm(emp, mode) {
   document.getElementById('hremp-f-position').value   = emp.position || '';
   document.getElementById('hremp-f-nickname').value   = emp.nickname || '';
   document.getElementById('hremp-f-fullnameen').value = emp.fullNameEn || '';
+  // ── เพิ่ม 26 พ.ย. 2569 ──
+  // ⚠️⚠️ ค่าที่ส่งมาต้องตรงกับ value ของ option เป๊ะ ไม่งั้น select จะว่าง
+  //    ฐานข้อมูลเก็บเป็นตัวพิมพ์ใหญ่เสมอ (ไฟล์ 111) จึง upper ไว้กันพลาด
+  //    🚫 ถ้าตั้งค่าไม่ติด ช่องจะว่าง แล้วด่านห้ามว่างจะปฏิเสธตอนกดบันทึก
+  //       ฝ่ายบุคคลจะแก้ข้อมูลคนนั้นไม่ได้เลยทั้งที่ข้อมูลในฐานมีอยู่ครบ
+  document.getElementById('hremp-f-division').value = String(emp.division || '').trim().toUpperCase();
+  document.getElementById('hremp-f-costtype').value = String(emp.costType || '').trim().toUpperCase();
+  // ⚠️ ค่าที่ฐานข้อมูลมี แต่ไม่ตรงกับตัวเลือกใด → select จะเงียบเป็นว่าง
+  //    ต้องบอกให้เห็น ไม่ใช่ให้ฝ่ายบุคคลเดาว่าทำไมช่องว่างทั้งที่ข้อมูลมี
+  เตือนค่าที่ตัวเลือกไม่มี(emp);
   document.getElementById('hremp-f-birthdate').value  = emp.birthDate ? thaiDateDisplay(emp.birthDate) : '';
   document.getElementById('hremp-f-shift').value      = emp.shift || 'A';
   document.getElementById('hremp-f-payrollid').value  = emp.payrollId || '';
@@ -8781,6 +8822,13 @@ function hrCollectFields() {
     position:   document.getElementById('hremp-f-position').value.trim(),
     nickname:   document.getElementById('hremp-f-nickname').value.trim(),
     fullNameEn: document.getElementById('hremp-f-fullnameen').value.trim(),
+    // ── เพิ่ม 26 พ.ย. 2569 ──
+    // ⚠️⚠️ ส่งสองช่องนี้มาที่นี่ "เท่านั้น" — ปุ่มปิดบัญชีกับปุ่มเปลี่ยนสถานะ
+    //    ต้องไม่ส่ง เพราะด่านที่ฐานข้อมูลใช้กติกา "ส่ง key มา = ห้ามว่าง"
+    //    ถ้าสองหน้านั้นส่งมาด้วย จะปิดบัญชีคนที่ข้อมูลยังไม่ครบไม่ได้เลย
+    // 🚫 ห้ามเติมสองบรรทัดนี้ลงใน fields ของหน้าต่างอื่น
+    division:   document.getElementById('hremp-f-division').value.trim(),
+    costType:   document.getElementById('hremp-f-costtype').value.trim(),
     // ⚠️ วันเกิดส่งเป็น ค.ศ. yyyy-MM-dd เหมือนช่องวันที่อื่น ไม่ส่งข้อความดิบ
     birthDate:  hrThaiToISO(document.getElementById('hremp-f-birthdate').value),
     // ⚠️ ไม่ส่ง endDate/endReason/endNote ตรงนี้โดยเจตนา
@@ -8816,6 +8864,37 @@ function เตือนของที่ยังขาด(ตรวจ) {
   setTimeout(function () {
     showToast('บันทึกแล้ว · ยังไม่ได้กรอก: ' + ตรวจ.เตือน.join(' · '));
   }, 2200);
+}
+
+/**
+ * ⚠️⚠️ ค่าที่ฐานข้อมูลมี แต่ไม่ตรงกับตัวเลือกใดใน select
+ *
+ *  ช่องแบบ select จะเงียบ ๆ กลายเป็นค่าว่าง ไม่มี error ไม่มีคำเตือน
+ *  🚫 คอมเมนต์ตรงนี้ห้ามเขียนแท็กเปิดของ select เป็นตัวอักษร
+ *     ตัวนับแท็กในชุดตรวจจะนับมันเป็นแท็กจริง แล้วรายงานว่าแท็กไม่สมดุล
+ *     (ของถูกที่ดูเหมือนพัง จะทำให้วันที่พังจริงถูกมองข้าม)
+ *  ฝ่ายบุคคลจะเห็นช่องว่างทั้งที่ข้อมูลในฐานมีอยู่ แล้วถ้ากดบันทึก
+ *  ด่านห้ามว่างจะปฏิเสธ — กลายเป็นแก้ข้อมูลคนนั้นไม่ได้เลย โดยไม่รู้สาเหตุ
+ *
+ *  🚫 ไม่แก้ให้เอง และไม่เติม option ใหม่ให้ — บอกให้คนเห็นแล้วคนตัดสิน
+ *     (เติม option ให้เอง = ยอมรับค่าที่สะกดผิดเข้ามาในระบบเงียบ ๆ)
+ */
+function เตือนค่าที่ตัวเลือกไม่มี(emp) {
+  const กล่อง = document.getElementById('hremp-cost-note');
+  if (!กล่อง) return;
+  const ไม่ตรง = [];
+  [['hremp-f-division', emp.division, 'ฝ่าย'],
+   ['hremp-f-costtype', emp.costType, 'ประเภทค่าใช้จ่าย']].forEach(function (x) {
+    const el = document.getElementById(x[0]);
+    const ดิบ = String(x[1] || '').trim();
+    // ⚠️ มีค่าในฐาน แต่ select ตั้งค่าไม่ติด = ค่านั้นไม่ตรงกับตัวเลือกใด
+    if (el && ดิบ && !el.value) ไม่ตรง.push(x[2] + ' = "' + ดิบ + '"');
+  });
+  if (!ไม่ตรง.length) { กล่อง.style.display = 'none'; กล่อง.textContent = ''; return; }
+  กล่อง.textContent = '⚠️ ค่าในฐานข้อมูลไม่ตรงกับตัวเลือกใด: ' + ไม่ตรง.join(' · ') +
+                      ' — กรุณาเลือกค่าที่ถูกแล้วกดบันทึก';
+  กล่อง.style.color = '#b45309';
+  กล่อง.style.display = '';
 }
 
 function ตรวจฟอร์มพนักงาน(f) {
@@ -8860,6 +8939,45 @@ function ตรวจฟอร์มพนักงาน(f) {
   // ⚠️ วันเกิดไม่บังคับ แต่ถ้ากรอกมาต้องเป็นวันที่ที่มีอยู่จริง
   const วันเกิด = document.getElementById('hremp-f-birthdate').value.trim();
   if (วันเกิด && !hrThaiToISO(วันเกิด)) บล็อก.push('วันเกิด (รูปแบบไม่ถูก ต้องเป็น วว/ดด/ปปปป)');
+
+  // ══════════════════════════════════════════════════════════
+  //  ฝ่าย + ประเภทค่าใช้จ่าย — บล็อก (ED กำหนด 26 พ.ย. 2569)
+  //
+  //  คำของ ED: "บังคับทุกคนไม่มียกเว้น ... ถ้าเรียกข้อมูลพนักงานมาแก้ไข
+  //  แล้วจะกดบันทึกให้ตรวจสอบว่าต้องมีข้อมูล ห้ามว่าง"
+  //
+  //  🚫 ไม่ยกเว้น DIRECTOR/ADMIN เหมือนที่ช่องอีเมลทำ — ต่างกันที่ว่า
+  //     อีเมลของผู้บริหารสามท่าน "ไม่มีให้กรอก" จริง ๆ จึงบล็อกไม่ได้
+  //     แต่ฝ่ายกับประเภทค่าใช้จ่าย ED มีข้อมูลครบทุกคนและนำเข้าแล้ว
+  //     (ตรวจของจริง 26 พ.ย.: นำเข้าจากชีตครบ 87 คน)
+  //     → บังคับได้โดยไม่ทำให้ใครแก้ข้อมูลไม่ได้
+  //
+  //  ⚠️ ถ้าวันหนึ่งมีคนที่ว่างจริง ๆ ฝ่ายบุคคลจะต้องเลือกค่าก่อนบันทึก
+  //     ซึ่ง "ซ่อมตัวเอง" — ช่องว่างจะค่อย ๆ หมดไปจากการใช้งานปกติ
+  //     🚫 แต่ถ้ากลายเป็นงานค้างเพราะยังไม่รู้ว่าใครควรเป็นอะไร
+  //        ให้ย้ายมาเป็น "เตือน" แล้วบอก ED — ไม่แก้ด้วยการเดาค่าให้
+  //
+  //  ⚠️ ด่านนี้เป็นชั้นแรก ชั้นสองอยู่ที่ emp_update (ไฟล์ 111)
+  //     🚫 ห้ามถอดชั้นใดชั้นหนึ่งออก ชั้นหน้าเว็บทำให้ข้อความอ่านง่าย
+  //        ชั้นฐานข้อมูลกันทางเขียนที่สองที่อาจเกิดในอนาคต
+  // ══════════════════════════════════════════════════════════
+  const ฝ่าย = String(f.division || '').trim().toUpperCase();
+  if (!ฝ่าย) บล็อก.push('ฝ่าย (OFFICE หรือ FACTORY)');
+  else if (ฝ่าย !== 'OFFICE' && ฝ่าย !== 'FACTORY') บล็อก.push('ฝ่าย (ค่าไม่ถูกต้อง: ' + ฝ่าย + ')');
+
+  const ประเภทค่าใช้จ่าย = String(f.costType || '').trim().toUpperCase();
+  if (!ประเภทค่าใช้จ่าย) บล็อก.push('ประเภทค่าใช้จ่าย (SA, DL, OH หรือ DI)');
+  else if (['SA', 'DL', 'OH', 'DI'].indexOf(ประเภทค่าใช้จ่าย) < 0) {
+    บล็อก.push('ประเภทค่าใช้จ่าย (ค่าไม่ถูกต้อง: ' + ประเภทค่าใช้จ่าย + ')');
+  }
+
+  // ⚠️ เตือน (ไม่บล็อก) ถ้าสถานะเป็น DIRECTOR แต่ประเภทไม่ใช่ DI
+  //    🚫 ไม่บล็อก เพราะคนสถานะ DIRECTOR อาจไม่ใช่กรรมการทุกคน
+  //       (ตรวจของจริง 26 พ.ย.: สถานะ DIRECTOR 5 คน แต่ประเภท DI มี 3 คน)
+  //    → บอกให้ตรวจ ไม่ตัดสินแทน
+  if (สถานะ === 'DIRECTOR' && ประเภทค่าใช้จ่าย && ประเภทค่าใช้จ่าย !== 'DI') {
+    เตือน.push('ประเภทค่าใช้จ่ายของผู้บริหาร (ปกติเป็น DI — ตรวจอีกครั้ง)');
+  }
 
   // ══════ เตือน — บันทึกได้ แต่บอกว่ายังขาด ══════
   // 🚫🚫 เหตุที่ไม่บล็อกกลุ่มนี้: พนักงานเดิมอาจว่างอยู่ก่อนแล้ว
