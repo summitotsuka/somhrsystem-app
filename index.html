@@ -102,6 +102,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;background:rgba(
 .exp-meta{font-size:10px;color:var(--tx3)}
 .rep-stat{flex:1;min-width:64px;padding:7px 0;border-radius:8px;border:1px solid var(--bd2);background:var(--sf2);color:var(--tx2);font-size:12px;font-weight:500;font-family:var(--fn);cursor:pointer;transition:all .15s}
 .rep-stat.active{background:var(--ac);border-color:var(--ac);color:#fff}
+/* ⚠️⚠️ ชิปตัวกรองฝ่าย/ประเภทค่าใช้จ่าย — คลาสของตัวเองโดยเจตนา
+   🚫🚫 ห้ามใช้ .rep-stat ร่วม ด้วยเหตุผลเดียวกับที่คอมเมนต์ข้างล่างเขียนไว้
+      .rep-stat มีตัวจัดการแบบทั่วทั้งหน้าที่ล้าง active ของทุกตัวในหน้า
+      ซึ่งเหมาะกับตัวกรอง "เลือกได้ทีละอัน" แต่ตัวกรองนี้เลือกได้หลายอัน
+   ⚠️ ใช้ชื่อสถานะว่า .on ไม่ใช่ .active เพื่อให้ต่างกันชัดเจนตอนอ่านโค้ด */
+.fil-chip{padding:6px 12px;border-radius:999px;border:1px solid var(--bd2);background:var(--sf2);
+  color:var(--tx2);font-size:12px;font-weight:500;font-family:var(--fn);cursor:pointer;transition:all .15s}
+.fil-chip.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.fil-chip:disabled{opacity:.45;cursor:not-allowed}
 /* ⚠️ ปุ่มเลือกวิธีเรียง ต้องมีคลาสของตัวเอง ห้ามใช้ .rep-stat ร่วม
    เพราะ .rep-stat มีตัวจัดการแบบทั่วทั้งหน้าสองที่ (ดู loadReportPage
    กับตัวผูกปุ่มกรองสถานะ) ซึ่งล้างสถานะ active ของ .rep-stat ทุกตัวในหน้า
@@ -1252,6 +1261,28 @@ textarea.inp{resize:vertical;min-height:60px}
       <button class="rep-stat" data-status="no_checkout">ไม่มีออก</button>
       <button class="rep-stat" data-status="absent">ไม่มาทำงาน</button>
     </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ตัวกรองฝ่าย / ประเภทค่าใช้จ่าย — เพิ่ม 26 พ.ย. 2569
+       ต้องมีไฟล์ 114 ฝั่งฐานข้อมูลคู่กัน (รายชื่อต้องส่งสองช่องนี้มา)
+
+       ⚠️ กติกา: ไม่เลือก = ทั้งหมด (ED กำหนด)
+          ในกลุ่มเดียวกันเลือกหลายอันได้ = "อันใดก็ได้"
+          ข้ามกลุ่มกันเป็น "และ" → ติ๊ก Office + SA = คนที่เป็น Office และ SA
+
+       🚫🚫 ตัวกรองนี้ "ไม่ส่งอะไรใหม่" ไปที่เซิร์ฟเวอร์
+          มันแปลงเป็นรายชื่อรหัสพนักงานที่หน้ารายงานส่งอยู่แล้ว
+          จึงไม่ต้องแตะฟังก์ชันรายงานและไม่ต้อง Deploy Edge
+       ══════════════════════════════════════════════════════════ -->
+  <div class="card" style="padding:14px">
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">ฝ่าย
+      <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="hrrep-div-chips"></div>
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">ประเภทค่าใช้จ่าย
+      <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap" id="hrrep-cost-chips"></div>
+    <div style="font-size:11px;margin-top:10px;line-height:1.5" id="hrrep-fil-note"></div>
   </div>
 
   <!-- เลือกพนักงาน -->
@@ -3023,7 +3054,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.63.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.64.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -6835,8 +6866,114 @@ function hrExpDownload() {
 }
 
 // ========== HR — รายงาน ==========
+// ══════════════════════════════════════════════════════════════
+//  ตัวกรองฝ่าย / ประเภทค่าใช้จ่าย — ชุดกลาง ใช้ได้ทุกหน้ารายงาน
+//  เพิ่ม 26 พ.ย. 2569 · ต้องมีไฟล์ 114 ฝั่งฐานข้อมูลคู่กัน
+//
+//  🔑 เขียนเป็นชุดกลางเพราะต้องใช้ 6 หน้า (ลงเวลา · ดิบ · ขอบันทึกเวลา ·
+//     ข้อมูลพนักงาน · ลา · โอที) ถ้าก๊อปตรรกะไป 6 ที่ วันหนึ่งจะแก้ไม่ครบ
+//     แล้วสองหน้าจะกรองไม่เหมือนกันโดยไม่มีใครรู้
+// ══════════════════════════════════════════════════════════════
+var FIL_ฝ่าย    = [['OFFICE', 'Office'], ['FACTORY', 'Factory']];
+var FIL_ประเภท  = [['SA', 'SA'], ['DL', 'DL'], ['OH', 'OH'], ['DI', 'DI']];
+
+/**
+ * วาดชิปตัวกรองของหน้าหนึ่ง พร้อมจำนวนคนในแต่ละกลุ่ม
+ *
+ * ⚠️ จำนวนคนในวงเล็บคิดจาก "รายชื่อที่หน้านั้นได้รับ" ไม่ใช่พนักงานทั้งบริษัท
+ *    เพราะรายชื่อตัดคนที่ลาออกแล้วออกไป (hr_employee_list ตัด INACTIVE)
+ *    ของจริง 26 พ.ย. 2569: ทะเบียน 87 คน แต่รายชื่อนี้ได้ 81 คน
+ * 🚫 ชิปที่ไม่มีใครเลย ปิดไม่ให้กด — กันผู้ใช้ติ๊กแล้วได้รายงานว่างโดยไม่รู้สาเหตุ
+ */
+function filวาดชิป(ชื่อหน้า, รายชื่อ, สถานะ, เมื่อเปลี่ยน) {
+  [['div', FIL_ฝ่าย, 'division', สถานะ.ฝ่าย],
+   ['cost', FIL_ประเภท, 'costType', สถานะ.ประเภท]].forEach(function (g) {
+    var กล่อง = document.getElementById(ชื่อหน้า + '-' + g[0] + '-chips');
+    if (!กล่อง) return;
+    var h = '';
+    g[1].forEach(function (c) {
+      var n = (รายชื่อ || []).filter(function (e) {
+        return String(e[g[2]] || '').trim().toUpperCase() === c[0];
+      }).length;
+      h += '<button class="fil-chip' + (g[3][c[0]] ? ' on' : '') + '" data-v="' + c[0] + '"' +
+           (n === 0 ? ' disabled' : '') + '>' + esc(c[1]) + ' (' + n + ')</button>';
+    });
+    กล่อง.innerHTML = h;
+    กล่อง.querySelectorAll('.fil-chip').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.dataset.v;
+        if (g[3][v]) delete g[3][v]; else g[3][v] = true;
+        เมื่อเปลี่ยน();
+      });
+    });
+  });
+}
+
+/**
+ * คัดรายชื่อตามตัวกรอง
+ *
+ *  คืน { ผ่าน, ตัดออก, ฝ่ายว่าง, ประเภทว่าง, ใช้ตัวกรอง }
+ *
+ *  ⚠️⚠️ "ฝ่ายว่าง" คือคนที่ยังไม่ระบุฝ่าย — คนกลุ่มนี้จะ "หลุด" จากรายงาน
+ *     ทุกครั้งที่เลือกตัวกรอง โดยที่ยอดรวมยังดูสมเหตุสมผล
+ *     เป็นความผิดพลาดแบบดูไม่ออก จึงต้องบอกผู้ใช้ทุกครั้ง ไม่ใช่เงียบ
+ *     ของจริง 26 พ.ย. 2569 กรอกครบ 81/81 จึงยังเป็น 0 — แต่คนใหม่อาจว่างได้
+ */
+function filคัด(รายชื่อ, สถานะ) {
+  var ฝ = Object.keys(สถานะ.ฝ่าย), ป = Object.keys(สถานะ.ประเภท);
+  var ใช้ = ฝ.length > 0 || ป.length > 0;
+  var ผ่าน = (รายชื่อ || []).filter(function (e) {
+    var d = String(e.division || '').trim().toUpperCase();
+    var c = String(e.costType || '').trim().toUpperCase();
+    // ⚠️ ในกลุ่มเดียวกัน = "อันใดก็ได้" · ข้ามกลุ่ม = "และ"
+    if (ฝ.length && ฝ.indexOf(d) < 0) return false;
+    if (ป.length && ป.indexOf(c) < 0) return false;
+    return true;
+  });
+  return {
+    ผ่าน: ผ่าน,
+    ตัดออก: (รายชื่อ || []).length - ผ่าน.length,
+    ฝ่ายว่าง: (รายชื่อ || []).filter(function (e) {
+      return String(e.division || '').trim() === ''; }).length,
+    ประเภทว่าง: (รายชื่อ || []).filter(function (e) {
+      return String(e.costType || '').trim() === ''; }).length,
+    ใช้ตัวกรอง: ใช้,
+  };
+}
+
+/**
+ * เขียนบรรทัดอธิบายใต้ชิป
+ * 🚫 ไม่เงียบเมื่อไม่เหลือใคร — ต้องบอกว่าทำไมและให้ปุ่มสร้างรายงานปิดไว้
+ */
+function filบอกผล(idกล่อง, ผล) {
+  var el = document.getElementById(idกล่อง);
+  if (!el) return;
+  var h = [];
+  if (!ผล.ใช้ตัวกรอง) {
+    h.push('<span style="color:var(--tx3)">ไม่ได้เลือกตัวกรอง — รายงานจะรวมทุกคนในรายชื่อ ' +
+           ผล.ผ่าน.length + ' คน</span>');
+  } else if (ผล.ผ่าน.length === 0) {
+    h.push('<span style="color:var(--er);font-weight:600">⛔ ตัวกรองนี้ไม่ตรงกับใครเลย — ' +
+           'สร้างรายงานไม่ได้ กรุณาเลือกใหม่</span>');
+  } else {
+    h.push('<span style="color:var(--ac);font-weight:600">ตรงกับ ' + ผล.ผ่าน.length +
+           ' คน</span><span style="color:var(--tx3)"> · ไม่รวม ' + ผล.ตัดออก + ' คน</span>');
+  }
+  // ⚠️ เตือนเฉพาะตอนใช้ตัวกรอง เพราะตอนไม่กรองคนกลุ่มนี้ยังอยู่ในรายงาน
+  if (ผล.ใช้ตัวกรอง && (ผล.ฝ่ายว่าง || ผล.ประเภทว่าง)) {
+    var ส่วน = [];
+    if (ผล.ฝ่ายว่าง) ส่วน.push('ยังไม่ระบุฝ่าย ' + ผล.ฝ่ายว่าง + ' คน');
+    if (ผล.ประเภทว่าง) ส่วน.push('ยังไม่ระบุประเภท ' + ผล.ประเภทว่าง + ' คน');
+    h.push('<span style="color:#b45309">⚠️ ' + ส่วน.join(' · ') +
+           ' — คนกลุ่มนี้จะไม่อยู่ในรายงานทุกครั้งที่เลือกตัวกรอง</span>');
+  }
+  el.innerHTML = h.join('<br>');
+}
+
 let hrRepEmployees = [];
 let hrRepSelected = {};
+// ตัวกรองของหน้ารายงานการลงเวลา
+var hrRepFil = { ฝ่าย: {}, ประเภท: {} };
 let hrRepStatus = 'all';
 let hrRepData = null;   // ผลรายงานล่าสุด
 
@@ -6858,14 +6995,41 @@ function loadReportPage() {
   fetchEmployeeList(r => {
     if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) authBounce(r); return; }
     hrRepEmployees = r.employees || [];
-    renderRepList('');
+    // ⚠️ วาดชิปตัวกรองหลังได้รายชื่อ เพราะจำนวนในวงเล็บคิดจากรายชื่อนี้
+    //    🚫 ถ้าวาดก่อน จำนวนจะเป็น 0 ทุกชิปแล้วถูกปิดไม่ให้กดทั้งหมด
+    hrRepFilChanged();
   }, e => showToast(e.message));
+}
+
+/**
+ * ตัวกรองเปลี่ยน → ตัดคนที่ติ๊กไว้แต่หลุดตัวกรองออก แล้ววาดใหม่
+ *
+ * 🚫 ไม่เก็บคนที่หลุดตัวกรองไว้ในรายการที่ติ๊ก เพราะผู้ใช้จะมองไม่เห็นเขา
+ *    ในรายชื่อแล้ว แต่เขายังอยู่ในรายงาน = ผลไม่ตรงกับที่ตาเห็น
+ */
+function hrRepFilChanged() {
+  const ผล = filคัด(hrRepEmployees, hrRepFil);
+  const ได้ = {};
+  ผล.ผ่าน.forEach(e => { ได้[e.empId] = true; });
+  Object.keys(hrRepSelected).forEach(id => { if (!ได้[id]) delete hrRepSelected[id]; });
+  filวาดชิป('hrrep', hrRepEmployees, hrRepFil, hrRepFilChanged);
+  filบอกผล('hrrep-fil-note', ผล);
+  renderRepList(document.getElementById('hrrep-search').value);
+  updateRepCount();
+  // ⚠️ ปิดปุ่มสร้างรายงานเมื่อตัวกรองไม่ตรงกับใครเลย
+  //    🚫🚫 ถ้าปล่อยให้กดได้ หน้าเว็บจะส่งรายชื่อว่างไป ซึ่งฝั่งฐานข้อมูล
+  //       ตีความว่า "ทุกคน" → รายงานออกมาตรงข้ามกับที่ผู้ใช้สั่งโดยสมบูรณ์
+  const btn = document.getElementById('hrrep-generate');
+  if (btn) btn.disabled = (ผล.ใช้ตัวกรอง && ผล.ผ่าน.length === 0);
 }
 
 function renderRepList(search) {
   const list = document.getElementById('hrrep-emplist');
   const q = (search || '').toLowerCase();
-  const filtered = hrRepEmployees.filter(e => !q || String(e.name).toLowerCase().includes(q) || String(e.empId).toLowerCase().includes(q));
+  // ⚠️ รายชื่อที่แสดงต้องเป็นชุดเดียวกับที่รายงานจะใช้ ไม่งั้น "เลือกทั้งหมด"
+  //    จะเลือกคนที่ตัวกรองตัดออกไปแล้ว
+  const ผ่านกรอง = filคัด(hrRepEmployees, hrRepFil).ผ่าน;
+  const filtered = ผ่านกรอง.filter(e => !q || String(e.name).toLowerCase().includes(q) || String(e.empId).toLowerCase().includes(q));
   if (filtered.length === 0) { list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">ไม่พบพนักงาน</div>'; return; }
   let html = '';
   filtered.forEach(e => {
@@ -6891,10 +7055,22 @@ function renderRepList(search) {
 
 function updateRepCount() {
   const n = Object.keys(hrRepSelected).length;
-  document.getElementById('hrrep-count').textContent = n === 0 ? `ยังไม่เลือก (ว่าง = ทุกคน)` : `เลือกแล้ว ${n} คน`;
+  // ⚠️ "ว่าง = ทุกคน" ไม่จริงอีกแล้วเมื่อมีตัวกรอง — ต้องบอกให้ตรงความจริง
+  //    🚫 ข้อความที่ไม่ตรงความจริงทำให้ผู้ใช้เชื่อผิดว่ารายงานครอบคลุมทุกคน
+  const ผล = filคัด(hrRepEmployees, hrRepFil);
+  const el = document.getElementById('hrrep-count');
+  if (n > 0) { el.textContent = `เลือกแล้ว ${n} คน`; return; }
+  el.textContent = ผล.ใช้ตัวกรอง
+    ? `ยังไม่เลือกรายคน (ว่าง = ทุกคนที่ตัวกรองเหลือไว้ ${ผล.ผ่าน.length} คน)`
+    : 'ยังไม่เลือก (ว่าง = ทุกคน)';
 }
 
-function hrRepSelectAll() { hrRepEmployees.forEach(e => { hrRepSelected[e.empId] = true; }); renderRepList(document.getElementById('hrrep-search').value); updateRepCount(); }
+// ⚠️ "เลือกทั้งหมด" = ทั้งหมดของที่ตัวกรองเหลือไว้ ไม่ใช่ทั้งบริษัท
+//    🚫 ถ้าเลือกทุกคนรวมคนที่ถูกกรองออก ผลจะไม่ตรงกับรายชื่อที่ตาเห็น
+function hrRepSelectAll() {
+  filคัด(hrRepEmployees, hrRepFil).ผ่าน.forEach(e => { hrRepSelected[e.empId] = true; });
+  renderRepList(document.getElementById('hrrep-search').value); updateRepCount();
+}
 function hrRepClearAll() { hrRepSelected = {}; renderRepList(document.getElementById('hrrep-search').value); updateRepCount(); }
 
 function hrRepGenerate() {
@@ -6903,7 +7079,25 @@ function hrRepGenerate() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fromISO) || !/^\d{4}-\d{2}-\d{2}$/.test(toISO)) { showToast('กรุณาเลือกวันที่ให้ครบ'); return; }
   const from = isoToTH(fromISO);   // backend รับ dd/mm/yyyy
   const to   = isoToTH(toISO);
-  const ids = Object.keys(hrRepSelected);
+  // ══════════════════════════════════════════════════════════
+  //  แปลงตัวกรองฝ่าย/ประเภท เป็นรายชื่อรหัสพนักงาน
+  //
+  //  🚫🚫 กับดักที่ต้องกันให้ได้: ฝั่งฐานข้อมูลอ่าน "รายชื่อว่าง" ว่า
+  //     "ไม่กรอง = ทุกคน" (att_report: v_filter เป็นเท็จเมื่ออาเรย์ว่าง)
+  //     ถ้าตัวกรองไม่ตรงกับใครแล้วเราส่งอาเรย์ว่างไป รายงานจะออกมาเป็น
+  //     ทุกคน ซึ่งตรงข้ามกับที่ผู้ใช้สั่งโดยสมบูรณ์ และยอดรวมจะดูปกติ
+  //     → ต้องหยุดที่นี่ ไม่ใช่ส่งไปแล้วหวังว่าจะถูก
+  // ══════════════════════════════════════════════════════════
+  const ผลกรอง = filคัด(hrRepEmployees, hrRepFil);
+  if (ผลกรอง.ใช้ตัวกรอง && ผลกรอง.ผ่าน.length === 0) {
+    showToast('ตัวกรองฝ่าย/ประเภทไม่ตรงกับใครเลย — กรุณาเลือกใหม่');
+    return;
+  }
+  let ids = Object.keys(hrRepSelected);
+  if (ids.length === 0 && ผลกรอง.ใช้ตัวกรอง) {
+    // ไม่ติ๊กรายคน แต่มีตัวกรอง → ส่งรายชื่อที่ตัวกรองเหลือไว้
+    ids = ผลกรอง.ผ่าน.map(e => e.empId);
+  }
   const btn = document.getElementById('hrrep-generate');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง...';
   gasRun('hrGetReport', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids, statusFilter: hrRepStatus }, 90000)
