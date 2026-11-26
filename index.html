@@ -1281,7 +1281,17 @@ textarea.inp{resize:vertical;min-height:60px}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="hrrep-div-chips"></div>
     <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">ประเภทค่าใช้จ่าย
       <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap" id="hrrep-cost-chips"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="hrrep-cost-chips"></div>
+    <!-- ⚠️ แผนกมี 25 แผนก ต่างจากฝ่าย 2 กับประเภท 4
+         จึงต้องอยู่ในกล่องที่เลื่อนได้ ไม่งั้นดันหน้าจอยาวจนปุ่มสร้างรายงานหลุดจอ
+         🚫 ไม่ใช้ช่องเลือกแบบ dropdown เพราะติ๊กหลายแผนกพร้อมกันไม่ได้ -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--tx2);font-weight:500">แผนก
+        <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+      <button class="btn o sm" id="hrrep-dept-none">ล้างแผนก</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;max-height:132px;overflow-y:auto;
+                padding:2px" id="hrrep-dept-chips"></div>
     <div style="font-size:11px;margin-top:10px;line-height:1.5" id="hrrep-fil-note"></div>
   </div>
 
@@ -6878,6 +6888,34 @@ var FIL_ฝ่าย    = [['OFFICE', 'Office'], ['FACTORY', 'Factory']];
 var FIL_ประเภท  = [['SA', 'SA'], ['DL', 'DL'], ['OH', 'OH'], ['DI', 'DI']];
 
 /**
+ * ⚠️⚠️ รายชื่อแผนก "สร้างจากข้อมูลจริง" ไม่ฝังตายตัว
+ *
+ *  ต่างจากฝ่าย (2 ค่า) และประเภทค่าใช้จ่าย (4 ค่า) ซึ่งเป็นค่าที่ฐานข้อมูล
+ *  บังคับไว้แล้ว — แผนกเป็นข้อความอิสระและเพิ่มได้เรื่อย ๆ
+ *  🚫 ถ้าฝังรายชื่อแผนกไว้ในหน้าเว็บ วันที่บริษัทเพิ่มแผนก คนในแผนกใหม่
+ *     จะหายจากตัวกรองแบบที่ไม่มีอะไรฟ้อง (กับดักเดียวกับชีต Departments
+ *     ที่ทำให้แผนก Accounting ขึ้น ⛔ เมื่อ 26 พ.ย. 2569)
+ *
+ *  ⚠️ hr_employee_list ส่งแผนกว่างมาเป็น '-' (coalesce(nullif(...),'-'))
+ *     จึงมีชิป '-' โผล่มาด้วย — ตั้งป้ายให้อ่านรู้เรื่องว่า "(ไม่ระบุแผนก)"
+ *     🔑 การที่มันเป็นชิปให้ติ๊กได้ ทำให้ไม่มีใครหลุดแบบเงียบ ๆ
+ *        ต่างจากฝ่าย/ประเภทที่ค่าว่างไม่มีชิป จึงต้องมีคำเตือนแทน
+ */
+function FIL_แผนก(รายชื่อ) {
+  var เห็น = {};
+  (รายชื่อ || []).forEach(function (e) {
+    var d = String(e.department || '').trim();
+    if (d) เห็น[d] = true;
+  });
+  return Object.keys(เห็น).sort(function (a, b) {
+    // '-' (ไม่ระบุ) ไว้ท้ายสุดเสมอ ไม่ให้ไปปนกลางรายชื่อแผนกจริง
+    if (a === '-') return 1;
+    if (b === '-') return -1;
+    return a.localeCompare(b);
+  }).map(function (d) { return [d, d === '-' ? '(ไม่ระบุแผนก)' : d]; });
+}
+
+/**
  * วาดชิปตัวกรองของหน้าหนึ่ง พร้อมจำนวนคนในแต่ละกลุ่ม
  *
  * ⚠️ จำนวนคนในวงเล็บคิดจาก "รายชื่อที่หน้านั้นได้รับ" ไม่ใช่พนักงานทั้งบริษัท
@@ -6886,16 +6924,24 @@ var FIL_ประเภท  = [['SA', 'SA'], ['DL', 'DL'], ['OH', 'OH'], ['DI', 
  * 🚫 ชิปที่ไม่มีใครเลย ปิดไม่ให้กด — กันผู้ใช้ติ๊กแล้วได้รายงานว่างโดยไม่รู้สาเหตุ
  */
 function filวาดชิป(ชื่อหน้า, รายชื่อ, สถานะ, เมื่อเปลี่ยน) {
-  [['div', FIL_ฝ่าย, 'division', สถานะ.ฝ่าย],
-   ['cost', FIL_ประเภท, 'costType', สถานะ.ประเภท]].forEach(function (g) {
+  // ⚠️ ตัวที่สี่ของแต่ละกลุ่มบอกว่า "เทียบแบบตัวพิมพ์ใหญ่ไหม"
+  //    ฝ่าย/ประเภท → ใช่ (ฐานข้อมูลส่งตัวพิมพ์ใหญ่มา แต่กันไว้)
+  //    🚫 แผนก → ไม่ใช่! ชื่อแผนกเป็นข้อความอิสระ ถ้า upper() จะทำให้
+  //       Press กับ PRESS รวมกันเป็นชิปเดียว ซึ่งกลบความผิดพลาดของข้อมูล
+  //       ที่ควรเห็น (ของจริงเคยมีสองค่านี้จนรายงานแยกกลุ่มผิด)
+  [['div',  FIL_ฝ่าย,            'division',   สถานะ.ฝ่าย,   true],
+   ['cost', FIL_ประเภท,          'costType',   สถานะ.ประเภท, true],
+   ['dept', FIL_แผนก(รายชื่อ),   'department', สถานะ.แผนก,   false]].forEach(function (g) {
     var กล่อง = document.getElementById(ชื่อหน้า + '-' + g[0] + '-chips');
     if (!กล่อง) return;
     var h = '';
     g[1].forEach(function (c) {
       var n = (รายชื่อ || []).filter(function (e) {
-        return String(e[g[2]] || '').trim().toUpperCase() === c[0];
+        var v = String(e[g[2]] || '').trim();
+        return (g[4] ? v.toUpperCase() : v) === c[0];
       }).length;
-      h += '<button class="fil-chip' + (g[3][c[0]] ? ' on' : '') + '" data-v="' + c[0] + '"' +
+      h += '<button class="fil-chip' + (g[3][c[0]] ? ' on' : '') +
+           '" data-v="' + esc(c[0]) + '"' +
            (n === 0 ? ' disabled' : '') + '>' + esc(c[1]) + ' (' + n + ')</button>';
     });
     กล่อง.innerHTML = h;
@@ -6921,13 +6967,18 @@ function filวาดชิป(ชื่อหน้า, รายชื่อ, 
  */
 function filคัด(รายชื่อ, สถานะ) {
   var ฝ = Object.keys(สถานะ.ฝ่าย), ป = Object.keys(สถานะ.ประเภท);
-  var ใช้ = ฝ.length > 0 || ป.length > 0;
+  // ⚠️ สถานะ.แผนก อาจไม่มีในหน้าที่ยังไม่ได้เพิ่มตัวกรองแผนก — กันไว้
+  var ผ = Object.keys((สถานะ && สถานะ.แผนก) || {});
+  var ใช้ = ฝ.length > 0 || ป.length > 0 || ผ.length > 0;
   var ผ่าน = (รายชื่อ || []).filter(function (e) {
     var d = String(e.division || '').trim().toUpperCase();
     var c = String(e.costType || '').trim().toUpperCase();
+    // 🚫 แผนกเทียบตรงตัว ไม่ upper() — ดูเหตุผลใน filวาดชิป
+    var dp = String(e.department || '').trim();
     // ⚠️ ในกลุ่มเดียวกัน = "อันใดก็ได้" · ข้ามกลุ่ม = "และ"
     if (ฝ.length && ฝ.indexOf(d) < 0) return false;
     if (ป.length && ป.indexOf(c) < 0) return false;
+    if (ผ.length && ผ.indexOf(dp) < 0) return false;
     return true;
   });
   return {
@@ -6973,7 +7024,7 @@ function filบอกผล(idกล่อง, ผล) {
 let hrRepEmployees = [];
 let hrRepSelected = {};
 // ตัวกรองของหน้ารายงานการลงเวลา
-var hrRepFil = { ฝ่าย: {}, ประเภท: {} };
+var hrRepFil = { ฝ่าย: {}, ประเภท: {}, แผนก: {} };
 let hrRepStatus = 'all';
 let hrRepData = null;   // ผลรายงานล่าสุด
 
@@ -7007,6 +7058,13 @@ function loadReportPage() {
  * 🚫 ไม่เก็บคนที่หลุดตัวกรองไว้ในรายการที่ติ๊ก เพราะผู้ใช้จะมองไม่เห็นเขา
  *    ในรายชื่อแล้ว แต่เขายังอยู่ในรายงาน = ผลไม่ตรงกับที่ตาเห็น
  */
+function hrRepDeptNone() {
+  // ⚠️ มีปุ่มนี้เพราะแผนกมี 25 ชิป ติ๊กไปหลายอันแล้วจะหาที่ติ๊กไว้ยาก
+  //    🚫 ไม่ล้างฝ่ายกับประเภทด้วย — ผู้ใช้สั่งล้างแค่แผนก
+  hrRepFil.แผนก = {};
+  hrRepFilChanged();
+}
+
 function hrRepFilChanged() {
   const ผล = filคัด(hrRepEmployees, hrRepFil);
   const ได้ = {};
@@ -10881,6 +10939,8 @@ applyLogo();
   on('hrrep-search', 'input', function() { renderRepList(this.value); });
   on('hrrep-all', 'click', hrRepSelectAll);
   on('hrrep-none', 'click', hrRepClearAll);
+  // ── ปุ่มล้างตัวกรองแผนก (เพิ่ม 26 พ.ย. 2569) ──
+  on('hrrep-dept-none', 'click', hrRepDeptNone);
   on('hrrep-generate', 'click', hrRepGenerate);
   on('hrdm-preview', 'click', hrDmPreview);
   on('hrdm-emp-all', 'click', hrDmEmpAll);
