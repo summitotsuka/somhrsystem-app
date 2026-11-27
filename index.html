@@ -1412,6 +1412,30 @@ textarea.inp{resize:vertical;min-height:60px}
       </div>
     </div>
 
+    <!-- ══════════════════════════════════════════════════════════
+         ตัวกรองฝ่าย / ประเภทค่าใช้จ่าย / แผนก
+         🔑 อยู่ "ใน" กล่องผลลัพธ์โดยเจตนา ไม่ใช่เหนือปุ่มสร้างรายงาน
+            เพราะหน้านี้กรองจากแถวที่ได้มาแล้ว ไม่ได้ส่งเงื่อนไขไปฐานข้อมูล
+            → จำนวนบนชิปจึงเป็นจำนวนจริงของรายงานชุดนี้ ไม่ใช่ของทั้งทะเบียน
+            และไม่มีปัญหา "ชิปขึ้น 0 ตอนยังไม่มีข้อมูล" เหมือนหน้าอื่น
+         ══════════════════════════════════════════════════════════ -->
+    <div class="card" style="padding:14px">
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">ฝ่าย
+        <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="empr-div-chips"></div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">ประเภทค่าใช้จ่าย
+        <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="empr-cost-chips"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:12px;color:var(--tx2);font-weight:500">แผนก
+          <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+        <button class="btn o sm" id="empr-dept-none">ล้างแผนก</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;max-height:132px;overflow-y:auto;
+                  padding:2px" id="empr-dept-chips"></div>
+      <div style="font-size:11px;margin-top:10px;line-height:1.5" id="empr-fil-note"></div>
+    </div>
+
     <!-- ⚠️ กรองที่เครื่อง ไม่ยิงใหม่ — ข้อมูลทั้งหมดอยู่ในมือแล้ว
          ยิงใหม่ทุกตัวอักษรจะช้าและเปลืองเปล่า ๆ -->
     <input class="inp" id="empr-filter" placeholder="ค้นหา รหัส · ชื่อ · แผนก · ตำแหน่ง"
@@ -1465,6 +1489,30 @@ textarea.inp{resize:vertical;min-height:60px}
       <div class="field" style="flex:1;margin:0"><label>ถึง</label>
         <input class="inp" id="hrraw-to" type="date"></div>
     </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ตัวกรองฝ่าย / ประเภทค่าใช้จ่าย / แผนก — หน้ารายงานดิบ
+       ⚠️ ใช้โมดูลเดียวกับหน้ารายงานการลงเวลา (filวาดชิป · filคัด · filบอกผล)
+          🚫 ห้ามเขียนตรรกะตัวกรองชุดที่สองที่นี่ — บทเรียนข้อ 65
+       🔑 รายชื่อหน้านี้มาจาก fetchEmployeeList ตัวเดียวกับหน้าลงเวลา
+          (→ hr_employee_list_for) จึงมี division/costType ครบอยู่แล้ว
+       ══════════════════════════════════════════════════════════ -->
+  <div class="card" style="padding:14px">
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">ฝ่าย
+      <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="hrraw-div-chips"></div>
+    <div style="font-size:12px;color:var(--tx2);margin-bottom:10px;font-weight:500">ประเภทค่าใช้จ่าย
+      <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="hrraw-cost-chips"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--tx2);font-weight:500">แผนก
+        <span style="color:var(--tx3);font-weight:400">— ไม่เลือก = ทั้งหมด</span></div>
+      <button class="btn o sm" id="hrraw-dept-none">ล้างแผนก</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;max-height:132px;overflow-y:auto;
+                padding:2px" id="hrraw-dept-chips"></div>
+    <div style="font-size:11px;margin-top:10px;line-height:1.5" id="hrraw-fil-note"></div>
   </div>
 
   <!-- เลือกพนักงาน -->
@@ -3064,7 +3112,7 @@ function checkinAllowedForShift(shift) {
 }
 
 // เวอร์ชันของโปรแกรม (แสดงบน UI เพื่อติดตามรุ่น)
-const APP_VERSION = '8.65.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
+const APP_VERSION = '8.66.0';   // รุ่นของ index.html เอง (โชว์มุมบน)
 // ── ไฟล์ย่อยมีรุ่นของตัวเอง ──
 // แก้ไฟล์ไหน ก็ขยับเลข ?v= ของไฟล์นั้นในแท็ก <script> ท้ายไฟล์
 // แล้วขยับ *_JS_VERSION บรรทัดแรกของไฟล์นั้นให้ตรงกัน — อัปโหลดเฉพาะไฟล์ที่แก้
@@ -7190,6 +7238,20 @@ function hrRepGenerate() {
 let empRepStatuses = [];     // [{status, n}] จากฐานข้อมูล
 let empRepPicked   = {};     // สถานะที่ติ๊กไว้
 let empRepData     = null;
+// ตัวกรองฝ่าย/ประเภท/แผนก ของหน้ารายงานข้อมูลพนักงาน
+// ⚠️ แยกชุดจาก hrRepFil (ลงเวลา) และ hrRawFil (ดิบ) — ติ๊กหน้าหนึ่งต้องไม่ข้ามหน้า
+var empRepFil = { ฝ่าย: {}, ประเภท: {}, แผนก: {} };
+
+// ⚠️ หน้านี้วาดใหม่จากข้อมูลที่โหลดมาแล้ว ไม่ต้องยิงไปฐานข้อมูลซ้ำ
+//    (ต่างจากการติ๊กสถานะ ซึ่งเปลี่ยนเงื่อนไขฝั่งฐานข้อมูลจึงต้องยิงใหม่)
+function empRepFilChanged() {
+  if (empRepData) empRepRender(empRepData);
+}
+// ⚠️ ล้างแผนกเท่านั้น ไม่ล้างฝ่ายกับประเภท
+function empRepDeptNone() {
+  empRepFil.แผนก = {};
+  empRepFilChanged();
+}
 
 /** yyyy-MM-dd → วว/ดด/ปปปป (พ.ศ.) · ค่าเพี้ยนคืน "—"
  *  ⚠️⚠️ ตัวแปลงวันแบบสั้นมี "ตัวเดียว" ในไฟล์นี้ ห้ามเขียนตัวที่สอง
@@ -7204,6 +7266,8 @@ function วันไทยสั้น(iso) {
 
 function loadEmpReportPage() {
   empRepPicked = {};
+  // ⚠️ ล้างตัวกรองด้วยทุกครั้งที่เข้าหน้า — ดูบทเรียนข้อ 66
+  empRepFil = { ฝ่าย: {}, ประเภท: {}, แผนก: {} };
   empRepData = null;
   document.getElementById('empr-result').style.display = 'none';
   const box = document.getElementById('empr-statuses');
@@ -7316,7 +7380,30 @@ function empRepRender(r) {
 
   const fEl = document.getElementById('empr-filter');
   const kw  = fEl ? fEl.value.trim().toLowerCase() : '';
-  const all = Array.isArray(r.rows) ? r.rows : [];
+  const ทั้งชุด = Array.isArray(r.rows) ? r.rows : [];
+  // ══════════════════════════════════════════════════════════
+  //  ตัวกรองฝ่าย/ประเภท/แผนก ของหน้านี้
+  //
+  //  🔑 หน้านี้ต่างจากหน้ารายงานอื่น: ไม่มีรายชื่อให้ติ๊กเลือก และไม่ส่ง
+  //     p_emp_ids ไปฐานข้อมูล (ส่งแต่ statuses) แต่ "แถวที่ได้มามี
+  //     division/costType อยู่แล้ว" จากไฟล์ 113
+  //     → กรองที่หน้าเว็บจากแถวที่ได้มาได้เลย ไม่ต้องแตะ SQL และ
+  //       ไม่ต้องกลัวกับดัก "อาเรย์ว่าง = ทุกคน" เพราะไม่ได้ส่งรายชื่อไปเลย
+  //
+  //  ⚠️ filคัด อ่านช่อง department แต่แถวของหน้านี้ใช้ชื่อ dept
+  //     จึงต้องแปลงชื่อช่องก่อน ไม่ใช่แก้ filคัด (หน้าอื่นใช้ร่วมกันอยู่)
+  // ══════════════════════════════════════════════════════════
+  const เทียบ = ทั้งชุด.map(e => ({
+    empId: e.empId, name: e.name,
+    division: e.division, costType: e.costType, department: e.dept,
+  }));
+  const ผลกรอง = filคัด(เทียบ, empRepFil);
+  filวาดชิป('empr', เทียบ, empRepFil, empRepFilChanged);
+  filบอกผล('empr-fil-note', ผลกรอง);
+  const ผ่าน = {};
+  ผลกรอง.ผ่าน.forEach(e => { ผ่าน[e.empId] = true; });
+  const all = ผลกรอง.ใช้ตัวกรอง ? ทั้งชุด.filter(e => ผ่าน[e.empId]) : ทั้งชุด;
+
   // ค้นได้ทั้งรหัส ชื่อ แผนก ตำแหน่ง — ฝ่ายบุคคลจะดูคนเดียวหรือทั้งแผนกก็ได้
   const rows = kw ? all.filter(e =>
     [e.empId, e.name, e.dept, e.position].some(v =>
@@ -7333,6 +7420,10 @@ function empRepRender(r) {
       + '<td>' + e.empId + '</td>'
       + '<td style="white-space:nowrap">' + dash(ชื่อเต็มไม่ซ้ำคำนำหน้า(e.title, e.name)) + '</td>'
       + '<td>' + dash(e.dept) + '</td>'
+      // ⚠️ ฝ่าย/ประเภท วางไว้ติดกับแผนกเพราะเป็นเรื่องเดียวกัน อ่านง่ายกว่า
+      //    🚫 แต่ใน CSV ต่อท้ายคอลัมน์เดิม ไม่แทรกกลาง — สูตรที่คนทำไว้จะยังใช้ได้
+      + '<td style="text-align:center">' + dash(e.division) + '</td>'
+      + '<td style="text-align:center">' + dash(e.costType) + '</td>'
       + '<td>' + dash(e.position) + '</td>'
       + '<td style="text-align:center">' + dash(e.shift) + '</td>'
       + '<td style="white-space:nowrap">' + วันไทยสั้น(e.startDate) + '</td>'
@@ -7348,18 +7439,25 @@ function empRepRender(r) {
       + '<td style="text-align:center">' + (e.hasTelegram ? '✓' : '<span style="color:#fb923c">ยังไม่ตั้ง</span>') + '</td>'
       + '</tr>';
   });
-  if (!body) body = '<tr><td colspan="16" style="text-align:center;color:var(--tx3);padding:18px">'
+  if (!body) body = '<tr><td colspan="18" style="text-align:center;color:var(--tx3);padding:18px">'
     + (kw ? 'ไม่พบคนที่ตรงกับคำค้น' : 'ไม่มีข้อมูลตามเงื่อนไขที่เลือก') + '</td></tr>';
   // ⚠️ ตัวนับบนหัวรายงานเป็นของทั้งชุด ไม่ใช่ของที่กรองแล้ว
   //    ถ้าไม่บอก จะอ่านว่า "คนหายไป" — ต้องเห็นว่ากรองอยู่
   const cnt = document.getElementById('empr-count');
-  if (cnt) cnt.textContent = kw
-    ? ('กรองอยู่ · แสดง ' + rows.length + ' จาก ' + all.length + ' คน')
-    : ('แสดงทั้งหมด ' + all.length + ' คน');
+  // ⚠️ ต้องบอกให้ครบว่ากรองด้วยอะไรอยู่ — ชิป · คำค้น หรือทั้งคู่
+  //    🚫 ถ้าบอกแต่คำค้น ผู้ใช้ที่ติ๊กชิปไว้จะเชื่อว่าเห็นทุกคนแล้ว
+  if (cnt) {
+    const ใช้ชิป = ผลกรอง.ใช้ตัวกรอง;
+    cnt.textContent = (kw || ใช้ชิป)
+      ? ('กรองอยู่' + (ใช้ชิป ? ' (ฝ่าย/ประเภท/แผนก' + (kw ? ' + คำค้น' : '') + ')'
+                             : ' (คำค้น)')
+         + ' · แสดง ' + rows.length + ' จาก ' + ทั้งชุด.length + ' คน')
+      : ('แสดงทั้งหมด ' + ทั้งชุด.length + ' คน');
+  }
 
   document.getElementById('empr-table').innerHTML =
     '<table class="rep-table" style="font-size:11px;white-space:nowrap"><thead><tr>'
-    + '<th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>ตำแหน่ง</th><th>กะ</th>'
+    + '<th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>ฝ่าย</th><th>ประเภท</th><th>ตำแหน่ง</th><th>กะ</th>'
     + '<th>เริ่มงาน</th><th>อายุงาน</th><th>วันเกิด</th><th>อายุ</th>'
     + '<th>สถานะ</th><th>พ้นสภาพ</th><th>ผู้อนุมัติ 1</th><th>ผู้อนุมัติ 2</th>'
     + '<th>อีเมล</th><th>โทร</th><th>Telegram</th>'
@@ -7374,19 +7472,35 @@ function empRepDownloadCSV() {
   let csv = '\uFEFF';   // BOM ให้ Excel อ่านภาษาไทยถูก
   csv += 'รหัส,คำนำหน้า,ชื่อ,แผนก,ตำแหน่ง,กะ,วันเริ่มงาน,อายุงาน,อายุงาน (เดือน),'
        + 'วันเกิด,อายุ,สถานะ,วันพ้นสภาพ,ผู้อนุมัติ 1,ชื่อผู้อนุมัติ 1,'
-       + 'ผู้อนุมัติ 2,ชื่อผู้อนุมัติ 2,อีเมล,โทร,Telegram\r\n';
-  // ⚠️ CSV ต้องตรงกับที่เห็นบนจอ — กรองอยู่แล้วโหลดได้ทั้งชุด จะงงว่าเลขไม่ตรง
+       + 'ผู้อนุมัติ 2,ชื่อผู้อนุมัติ 2,อีเมล,โทร,Telegram,'
+       // ⚠️ ต่อท้ายเท่านั้น ไม่แทรกกลาง — ของเดิมที่ใครเอาไปทำสูตรไว้จะยังใช้ได้
+       + 'ฝ่าย,ประเภทค่าใช้จ่าย\r\n';
+  // ⚠️⚠️ CSV ต้องตรงกับที่เห็นบนจอ — กรองอยู่แล้วโหลดได้ทั้งชุด จะงงว่าเลขไม่ตรง
+  //    🚫 ต้องกรองด้วย "ชิป" ด้วย ไม่ใช่แค่คำค้น
+  //       ถ้าลืม ชิปจะกรองแต่บนจอ แล้วไฟล์ที่โหลดได้มีคนเกินมาเงียบ ๆ
+  //       ซึ่งอันตรายกว่าบนจอผิด เพราะไฟล์ถูกเอาไปใช้ต่อโดยไม่มีใครทาน
+  const เทียบ2 = (empRepData.rows || []).map(e => ({
+    empId: e.empId, name: e.name,
+    division: e.division, costType: e.costType, department: e.dept,
+  }));
+  const ผลกรอง2 = filคัด(เทียบ2, empRepFil);
+  const ผ่าน2 = {};
+  ผลกรอง2.ผ่าน.forEach(e => { ผ่าน2[e.empId] = true; });
+  const ชุด2 = ผลกรอง2.ใช้ตัวกรอง
+    ? (empRepData.rows || []).filter(e => ผ่าน2[e.empId])
+    : (empRepData.rows || []);
   const fEl2 = document.getElementById('empr-filter');
   const kw2  = fEl2 ? fEl2.value.trim().toLowerCase() : '';
-  const out  = kw2 ? empRepData.rows.filter(e =>
+  const out  = kw2 ? ชุด2.filter(e =>
     [e.empId, e.name, e.dept, e.position].some(v =>
-      String(v || '').toLowerCase().indexOf(kw2) >= 0)) : empRepData.rows;
+      String(v || '').toLowerCase().indexOf(kw2) >= 0)) : ชุด2;
   out.forEach(e => {
     csv += [e.empId, q(e.title), q(e.name), q(e.dept), q(e.position), e.shift || '',
             e.startDate || '', q(e.tenure), e.tenureMonths != null ? e.tenureMonths : '',
             e.birthDate || '', e.age != null ? e.age : '', q(e.status), e.endDate || '',
             e.ap1 || '', q(e.ap1Name), e.ap2 || '', q(e.ap2Name),
-            q(e.email), q(e.phone), e.hasTelegram ? 'ตั้งแล้ว' : 'ยังไม่ตั้ง'
+            q(e.email), q(e.phone), e.hasTelegram ? 'ตั้งแล้ว' : 'ยังไม่ตั้ง',
+            q(e.division), q(e.costType)
            ].join(',') + '\r\n';
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -7400,10 +7514,17 @@ function empRepDownloadCSV() {
 // ═══════════════ รายงานการบันทึกดิบ (raw log) ═══════════════
 let hrRawEmployees = [];
 let hrRawSelected = {};
+// ตัวกรองของหน้ารายงานดิบ — คนละชุดกับ hrRepFil ของหน้ารายงานการลงเวลา
+// ⚠️ แยกชุดโดยเจตนา: ติ๊กที่หน้าหนึ่งต้องไม่ไปเปลี่ยนอีกหน้า
+var hrRawFil = { ฝ่าย: {}, ประเภท: {}, แผนก: {} };
 let hrRawData = null;
 
 function loadRawlogPage() {
   hrRawSelected = {};
+  // ⚠️ ล้างตัวกรองด้วยทุกครั้งที่เข้าหน้า — ดูบทเรียนข้อ 66
+  //    ลืมบรรทัดนี้ที่หน้ารายงานการลงเวลาแล้วชิปค้างทั้ง session
+  //    จนรายงานหุบเหลือแผนกเดียวเงียบ ๆ (27 พ.ย. 2569)
+  hrRawFil = { ฝ่าย: {}, ประเภท: {}, แผนก: {} };
   hrRawData = null;
   document.getElementById('hrraw-result').style.display = 'none';
   document.getElementById('hrraw-search').value = '';
@@ -7415,14 +7536,42 @@ function loadRawlogPage() {
   fetchEmployeeList(r => {
     if (!r || !r.success) { showToast((r && r.message) || 'โหลดรายชื่อไม่สำเร็จ'); if (r && r.authError) authBounce(r); return; }
     hrRawEmployees = r.employees || [];
-    renderRawList('');
+    // ⚠️ ต้องวาดชิปหลังได้รายชื่อแล้วเท่านั้น
+    //    🚫 วาดก่อนจะได้จำนวนเป็น 0 ทุกชิปแล้วถูกปิดไม่ให้กดทั้งหมด
+    hrRawFilChanged();
   }, e => showToast(e.message));
+}
+
+// ⚠️ ปุ่มล้างแผนกเท่านั้น ไม่ล้างฝ่ายกับประเภท — ผู้ใช้สั่งล้างแค่แผนก
+function hrRawDeptNone() {
+  hrRawFil.แผนก = {};
+  hrRawFilChanged();
+}
+
+function hrRawFilChanged() {
+  const ผล = filคัด(hrRawEmployees, hrRawFil);
+  // ⚠️ คนที่ติ๊กไว้แล้วถูกตัวกรองตัดออก ต้องถอนการติ๊กด้วย
+  //    ไม่งั้นรายงานจะรวมคนที่ไม่อยู่ในรายชื่อที่ตาเห็น
+  const ได้ = {};
+  ผล.ผ่าน.forEach(e => { ได้[e.empId] = true; });
+  Object.keys(hrRawSelected).forEach(id => { if (!ได้[id]) delete hrRawSelected[id]; });
+  filวาดชิป('hrraw', hrRawEmployees, hrRawFil, hrRawFilChanged);
+  filบอกผล('hrraw-fil-note', ผล);
+  renderRawList(document.getElementById('hrraw-search').value);
+  updateRawCount();
+  // 🚫🚫 ปิดปุ่มเมื่อตัวกรองไม่ตรงกับใครเลย — ถ้าปล่อยให้กด หน้าเว็บจะส่ง
+  //    รายชื่อว่างไป ซึ่งฝั่งฐานข้อมูลตีความว่า "ทุกคน" = ตรงข้ามกับที่สั่ง
+  const btn = document.getElementById('hrraw-generate');
+  if (btn) btn.disabled = (ผล.ใช้ตัวกรอง && ผล.ผ่าน.length === 0);
 }
 
 function renderRawList(search) {
   const list = document.getElementById('hrraw-emplist');
   const q = (search || '').toLowerCase();
-  const filtered = hrRawEmployees.filter(e => !q || String(e.name).toLowerCase().includes(q) || String(e.empId).toLowerCase().includes(q));
+  // ⚠️ รายชื่อที่แสดงต้องเป็นชุดเดียวกับที่รายงานจะใช้ ไม่งั้น "เลือกทั้งหมด"
+  //    จะเลือกคนที่ตัวกรองตัดออกไปแล้ว
+  const ผ่านกรอง = filคัด(hrRawEmployees, hrRawFil).ผ่าน;
+  const filtered = ผ่านกรอง.filter(e => !q || String(e.name).toLowerCase().includes(q) || String(e.empId).toLowerCase().includes(q));
   if (filtered.length === 0) { list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:13px">ไม่พบพนักงาน</div>'; return; }
   let html = '';
   filtered.forEach(e => {
@@ -7448,9 +7597,17 @@ function renderRawList(search) {
 
 function updateRawCount() {
   const n = Object.keys(hrRawSelected).length;
-  document.getElementById('hrraw-count').textContent = n === 0 ? `ยังไม่เลือก (ว่าง = ทุกคน)` : `เลือกแล้ว ${n} คน`;
+  // ⚠️ "ว่าง = ทุกคน" ไม่จริงอีกแล้วเมื่อมีตัวกรอง — ต้องบอกให้ตรงความจริง
+  //    🚫 ข้อความที่ไม่ตรงทำให้ผู้ใช้เชื่อผิดว่ารายงานครอบคลุมทุกคน
+  const ผล = filคัด(hrRawEmployees, hrRawFil);
+  const el = document.getElementById('hrraw-count');
+  if (n > 0) { el.textContent = `เลือกแล้ว ${n} คน`; return; }
+  el.textContent = ผล.ใช้ตัวกรอง
+    ? `ยังไม่เลือกรายคน (ว่าง = ทุกคนที่ตัวกรองเหลือไว้ ${ผล.ผ่าน.length} คน)`
+    : 'ยังไม่เลือก (ว่าง = ทุกคน)';
 }
-function hrRawSelectAll() { hrRawEmployees.forEach(e => { hrRawSelected[e.empId] = true; }); renderRawList(document.getElementById('hrraw-search').value); updateRawCount(); }
+// ⚠️ "เลือกทั้งหมด" = ทั้งหมดของที่ตัวกรองเหลือไว้ ไม่ใช่ทั้งบริษัท
+function hrRawSelectAll() { filคัด(hrRawEmployees, hrRawFil).ผ่าน.forEach(e => { hrRawSelected[e.empId] = true; }); renderRawList(document.getElementById('hrraw-search').value); updateRawCount(); }
 function hrRawClearAll() { hrRawSelected = {}; renderRawList(document.getElementById('hrraw-search').value); updateRawCount(); }
 
 function hrRawGenerate() {
@@ -7459,7 +7616,24 @@ function hrRawGenerate() {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fromISO) || !/^\d{4}-\d{2}-\d{2}$/.test(toISO)) { showToast('กรุณาเลือกวันที่ให้ครบ'); return; }
   const from = isoToTH(fromISO);
   const to   = isoToTH(toISO);
-  const ids = Object.keys(hrRawSelected);
+  // ══════════════════════════════════════════════════════════
+  //  แปลงตัวกรองเป็นรายชื่อรหัสพนักงาน
+  //
+  //  🚫🚫 กับดักเดียวกับหน้ารายงานการลงเวลา: ฝั่งฐานข้อมูลอ่าน
+  //     "รายชื่อว่าง" ว่า "ไม่กรอง = ทุกคน" ถ้าตัวกรองไม่ตรงกับใคร
+  //     แล้วเราส่งอาเรย์ว่างไป รายงานจะออกมาเป็นทุกคน = ตรงข้ามกับที่สั่ง
+  //     และยอดรวมจะดูปกติ → ต้องหยุดที่นี่ ไม่ใช่ส่งไปแล้วหวังว่าจะถูก
+  // ══════════════════════════════════════════════════════════
+  const ผลกรอง = filคัด(hrRawEmployees, hrRawFil);
+  if (ผลกรอง.ใช้ตัวกรอง && ผลกรอง.ผ่าน.length === 0) {
+    showToast('ตัวกรองฝ่าย/ประเภทไม่ตรงกับใครเลย — กรุณาเลือกใหม่');
+    return;
+  }
+  let ids = Object.keys(hrRawSelected);
+  if (ids.length === 0 && ผลกรอง.ใช้ตัวกรอง) {
+    // ไม่ติ๊กรายคน แต่มีตัวกรอง → ส่งรายชื่อที่ตัวกรองเหลือไว้
+    ids = ผลกรอง.ผ่าน.map(e => e.empId);
+  }
   const btn = document.getElementById('hrraw-generate');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังสร้าง...';
   gasRun('hrGetRawLog', { hrToken: S.hrToken, dateFrom: from, dateTo: to, employeeIds: ids }, 90000)
@@ -10979,6 +11153,8 @@ applyLogo();
 
   // HR รายงานการบันทึกดิบ (raw log)
   on('hrraw-search', 'input', function() { renderRawList(this.value); });
+  // ⚠️ ปุ่มนี้ต้องผูกไว้ ไม่งั้นชิปแผนกที่ติ๊กไปแล้วล้างไม่ได้ (25 แผนก)
+  on('hrraw-dept-none', 'click', hrRawDeptNone);
   on('hrraw-all', 'click', hrRawSelectAll);
   on('hrraw-none', 'click', hrRawClearAll);
   on('hrraw-generate', 'click', hrRawGenerate);
@@ -11068,6 +11244,8 @@ applyLogo();
   on('empr-st-all',    'click', function() { empRepSetAll(true); });
   on('empr-st-none',   'click', function() { empRepSetAll(false); });
   on('empr-generate',  'click', empRepGenerate);
+  // ⚠️ ไม่ผูกปุ่มนี้ = ชิปแผนกที่ติ๊กไปแล้วล้างไม่ได้
+  on('empr-dept-none', 'click', empRepDeptNone);
   on('empr-csv',       'click', empRepDownloadCSV);
   on('empr-filter',     'input', empRepRedraw);
   on('hr-menu-face',      'click', function() { go('hr-face'); });
